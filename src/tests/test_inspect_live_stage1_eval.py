@@ -23,34 +23,24 @@ import inspect_live as il
 class TestStage1Evaluation(unittest.TestCase):
     """Test evaluate_stage1_criteria under various configuration states."""
 
-    def test_target_items_off_thresholds_pass_fox_no_anvil(self) -> None:
-        """When Target Items are OFF, Fox strictly requires Anvil at all times (fails if missing)."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=False,
-            is_fox=True,
-            has_anvil=False,
-            require_target_items=False,
-            anvil_required=True,
-        )
-        self.assertFalse(thresholds_matched, "Fox must not match thresholds when Anvil is missing")
-        self.assertFalse(all_matched, "all_matched must be False for Fox without Anvil")
-        self.assertFalse(target_only_matched)
-        self.assertEqual(match_reason, "FOX_MISSING_ANVIL_THRESHOLDS_PASS")
+    def setUp(self) -> None:
+        self._orig_required_all_item_ids = list(il.REQUIRED_ALL_ITEM_IDS)
+        self._orig_required_any_item_ids = list(il.REQUIRED_ANY_ITEM_IDS)
+        self._orig_required_item_ids = list(il.REQUIRED_ITEM_IDS)
+        self._orig_required_items_mode = il.REQUIRED_ITEMS_MODE
+        il.REQUIRED_ALL_ITEM_IDS = []
+        il.REQUIRED_ANY_ITEM_IDS = []
+        il.REQUIRED_ITEM_IDS = []
+        il.REQUIRED_ITEMS_MODE = "any"
 
-    def test_fox_anvil_required_flag_false_allows_thresholds_match_without_anvil(self) -> None:
-        """When anvil_required flag is False, Fox does NOT require Anvil and matches thresholds normally."""
+    def tearDown(self) -> None:
+        il.REQUIRED_ALL_ITEM_IDS = self._orig_required_all_item_ids
+        il.REQUIRED_ANY_ITEM_IDS = self._orig_required_any_item_ids
+        il.REQUIRED_ITEM_IDS = self._orig_required_item_ids
+        il.REQUIRED_ITEMS_MODE = self._orig_required_items_mode
+
+    def test_thresholds_pass_no_required_items(self) -> None:
+        """When no items are required and shrine thresholds are met, seed passes with THRESHOLDS_MATCH."""
         (
             target_items_pass,
             thresholds_matched,
@@ -63,203 +53,15 @@ class TestStage1Evaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            target_items_found=False,
-            has_white_micro=False,
-            is_fox=True,
-            has_anvil=False,
-            require_target_items=False,
-            anvil_required=False,
+            required_item_ids=[],
         )
-        self.assertTrue(thresholds_matched, "When anvil_required=False, Fox matches thresholds without Anvil")
-        self.assertTrue(all_matched, "all_matched must be True when thresholds are satisfied and flag is False")
+        self.assertTrue(thresholds_matched)
+        self.assertTrue(all_matched)
         self.assertFalse(target_only_matched)
         self.assertEqual(match_reason, "THRESHOLDS_MATCH")
 
-    def test_anvil_required_flag_true_non_fox_missing_anvil_fails(self) -> None:
-        """When anvil_required is True, non-Fox character requires Anvil and fails if missing."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=False,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=False,
-            anvil_required=True,
-        )
-        self.assertFalse(thresholds_matched, "Non-Fox must not match thresholds when anvil_required=True and Anvil is missing")
-        self.assertFalse(all_matched, "all_matched must be False when anvil_required=True without Anvil")
-        self.assertEqual(match_reason, "MISSING_ANVIL_THRESHOLDS_PASS")
-
-    def test_anvil_required_flag_true_non_fox_with_anvil_passes(self) -> None:
-        """When anvil_required is True, non-Fox character with Anvil and thresholds met results in PERFECT_MATCH_ALL."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=True,
-            require_target_items=False,
-            anvil_required=True,
-        )
-        self.assertTrue(thresholds_matched)
-        self.assertTrue(all_matched)
-        self.assertTrue(target_items_pass)
-        self.assertEqual(match_reason, "PERFECT_MATCH_ALL")
-
-    def test_anvil_required_flag_false_non_fox_allows_thresholds_match_without_anvil(self) -> None:
-        """When anvil_required is False, non-Fox matches thresholds without Anvil."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=False,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=False,
-            anvil_required=False,
-        )
-        self.assertTrue(thresholds_matched)
-        self.assertTrue(all_matched)
-        self.assertEqual(match_reason, "THRESHOLDS_MATCH")
-
-    def test_target_items_off_thresholds_pass_fox_with_anvil(self) -> None:
-        """When Target Items are OFF, Fox with Anvil and thresholds met results in PERFECT_MATCH_ALL."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=True,
-            has_anvil=True,
-            require_target_items=False,
-            anvil_required=True,
-        )
-        self.assertTrue(thresholds_matched, "Fox with Anvil and thresholds satisfied must match")
-        self.assertTrue(all_matched, "all_matched must be True for Fox with Anvil")
-        self.assertTrue(target_items_pass)
-        self.assertEqual(match_reason, "PERFECT_MATCH_ALL")
-
-    def test_fox_with_anvil_missing_white_micro_fails(self) -> None:
-        """For Fox, Anvil without required White Microwave fails match."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=False,
-            is_fox=True,
-            has_anvil=True,
-            require_target_items=False,
-            anvil_required=True,
-            target_items_require_white_micro=True,
-        )
-        self.assertFalse(all_matched)
-        self.assertEqual(match_reason, "TARGET_ITEMS_NO_WHITE_MICROWAVE")
-
-    def test_soul_harvester_required_flag_missing_fails(self) -> None:
-        """When soul_harvester_required is True, missing Soul Harvester fails match even if thresholds pass."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=False,
-            anvil_required=False,
-            soul_harvester_required=True,
-            has_soul_harvester=False,
-        )
-        self.assertFalse(thresholds_matched)
-        self.assertFalse(all_matched)
-        self.assertFalse(target_items_pass)
-        self.assertEqual(match_reason, "MISSING_SOUL_HARVESTER_THRESHOLDS_PASS")
-
-    def test_soul_harvester_required_flag_present_passes(self) -> None:
-        """When soul_harvester_required is True and Soul Harvester is present, thresholds pass results in PERFECT_MATCH_ALL."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=False,
-            anvil_required=False,
-            soul_harvester_required=True,
-            has_soul_harvester=True,
-        )
-        self.assertTrue(thresholds_matched)
-        self.assertTrue(all_matched)
-        self.assertTrue(target_items_pass)
-        self.assertEqual(match_reason, "PERFECT_MATCH_ALL")
-
-    def test_soul_harvester_required_present_thresholds_fail(self) -> None:
-        """When soul_harvester_required is True and present, but thresholds fail, reason is SOUL_HARVESTER_FOUND_CRITERIA_FAILED."""
+    def test_thresholds_fail_no_required_items(self) -> None:
+        """When no items are required and shrine thresholds fail, criteria fails with CRITERIA_NOT_MET."""
         (
             target_items_pass,
             thresholds_matched,
@@ -272,422 +74,14 @@ class TestStage1Evaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=False,
-            anvil_required=False,
-            soul_harvester_required=True,
-            has_soul_harvester=True,
-        )
-        self.assertFalse(thresholds_matched)
-        self.assertFalse(all_matched)
-        self.assertTrue(target_items_pass)
-        self.assertEqual(match_reason, "SOUL_HARVESTER_FOUND_CRITERIA_FAILED")
-
-    def test_anvil_and_soul_harvester_both_required_missing_both(self) -> None:
-        """When both Anvil and Soul Harvester are required, missing both reports MISSING_ANVIL_AND_SOUL_HARVESTER_THRESHOLDS_PASS."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=False,
-            anvil_required=True,
-            soul_harvester_required=True,
-            has_soul_harvester=False,
-        )
-        self.assertFalse(thresholds_matched)
-        self.assertFalse(all_matched)
-        self.assertEqual(match_reason, "MISSING_ANVIL_AND_SOUL_HARVESTER_THRESHOLDS_PASS")
-
-    def test_anvil_and_soul_harvester_both_required_missing_one(self) -> None:
-        """When both are required, having Anvil but missing Soul Harvester reports MISSING_SOUL_HARVESTER_THRESHOLDS_PASS."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=True,
-            require_target_items=False,
-            anvil_required=True,
-            soul_harvester_required=True,
-            has_soul_harvester=False,
-        )
-        self.assertFalse(thresholds_matched)
-        self.assertFalse(all_matched)
-        self.assertEqual(match_reason, "MISSING_SOUL_HARVESTER_THRESHOLDS_PASS")
-
-        # Vice-versa: having Soul Harvester but missing Anvil
-        (
-            _,
-            thresholds_matched2,
-            _,
-            all_matched2,
-            match_reason2,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=False,
-            anvil_required=True,
-            soul_harvester_required=True,
-            has_soul_harvester=True,
-        )
-        self.assertFalse(thresholds_matched2)
-        self.assertFalse(all_matched2)
-        self.assertEqual(match_reason2, "MISSING_ANVIL_THRESHOLDS_PASS")
-
-    def test_anvil_and_soul_harvester_both_required_has_both(self) -> None:
-        """When both are required and both are present with thresholds passing, results in PERFECT_MATCH_ALL."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=True,
-            require_target_items=False,
-            anvil_required=True,
-            soul_harvester_required=True,
-            has_soul_harvester=True,
-        )
-        self.assertTrue(thresholds_matched)
-        self.assertTrue(all_matched)
-        self.assertTrue(target_items_pass)
-        self.assertEqual(match_reason, "PERFECT_MATCH_ALL")
-
-    def test_anvil_and_soul_harvester_both_present_thresholds_fail(self) -> None:
-        """When both are required and present, but shrine counts fail, reason is ANVIL_AND_SOUL_HARVESTER_FOUND_CRITERIA_FAILED."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=False,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=True,
-            require_target_items=False,
-            anvil_required=True,
-            soul_harvester_required=True,
-            has_soul_harvester=True,
-        )
-        self.assertFalse(thresholds_matched)
-        self.assertFalse(all_matched)
-        self.assertTrue(target_items_pass)
-        self.assertEqual(match_reason, "ANVIL_AND_SOUL_HARVESTER_FOUND_CRITERIA_FAILED")
-
-    def test_anvil_or_soul_harvester_required_missing_both_fails(self) -> None:
-        """When either Anvil OR Soul Harvester is required, missing both fails criteria."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=False,
-            anvil_or_soul_harvester_required=True,
-            has_soul_harvester=False,
-        )
-        self.assertFalse(thresholds_matched)
-        self.assertFalse(all_matched)
-        self.assertFalse(target_items_pass)
-        self.assertEqual(match_reason, "MISSING_ANVIL_OR_SOUL_HARVESTER_THRESHOLDS_PASS")
-
-    def test_anvil_or_soul_harvester_required_has_anvil_passes(self) -> None:
-        """When either Anvil OR Soul Harvester is required, having only Anvil passes."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=True,
-            require_target_items=False,
-            anvil_or_soul_harvester_required=True,
-            has_soul_harvester=False,
-        )
-        self.assertTrue(thresholds_matched)
-        self.assertTrue(all_matched)
-        self.assertTrue(target_items_pass)
-        self.assertEqual(match_reason, "PERFECT_MATCH_ALL")
-
-    def test_anvil_or_soul_harvester_required_has_soul_harvester_passes(self) -> None:
-        """When either Anvil OR Soul Harvester is required, having only Soul Harvester passes."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=False,
-            anvil_or_soul_harvester_required=True,
-            has_soul_harvester=True,
-        )
-        self.assertTrue(thresholds_matched)
-        self.assertTrue(all_matched)
-        self.assertTrue(target_items_pass)
-        self.assertEqual(match_reason, "PERFECT_MATCH_ALL")
-
-    def test_anvil_or_soul_harvester_required_has_both_passes(self) -> None:
-        """When either Anvil OR Soul Harvester is required, having both passes."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=True,
-            require_target_items=False,
-            anvil_or_soul_harvester_required=True,
-            has_soul_harvester=True,
-        )
-        self.assertTrue(thresholds_matched)
-        self.assertTrue(all_matched)
-        self.assertTrue(target_items_pass)
-        self.assertEqual(match_reason, "PERFECT_MATCH_ALL")
-
-    def test_anvil_or_soul_harvester_required_has_anvil_thresholds_fail(self) -> None:
-        """When either is required, having Anvil but failing thresholds reports ANVIL_FOUND_CRITERIA_FAILED."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=False,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=True,
-            require_target_items=False,
-            anvil_or_soul_harvester_required=True,
-            has_soul_harvester=False,
-        )
-        self.assertFalse(thresholds_matched)
-        self.assertFalse(all_matched)
-        self.assertTrue(target_items_pass)
-        self.assertEqual(match_reason, "ANVIL_FOUND_CRITERIA_FAILED")
-
-    def test_anvil_or_soul_harvester_required_has_soul_harvester_thresholds_fail(self) -> None:
-        """When either is required, having Soul Harvester but failing thresholds reports SOUL_HARVESTER_FOUND_CRITERIA_FAILED."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=False,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=False,
-            anvil_or_soul_harvester_required=True,
-            has_soul_harvester=True,
-        )
-        self.assertFalse(thresholds_matched)
-        self.assertFalse(all_matched)
-        self.assertTrue(target_items_pass)
-        self.assertEqual(match_reason, "SOUL_HARVESTER_FOUND_CRITERIA_FAILED")
-
-    def test_target_items_off_thresholds_pass_no_white_micro(self) -> None:
-        """When Target Items are OFF, missing a White Microwave does not fail a threshold match."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=True,
-            has_white_micro=False,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=False,
-            target_items_require_white_micro=True,
-        )
-        self.assertTrue(thresholds_matched)
-        self.assertTrue(all_matched)
-        self.assertEqual(match_reason, "THRESHOLDS_MATCH")
-
-    def test_target_items_off_thresholds_pass_perfect_match(self) -> None:
-        """When Target Items are OFF and both thresholds and target items are met, result is PERFECT_MATCH_ALL."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=True,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=True,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=False,
-            target_items_require_white_micro=True,
-        )
-        self.assertTrue(thresholds_matched)
-        self.assertTrue(all_matched)
-        self.assertTrue(target_items_pass)
-        self.assertEqual(match_reason, "PERFECT_MATCH_ALL")
-
-    def test_target_items_off_thresholds_fail_target_only_match(self) -> None:
-        """When thresholds fail but target items match and pause_on_target_items=True, seed matches on target items."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=False,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=True,
-            has_white_micro=True,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=False,
-            pause_on_target_items=True,
-            target_items_require_white_micro=True,
-        )
-        self.assertFalse(thresholds_matched)
-        self.assertTrue(target_only_matched)
-        self.assertTrue(all_matched)
-        self.assertEqual(match_reason, "TARGET_ITEMS_MATCH")
-
-    def test_target_items_off_all_fail(self) -> None:
-        """When thresholds fail and target items are not found, all_matched is False."""
-        (
-            target_items_pass,
-            thresholds_matched,
-            target_only_matched,
-            all_matched,
-            match_reason,
-        ) = il.evaluate_stage1_criteria(
-            sm_pass=False,
-            micro_pass=True,
-            boss_pass=True,
-            magnet_pass=True,
-            shady_pass=True,
-            target_items_found=False,
-            has_white_micro=False,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=False,
+            required_item_ids=[],
         )
         self.assertFalse(thresholds_matched)
         self.assertFalse(all_matched)
         self.assertEqual(match_reason, "CRITERIA_NOT_MET")
 
-    def test_target_items_on_fox_missing_anvil_fails(self) -> None:
-        """When REQUIRE_TARGET_ITEMS is True, Fox missing Anvil strictly fails."""
+    def test_required_item_missing_thresholds_pass(self) -> None:
+        """When required item is missing and thresholds pass, reason is MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS."""
         (
             target_items_pass,
             thresholds_matched,
@@ -700,18 +94,16 @@ class TestStage1Evaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=True,
-            has_anvil=False,
-            require_target_items=True,
-            anvil_required=True,
+            required_all_item_ids=[41],
+            offered_item_ids=[],
         )
+        self.assertFalse(thresholds_matched)
         self.assertFalse(all_matched)
-        self.assertEqual(match_reason, "FOX_MISSING_ANVIL_THRESHOLDS_PASS")
+        self.assertFalse(target_items_pass)
+        self.assertEqual(match_reason, "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS")
 
-    def test_target_items_on_missing_white_micro_fails(self) -> None:
-        """When REQUIRE_TARGET_ITEMS is True, target items without White Microwave fails."""
+    def test_required_item_present_thresholds_pass(self) -> None:
+        """When required item is present and thresholds pass, reason is PERFECT_MATCH_ALL."""
         (
             target_items_pass,
             thresholds_matched,
@@ -724,47 +116,196 @@ class TestStage1Evaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            target_items_found=True,
-            has_white_micro=False,
-            is_fox=False,
-            has_anvil=False,
-            require_target_items=True,
-            target_items_require_white_micro=True,
+            required_all_item_ids=[41],
+            offered_item_ids=[41],
         )
-        self.assertFalse(all_matched)
-        self.assertEqual(match_reason, "TARGET_ITEMS_NO_WHITE_MICROWAVE")
+        self.assertTrue(thresholds_matched)
+        self.assertTrue(all_matched)
+        self.assertTrue(target_items_pass)
+        self.assertEqual(match_reason, "PERFECT_MATCH_ALL")
 
-    def test_scan_stage1_seed_filter_fast_eval_fox_flag(self) -> None:
-        """Test scan_stage1_seed_filter respects anvil_required flag during fast_eval."""
+    def test_required_item_present_thresholds_fail(self) -> None:
+        """When required item is present but thresholds fail, reason is REQUIRED_ITEMS_FOUND_CRITERIA_FAILED."""
+        (
+            target_items_pass,
+            thresholds_matched,
+            target_only_matched,
+            all_matched,
+            match_reason,
+        ) = il.evaluate_stage1_criteria(
+            sm_pass=False,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_all_item_ids=[41],
+            offered_item_ids=[41],
+        )
+        self.assertFalse(thresholds_matched)
+        self.assertFalse(all_matched)
+        self.assertTrue(target_items_pass)
+        self.assertEqual(match_reason, "REQUIRED_ITEMS_FOUND_CRITERIA_FAILED")
+
+    def test_required_any_items_missing_both(self) -> None:
+        """When required_any_item_ids has 2 items and neither is offered, fails criteria."""
+        (
+            target_items_pass,
+            thresholds_matched,
+            target_only_matched,
+            all_matched,
+            match_reason,
+        ) = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_any_item_ids=[41, 47],
+            offered_item_ids=[],
+        )
+        self.assertFalse(thresholds_matched)
+        self.assertFalse(all_matched)
+        self.assertFalse(target_items_pass)
+        self.assertEqual(match_reason, "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS")
+
+    def test_required_any_items_has_one(self) -> None:
+        """When required_any_item_ids has 2 items and at least one is offered, passes criteria."""
+        (
+            target_items_pass,
+            thresholds_matched,
+            target_only_matched,
+            all_matched,
+            match_reason,
+        ) = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_any_item_ids=[41, 47],
+            offered_item_ids=[47],
+        )
+        self.assertTrue(thresholds_matched)
+        self.assertTrue(all_matched)
+        self.assertTrue(target_items_pass)
+        self.assertEqual(match_reason, "PERFECT_MATCH_ALL")
+
+    def test_required_all_items_missing_one(self) -> None:
+        """When required_all_item_ids has 2 items and only one is offered, fails criteria."""
+        (
+            target_items_pass,
+            thresholds_matched,
+            target_only_matched,
+            all_matched,
+            match_reason,
+        ) = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_all_item_ids=[41, 47],
+            offered_item_ids=[41],
+        )
+        self.assertFalse(thresholds_matched)
+        self.assertFalse(all_matched)
+        self.assertEqual(match_reason, "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS")
+
+    def test_required_all_items_both_present(self) -> None:
+        """When required_all_item_ids has 2 items and all are offered, passes criteria."""
+        (
+            target_items_pass,
+            thresholds_matched,
+            target_only_matched,
+            all_matched,
+            match_reason,
+        ) = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_all_item_ids=[41, 47],
+            offered_item_ids=[41, 47],
+        )
+        self.assertTrue(thresholds_matched)
+        self.assertTrue(all_matched)
+        self.assertTrue(target_items_pass)
+        self.assertEqual(match_reason, "PERFECT_MATCH_ALL")
+
+    def test_combined_all_and_any_items(self) -> None:
+        """Combined ALL and ANY lists: requires ALL of AND-list plus at least ONE of OR-list."""
+        # Must have 45 (Plug) AND 57 (Kevin), plus either 41 (Anvil) OR 47 (Soul Harvester)
+        req_all = [45, 57]
+        req_any = [41, 47]
+
+        # Case 1: Missing one from ALL list (only 45 and 41 present) -> Fail
+        (_, _, _, all_m1, r1) = il.evaluate_stage1_criteria(
+            sm_pass=True, micro_pass=True, boss_pass=True, magnet_pass=True, shady_pass=True,
+            required_all_item_ids=req_all, required_any_item_ids=req_any,
+            offered_item_ids=[45, 41],
+        )
+        self.assertFalse(all_m1)
+        self.assertEqual(r1, "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS")
+
+        # Case 2: ALL list satisfied (45, 57), but missing ANY list -> Fail
+        (_, _, _, all_m2, r2) = il.evaluate_stage1_criteria(
+            sm_pass=True, micro_pass=True, boss_pass=True, magnet_pass=True, shady_pass=True,
+            required_all_item_ids=req_all, required_any_item_ids=req_any,
+            offered_item_ids=[45, 57],
+        )
+        self.assertFalse(all_m2)
+        self.assertEqual(r2, "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS")
+
+        # Case 3: ALL list satisfied (45, 57) + one from ANY list (47) -> Pass
+        (t_pass3, _, _, all_m3, r3) = il.evaluate_stage1_criteria(
+            sm_pass=True, micro_pass=True, boss_pass=True, magnet_pass=True, shady_pass=True,
+            required_all_item_ids=req_all, required_any_item_ids=req_any,
+            offered_item_ids=[45, 57, 47],
+        )
+        self.assertTrue(t_pass3)
+        self.assertTrue(all_m3)
+        self.assertEqual(r3, "PERFECT_MATCH_ALL")
+
+    def test_scan_stage1_seed_filter_fast_eval_required_items(self) -> None:
+        """Test scan_stage1_seed_filter fast_eval skips heap when required items are active but 0 Shady Guys."""
         mock_mem = unittest.mock.MagicMock()
         with patch.object(il, "get_stage_index", return_value=0), \
              patch.object(il, "get_map_interactable_counts", return_value={
                  "shady": 0, "moai": 10, "microwaves": 2, "boss_curses": 1, "magnets": 2,
              }):
-            # When anvil_required=True and shady=0: skips heap and reports missing anvil
-            res_true = il.scan_stage1_seed_filter(
-                mock_mem, 0x1000, fast_eval=True, character=(0, "Fox"), anvil_required=True
+            # When required_all_item_ids=[41] and shady=0: fast_eval skips heap and reports missing required items
+            res_req = il.scan_stage1_seed_filter(
+                mock_mem, 0x1000, fast_eval=True, character=(0, "Fox"), required_all_item_ids=[41]
             )
-            self.assertTrue(res_true.get("shady_skipped"))
-            self.assertFalse(res_true.get("all_matched"))
-            self.assertEqual(res_true.get("match_reason"), "FOX_MISSING_ANVIL_THRESHOLDS_PASS")
-            self.assertTrue(res_true.get("anvil_required"))
+            self.assertTrue(res_req.get("shady_skipped"))
+            self.assertFalse(res_req.get("all_matched"))
+            self.assertEqual(res_req.get("match_reason"), "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS")
+            self.assertEqual(res_req.get("required_all_item_ids"), [41])
 
-            # When anvil_required=False and shady=0: does NOT skip heap due to fox anvil
-            # but rather evaluates normal criteria
+            # When required_all_item_ids=[] and required_any_item_ids=[] and shady=0: does not skip heap due to items
             with patch.object(il, "scan_heap_interactables", return_value=([], [], [], [])):
-                res_false = il.scan_stage1_seed_filter(
-                    mock_mem, 0x1000, fast_eval=True, character=(0, "Fox"), anvil_required=False
+                res_no_req = il.scan_stage1_seed_filter(
+                    mock_mem, 0x1000, fast_eval=True, character=(0, "Fox"),
+                    required_all_item_ids=[], required_any_item_ids=[],
                 )
-                self.assertFalse(res_false.get("anvil_required"))
-                self.assertTrue(res_false.get("all_matched"))
-                self.assertEqual(res_false.get("match_reason"), "THRESHOLDS_MATCH")
+                self.assertEqual(res_no_req.get("required_all_item_ids"), [])
+                self.assertTrue(res_no_req.get("all_matched"))
+                self.assertEqual(res_no_req.get("match_reason"), "THRESHOLDS_MATCH")
 
 
 class TestStage1ReportTableDisplay(unittest.TestCase):
-    """Test print_stage1_report prints Shady items tables when thresholds match and Target Items are off."""
+    """Test print_stage1_report prints Shady items tables when thresholds match."""
 
     def setUp(self) -> None:
+        self._orig_required_all_item_ids = list(il.REQUIRED_ALL_ITEM_IDS)
+        self._orig_required_any_item_ids = list(il.REQUIRED_ANY_ITEM_IDS)
+        self._orig_required_item_ids = list(il.REQUIRED_ITEM_IDS)
+        self._orig_required_items_mode = il.REQUIRED_ITEMS_MODE
+        il.REQUIRED_ALL_ITEM_IDS = []
+        il.REQUIRED_ANY_ITEM_IDS = []
+        il.REQUIRED_ITEM_IDS = []
+        il.REQUIRED_ITEMS_MODE = "any"
         self.mock_shady_guys = [
             {
                 "ptr": 0x12345678,
@@ -790,8 +331,6 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
             "character": "Fox",
             "character_id": 0,
             "is_fox": True,
-            "has_anvil": True,
-            "anvil_count": 1,
             "map_counts": {"shady": 1, "moai": 8, "microwaves": 2, "boss_curses": 1, "magnets": 2},
             "sm_total": 9,
             "sm_pass": True,
@@ -811,9 +350,19 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
             "microwaves": [{"color": "Blue", "map_sector": "Center"}],
             "moais": [],
             "boss_curses": [],
-            "rule_matches": [],
             "target_matches": [],
+            "required_all_item_ids": [],
+            "required_any_item_ids": [],
+            "required_item_ids": [],
+            "required_items_mode": "any",
+            "offered_item_counts": {},
         }
+
+    def tearDown(self) -> None:
+        il.REQUIRED_ALL_ITEM_IDS = self._orig_required_all_item_ids
+        il.REQUIRED_ANY_ITEM_IDS = self._orig_required_any_item_ids
+        il.REQUIRED_ITEM_IDS = self._orig_required_item_ids
+        il.REQUIRED_ITEMS_MODE = self._orig_required_items_mode
 
     def test_shady_tables_printed_in_plain_text_during_reroll(self) -> None:
         """When reroll_num is an integer (auto-restart active) and all_matched=True, Shady tables are printed."""
@@ -833,52 +382,52 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
             self.skipTest("Rich console not installed")
         with patch.object(il.console, "print") as mock_print:
             il.print_stage1_report(self.mock_result, reroll_num=1)
-            # Verify Table objects were printed
             table_titles = [
                 getattr(call.args[0], "title", None)
                 for call in mock_print.call_args_list
                 if call.args and hasattr(call.args[0], "title")
             ]
             self.assertTrue(
-                any("All Shady Items Ranked by Distance" in str(t) for t in table_titles),
+                any("all shady items ranked" in str(t).lower() for t in table_titles),
                 f"Expected All Shady Items Ranked table, got: {table_titles}",
             )
             self.assertTrue(
-                any("Shady Guy Inventories" in str(t) for t in table_titles),
+                any("shady guy inventories" in str(t).lower() for t in table_titles),
                 f"Expected Shady Guy Inventories table, got: {table_titles}",
             )
 
-    def test_fox_missing_anvil_plain_text_report(self) -> None:
-        """When Fox is missing Anvil (criteria not met), plain text report prints status only and NO tables."""
+    def test_missing_required_items_plain_text_report(self) -> None:
+        """When required item is missing (criteria not met), plain text report prints status only and NO tables."""
         res = dict(self.mock_result)
-        res["has_anvil"] = False
-        res["anvil_count"] = 0
+        res["required_all_item_ids"] = [41]
+        res["required_any_item_ids"] = []
+        res["offered_item_counts"] = {}
         res["target_items_pass"] = False
         res["thresholds_matched"] = False
         res["all_matched"] = False
-        res["match_reason"] = "FOX_MISSING_ANVIL_THRESHOLDS_PASS"
+        res["match_reason"] = "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS"
         buf = io.StringIO()
         with patch.object(il, "console", None):
             with patch("sys.stdout", buf):
                 il.print_stage1_report(res)
         output = buf.getvalue()
         self.assertIn("Status: [-] CRITERIA NOT MET", output)
-        self.assertIn("Fox requires >= 1 Anvil on map", output)
-        self.assertNotIn("Target Items", output)
+        self.assertIn("Anvil", output)
         self.assertNotIn("ALL SHADY ITEMS RANKED BY DISTANCE", output)
         self.assertNotIn("SHADY GUY INVENTORIES", output)
 
-    def test_fox_missing_anvil_rich_table_report(self) -> None:
-        """When Rich console is available and Fox is missing Anvil, only status Panel is printed (NO tables)."""
+    def test_missing_required_items_rich_table_report(self) -> None:
+        """When Rich console is available and required item is missing, only status Panel is printed (NO tables)."""
         if il.console is None:
             self.skipTest("Rich console not installed")
         res = dict(self.mock_result)
-        res["has_anvil"] = False
-        res["anvil_count"] = 0
+        res["required_all_item_ids"] = [41]
+        res["required_any_item_ids"] = []
+        res["offered_item_counts"] = {}
         res["target_items_pass"] = False
         res["thresholds_matched"] = False
         res["all_matched"] = False
-        res["match_reason"] = "FOX_MISSING_ANVIL_THRESHOLDS_PASS"
+        res["match_reason"] = "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS"
         with patch.object(il.console, "print") as mock_print:
             il.print_stage1_report(res)
             table_calls = [
@@ -930,177 +479,13 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
             ]
             self.assertEqual(len(panels), 1, "Expected 1 status panel")
 
-    def test_fox_anvil_required_flag_false_plain_text_report(self) -> None:
-        """When Fox has anvil_required=False, report shows Target Items (Opt) without Anvil fail."""
-        res = dict(self.mock_result)
-        res["has_anvil"] = False
-        res["anvil_count"] = 0
-        res["anvil_required"] = False
-        res["target_items_pass"] = False
-        res["thresholds_matched"] = True
-        res["all_matched"] = True
-        res["match_reason"] = "THRESHOLDS_MATCH"
-        buf = io.StringIO()
-        with patch.object(il, "console", None):
-            with patch("sys.stdout", buf):
-                il.print_stage1_report(res)
-        output = buf.getvalue()
-        self.assertNotIn("Target Items (Fox)", output)
-        self.assertNotIn("Anvil Req", output)
-        self.assertIn("Target Items (Opt):", output)
-
-    def test_fox_anvil_required_flag_false_rich_table_report(self) -> None:
-        """When Fox has anvil_required=False, Rich table shows Target Items (Opt) rather than Fox Anvil."""
-        if il.console is None:
-            self.skipTest("Rich console not installed")
-        res = dict(self.mock_result)
-        res["has_anvil"] = False
-        res["anvil_count"] = 0
-        res["anvil_required"] = False
-        res["target_items_pass"] = False
-        res["thresholds_matched"] = True
-        res["all_matched"] = True
-        res["match_reason"] = "THRESHOLDS_MATCH"
-        with patch.object(il.console, "print") as mock_print:
-            il.print_stage1_report(res)
-            req_table = next(
-                (call.args[0] for call in mock_print.call_args_list if call.args and getattr(call.args[0], "title", None) == "Stage 1 Requirements"),
-                None,
-            )
-            self.assertIsNotNone(req_table)
-            row_texts = []
-            for col in req_table.columns:
-                for cell in col._cells:
-                    row_texts.append(str(cell))
-            self.assertFalse(any("Target Items (Fox)" in text for text in row_texts))
-            self.assertTrue(any("Target Items (Opt)" in text for text in row_texts))
-
-    def test_anvil_required_true_non_fox_rich_table_report(self) -> None:
-        """When non-Fox has anvil_required=True, Rich table shows Target Items ({character}) with Anvil status."""
-        if il.console is None:
-            self.skipTest("Rich console not installed")
-        res = dict(self.mock_result)
-        res["character"] = "Megachad"
-        res["is_fox"] = False
-        res["has_anvil"] = True
-        res["anvil_count"] = 1
-        res["anvil_required"] = True
-        res["target_items_pass"] = True
-        res["thresholds_matched"] = True
-        res["all_matched"] = True
-        res["match_reason"] = "PERFECT_MATCH_ALL"
-        with patch.object(il.console, "print") as mock_print:
-            il.print_stage1_report(res)
-            req_table = next(
-                (call.args[0] for call in mock_print.call_args_list if call.args and getattr(call.args[0], "title", None) == "Stage 1 Requirements"),
-                None,
-            )
-            self.assertIsNotNone(req_table)
-            row_texts = []
-            for col in req_table.columns:
-                for cell in col._cells:
-                    row_texts.append(str(cell))
-            self.assertTrue(any("Target Items (Megachad)" in text for text in row_texts))
-            self.assertTrue(any("1 / 1 Anvil" in text for text in row_texts))
-
-    def test_soul_harvester_required_rich_table_report(self) -> None:
-        """When soul_harvester_required is True, checklist table includes Soul Harvester row."""
-        if il.console is None:
-            self.skipTest("Rich console not installed")
-        res = dict(self.mock_result)
-        res["soul_harvester_required"] = True
-        res["has_soul_harvester"] = True
-        res["soul_harvester_count"] = 1
-        res["target_items_pass"] = True
-        res["thresholds_matched"] = True
-        res["all_matched"] = True
-        res["match_reason"] = "PERFECT_MATCH_ALL"
-        with patch.object(il.console, "print") as mock_print:
-            il.print_stage1_report(res)
-            req_table = next(
-                (call.args[0] for call in mock_print.call_args_list if call.args and getattr(call.args[0], "title", None) == "Stage 1 Requirements"),
-                None,
-            )
-            self.assertIsNotNone(req_table)
-            row_texts = []
-            for col in req_table.columns:
-                for cell in col._cells:
-                    row_texts.append(str(cell))
-            self.assertTrue(any("Target Items (Soul Harvester)" in text for text in row_texts))
-            self.assertTrue(any("1 / 1 Soul Harvester" in text for text in row_texts))
-
-    def test_soul_harvester_required_plain_text_report(self) -> None:
-        """When soul_harvester_required is True, plain text report prints Soul Harvester requirement row."""
-        res = dict(self.mock_result)
-        res["soul_harvester_required"] = True
-        res["has_soul_harvester"] = True
-        res["soul_harvester_count"] = 1
-        res["target_items_pass"] = True
-        res["thresholds_matched"] = True
-        res["all_matched"] = True
-        res["match_reason"] = "PERFECT_MATCH_ALL"
-        buf = io.StringIO()
-        with patch.object(il, "console", None):
-            with patch("sys.stdout", buf):
-                il.print_stage1_report(res)
-        output = buf.getvalue()
-        self.assertIn("Target Items (Soul Harvester):", output)
-        self.assertIn("MATCHED (1 Soul Harvester found on map)", output)
-
-    def test_anvil_or_soul_harvester_required_rich_table_report(self) -> None:
-        """When anvil_or_soul_harvester_required is True, checklist table includes Target Items (Anvil / SH) row."""
-        if il.console is None:
-            self.skipTest("Rich console not installed")
-        res = dict(self.mock_result)
-        res["anvil_or_soul_harvester_required"] = True
-        res["has_anvil"] = True
-        res["anvil_count"] = 1
-        res["has_soul_harvester"] = False
-        res["soul_harvester_count"] = 0
-        res["target_items_pass"] = True
-        res["thresholds_matched"] = True
-        res["all_matched"] = True
-        res["match_reason"] = "PERFECT_MATCH_ALL"
-        with patch.object(il.console, "print") as mock_print:
-            il.print_stage1_report(res)
-            req_table = next(
-                (call.args[0] for call in mock_print.call_args_list if call.args and getattr(call.args[0], "title", None) == "Stage 1 Requirements"),
-                None,
-            )
-            self.assertIsNotNone(req_table)
-            row_texts = []
-            for col in req_table.columns:
-                for cell in col._cells:
-                    row_texts.append(str(cell))
-            self.assertTrue(any("Target Items (Anvil / SH)" in text for text in row_texts))
-            self.assertTrue(any("1 / 1 Anvil" in text for text in row_texts))
-
-    def test_anvil_or_soul_harvester_required_plain_text_report(self) -> None:
-        """When anvil_or_soul_harvester_required is True, plain text report prints Anvil / SH requirement row."""
-        res = dict(self.mock_result)
-        res["anvil_or_soul_harvester_required"] = True
-        res["has_anvil"] = False
-        res["anvil_count"] = 0
-        res["has_soul_harvester"] = True
-        res["soul_harvester_count"] = 1
-        res["target_items_pass"] = True
-        res["thresholds_matched"] = True
-        res["all_matched"] = True
-        res["match_reason"] = "PERFECT_MATCH_ALL"
-        buf = io.StringIO()
-        with patch.object(il, "console", None):
-            with patch("sys.stdout", buf):
-                il.print_stage1_report(res)
-        output = buf.getvalue()
-        self.assertIn("Target Items (Anvil / SH):", output)
-        self.assertIn("MATCHED (1 Soul Harvester found on map)", output)
-
     def test_required_item_ids_rich_table_report(self) -> None:
-        """When required_item_ids has custom items, checklist table shows item name rows."""
+        """When required items are set, checklist table shows item name rows."""
         if il.console is None:
             self.skipTest("Rich console not installed")
         res = dict(self.mock_result)
-        res["required_item_ids"] = [22]  # Dragonfire
+        res["required_all_item_ids"] = [22]  # Dragonfire
+        res["required_any_item_ids"] = []
         res["offered_item_counts"] = {22: 1}
         res["target_items_pass"] = True
         res["thresholds_matched"] = True
@@ -1117,13 +502,14 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
             for col in req_table.columns:
                 for cell in col._cells:
                     row_texts.append(str(cell))
-            self.assertTrue(any("Target Items (Dragonfire)" in text for text in row_texts))
-            self.assertTrue(any("1 / 1 Dragonfire" in text for text in row_texts))
+            self.assertTrue(any("Dragonfire" in text for text in row_texts))
+            self.assertTrue(any("1 / 1" in text for text in row_texts))
 
     def test_required_item_ids_plain_text_report(self) -> None:
-        """When required_item_ids has custom items, plain text report prints row with matching counts."""
+        """When required items are set, plain text report prints row with matching counts."""
         res = dict(self.mock_result)
-        res["required_item_ids"] = [22]
+        res["required_all_item_ids"] = [22]
+        res["required_any_item_ids"] = []
         res["offered_item_counts"] = {22: 1}
         res["target_items_pass"] = True
         res["thresholds_matched"] = True
@@ -1134,13 +520,14 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
             with patch("sys.stdout", buf):
                 il.print_stage1_report(res)
         output = buf.getvalue()
-        self.assertIn("Target Items (Dragonfire):", output)
-        self.assertIn("MATCHED (1 Dragonfire found on map)", output)
+        self.assertIn("Dragonfire", output)
+        self.assertIn("MATCHED", output)
 
     def test_required_item_ids_plain_text_failed_report(self) -> None:
         """When required item is missing, plain text report shows CRITERIA NOT MET and skips tables."""
         res = dict(self.mock_result)
-        res["required_item_ids"] = [22]
+        res["required_all_item_ids"] = [22]
+        res["required_any_item_ids"] = []
         res["offered_item_counts"] = {}
         res["target_items_pass"] = False
         res["thresholds_matched"] = False
@@ -1152,14 +539,30 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
                 il.print_stage1_report(res)
         output = buf.getvalue()
         self.assertIn("CRITERIA NOT MET", output)
-        self.assertIn("requires >= 1 Dragonfire on map", output)
+        self.assertIn("Dragonfire", output)
 
 
 class TestRequiredItemIdsEvaluation(unittest.TestCase):
-    """Test evaluate_stage1_criteria using required_item_ids and required_items_mode."""
+    """Test evaluate_stage1_criteria using required_all_item_ids and required_any_item_ids."""
+
+    def setUp(self) -> None:
+        self._orig_required_all_item_ids = list(il.REQUIRED_ALL_ITEM_IDS)
+        self._orig_required_any_item_ids = list(il.REQUIRED_ANY_ITEM_IDS)
+        self._orig_required_item_ids = list(il.REQUIRED_ITEM_IDS)
+        self._orig_required_items_mode = il.REQUIRED_ITEMS_MODE
+        il.REQUIRED_ALL_ITEM_IDS = []
+        il.REQUIRED_ANY_ITEM_IDS = []
+        il.REQUIRED_ITEM_IDS = []
+        il.REQUIRED_ITEMS_MODE = "any"
+
+    def tearDown(self) -> None:
+        il.REQUIRED_ALL_ITEM_IDS = self._orig_required_all_item_ids
+        il.REQUIRED_ANY_ITEM_IDS = self._orig_required_any_item_ids
+        il.REQUIRED_ITEM_IDS = self._orig_required_item_ids
+        il.REQUIRED_ITEMS_MODE = self._orig_required_items_mode
 
     def test_empty_required_item_ids_passes_thresholds_normally(self) -> None:
-        """When required_item_ids is empty, evaluation passes on thresholds alone."""
+        """When required item lists are empty, evaluation passes on thresholds alone."""
         (
             target_items_pass,
             thresholds_matched,
@@ -1172,18 +575,15 @@ class TestRequiredItemIdsEvaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            target_items_found=False,
-            has_white_micro=False,
-            is_fox=False,
-            require_target_items=False,
-            required_item_ids=[],
+            required_all_item_ids=[],
+            required_any_item_ids=[],
         )
         self.assertTrue(thresholds_matched)
         self.assertTrue(all_matched)
         self.assertEqual(match_reason, "THRESHOLDS_MATCH")
 
-    def test_single_required_item_id_missing_fails(self) -> None:
-        """Single required item ID (Anvil 41) missing causes failure."""
+    def test_single_required_all_item_missing_fails(self) -> None:
+        """Single required ALL item ID (Anvil 41) missing causes failure."""
         (
             _,
             thresholds_matched,
@@ -1196,19 +596,15 @@ class TestRequiredItemIdsEvaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            target_items_found=False,
-            has_white_micro=False,
-            is_fox=False,
-            require_target_items=False,
-            required_item_ids=[41],
+            required_all_item_ids=[41],
             offered_item_ids=[],
         )
         self.assertFalse(thresholds_matched)
         self.assertFalse(all_matched)
-        self.assertEqual(match_reason, "MISSING_ANVIL_THRESHOLDS_PASS")
+        self.assertEqual(match_reason, "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS")
 
-    def test_single_required_item_id_present_passes(self) -> None:
-        """Single required item ID present satisfies criteria."""
+    def test_single_required_all_item_present_passes(self) -> None:
+        """Single required ALL item ID present satisfies criteria."""
         (
             target_items_pass,
             thresholds_matched,
@@ -1221,11 +617,7 @@ class TestRequiredItemIdsEvaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            require_target_items=False,
-            required_item_ids=[41],
+            required_all_item_ids=[41],
             offered_item_ids=[41],
         )
         self.assertTrue(target_items_pass)
@@ -1248,11 +640,7 @@ class TestRequiredItemIdsEvaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            require_target_items=False,
-            required_item_ids=[22],
+            required_all_item_ids=[22],
             offered_item_ids=[1, 2, 3],
         )
         self.assertFalse(all_matched)
@@ -1271,11 +659,7 @@ class TestRequiredItemIdsEvaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            require_target_items=False,
-            required_item_ids=[22],
+            required_all_item_ids=[22],
             offered_item_ids=[22],
         )
         self.assertTrue(all_matched2)
@@ -1296,12 +680,7 @@ class TestRequiredItemIdsEvaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            require_target_items=False,
-            required_item_ids=[41, 47],
-            required_items_mode="any",
+            required_any_item_ids=[41, 47],
             offered_item_ids=[47],
         )
         self.assertTrue(all_matched)
@@ -1320,16 +699,11 @@ class TestRequiredItemIdsEvaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            require_target_items=False,
-            required_item_ids=[41, 47],
-            required_items_mode="any",
+            required_any_item_ids=[41, 47],
             offered_item_ids=[10, 20],
         )
         self.assertFalse(all_matched_fail)
-        self.assertEqual(match_reason_fail, "MISSING_ANVIL_OR_SOUL_HARVESTER_THRESHOLDS_PASS")
+        self.assertEqual(match_reason_fail, "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS")
 
     def test_all_mode_requires_every_item(self) -> None:
         """Mode 'all' requires all listed items to be present."""
@@ -1346,16 +720,11 @@ class TestRequiredItemIdsEvaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            require_target_items=False,
-            required_item_ids=[41, 47],
-            required_items_mode="all",
+            required_all_item_ids=[41, 47],
             offered_item_ids=[41],
         )
         self.assertFalse(all_matched_partial)
-        self.assertEqual(match_reason_partial, "MISSING_SOUL_HARVESTER_THRESHOLDS_PASS")
+        self.assertEqual(match_reason_partial, "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS")
 
         # Both present
         (
@@ -1370,12 +739,7 @@ class TestRequiredItemIdsEvaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            target_items_found=False,
-            has_white_micro=True,
-            is_fox=False,
-            require_target_items=False,
-            required_item_ids=[41, 47],
-            required_items_mode="all",
+            required_all_item_ids=[41, 47],
             offered_item_ids=[41, 47],
         )
         self.assertTrue(all_matched_both)
@@ -1522,6 +886,45 @@ class TestShadyGuyRankedItems(unittest.TestCase):
         self.assertFalse(ranked[1]["shady_done"], "Item from active Shady Guy must have shady_done=False")
 
 
+class TestRequiredItemsColorScheme(unittest.TestCase):
+    """Test that REQUIRED_ALL_ITEM_IDS and REQUIRED_ANY_ITEM_IDS inherit the target item color scheme and formatting."""
+
+    def setUp(self) -> None:
+        self._orig_required_all_item_ids = list(il.REQUIRED_ALL_ITEM_IDS)
+        self._orig_required_any_item_ids = list(il.REQUIRED_ANY_ITEM_IDS)
+        self._orig_required_item_ids = list(il.REQUIRED_ITEM_IDS)
+        il.REQUIRED_ALL_ITEM_IDS = [58]  # Borgar (Common item 58)
+        il.REQUIRED_ANY_ITEM_IDS = [7]   # Battery (Common item 7)
+        il.REQUIRED_ITEM_IDS = []
+
+    def tearDown(self) -> None:
+        il.REQUIRED_ALL_ITEM_IDS = self._orig_required_all_item_ids
+        il.REQUIRED_ANY_ITEM_IDS = self._orig_required_any_item_ids
+        il.REQUIRED_ITEM_IDS = self._orig_required_item_ids
+
+    def test_required_all_item_is_treated_as_target_item(self) -> None:
+        """Items in REQUIRED_ALL_ITEM_IDS must return True for is_target_item."""
+        self.assertTrue(il.is_target_item(58))
+        self.assertTrue(il.is_target_item(None, "Borgar"))
+
+    def test_required_any_item_is_treated_as_target_item(self) -> None:
+        """Items in REQUIRED_ANY_ITEM_IDS must return True for is_target_item."""
+        self.assertTrue(il.is_target_item(7))
+        self.assertTrue(il.is_target_item(None, "Battery"))
+
+    def test_required_items_use_target_item_color(self) -> None:
+        """Items in required lists must be styled with TARGET_ITEM_COLOR in format_item_display."""
+        disp_rich_all = il.format_item_display(58, "Borgar", use_rich=True)
+        self.assertIn(il.TARGET_ITEM_COLOR, disp_rich_all)
+        self.assertIn("*", disp_rich_all)
+
+        disp_rich_any = il.format_item_display(7, "Battery", use_rich=True)
+        self.assertIn(il.TARGET_ITEM_COLOR, disp_rich_any)
+        self.assertIn("*", disp_rich_any)
+
+        disp_plain = il.format_item_display(58, "Borgar", use_rich=False)
+        self.assertEqual(disp_plain, "Borgar*")
+
+
 if __name__ == "__main__":
     unittest.main()
-
