@@ -56,7 +56,7 @@ htmlcov/
 vods/
 stats_recordings/
 chaos_validation_runs/
-tools/
+# tools/
 reports/
 
 # === LOCAL UI DESIGN SOURCES ===

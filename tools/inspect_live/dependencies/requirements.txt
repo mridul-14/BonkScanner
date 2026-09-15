@@ -1,0 +1,7 @@
+# Dependencies for inspect_live tool
+pymem>=1.13.0
+keyboard>=0.13.5
+pywin32>=306
+rich>=13.0.0
+pandas>=2.0.0
+numpy>=1.24.0
