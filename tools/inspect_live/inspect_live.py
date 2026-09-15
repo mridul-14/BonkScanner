@@ -181,7 +181,7 @@ MICROWAVE_COLORS = {
 # ==============================================================================
 # Stage 1 Seed Filter Thresholds (Editable)
 # ==============================================================================
-THRESHOLD_SHADY_PLUS_MOAI = 0
+THRESHOLD_SHADY_PLUS_MOAI = 9
 THRESHOLD_MICROWAVES = 2
 THRESHOLD_BOSS_CURSES = 1
 THRESHOLD_MAGNET_CURSES = 2
@@ -307,8 +307,8 @@ TARGET_SHADY_ITEMS = {
 #  81 | Crypt Key                 | Crypt key                 | -
 #  50 | Weeb Headset              | Weeb Headset              | -
 # ------------------------------------------------------------------------------
-REQUIRED_ALL_ITEM_IDS: list[int] = [41]  # Must-have items: ALL must be present on map (AND)
-REQUIRED_ANY_ITEM_IDS: list[int] = [47, 22, 15]      # Any-of items: At least ONE must be present on map (OR)
+REQUIRED_ALL_ITEM_IDS: list[int] = []  # Must-have items: ALL must be present on map (AND)
+REQUIRED_ANY_ITEM_IDS: list[int] = [41, 22, 15, 47, 76]      # Any-of items: At least ONE must be present on map (OR)
 
 # Backwards compatibility / legacy aliases
 REQUIRED_ITEM_IDS: list[int] = []
@@ -740,10 +740,18 @@ def read_active_powerups(memory: ProcessMemory, module_base: int) -> dict:
 def format_powerups_display(powerup_data: dict, ansi: bool = True) -> str:
     """Format active power-up timers for the live console display line."""
     effects = powerup_data.get("effects", [])
-    if not effects:
+    za_held = powerup_data.get("za_warudo_held", 0)
+    if not effects and za_held <= 0:
         return ""
     stage_clock = powerup_data.get("stage_clock", "--:--")
     parts = []
+    if za_held > 0:
+        if ansi:
+            parts.append(
+                f"\033[93;1mZa Warudo (Held x{za_held})\033[0m: \033[92;1mActive Protection\033[0m"
+            )
+        else:
+            parts.append(f"Za Warudo (Held x{za_held}): Active Protection")
     for eff in effects:
         name = eff["name"]
         rem = eff["remaining_seconds"]
@@ -769,6 +777,70 @@ def format_powerups_display(powerup_data: dict, ansi: bool = True) -> str:
     if ansi:
         return f"\033[93;1m[⚡ Active Buffs]\033[0m {joined}  \033[90m[Stage Clock: {stage_clock}]\033[0m"
     return f"[⚡ Active Buffs] {joined}  [Stage Clock: {stage_clock}]"
+
+
+def render_active_powerups_block(powerup_data: dict | None, use_rich: bool = True) -> None:
+    """Render Active Power-ups and Za Warudo table/section in stage report."""
+    if not powerup_data:
+        return
+    effects = powerup_data.get("effects", [])
+    za_held = powerup_data.get("za_warudo_held", 0)
+    if not effects and za_held <= 0:
+        return
+
+    stage_clock = powerup_data.get("stage_clock", "--:--")
+
+    if use_rich and console is not None:
+        pu_table = Table(
+            title=f"⚡ ACTIVE POWER-UPS & BUFFS (Stage Clock: {stage_clock})",
+            header_style="bold bright_white",
+        )
+        pu_table.add_column("Power-Up / Buff", style="bold")
+        pu_table.add_column("Status / Time Left", justify="right")
+        pu_table.add_column("Expires At (Stage Clock)", justify="center", style="bold bright_yellow")
+        pu_table.add_column("Stage Clock", justify="center", style="dim")
+
+        if za_held > 0:
+            pu_table.add_row(
+                "[bold bright_yellow]Za Warudo (Held Item)[/]",
+                f"[bold green]Active Protection (x{za_held})[/]",
+                "[dim]On Lethal Damage[/]",
+                stage_clock,
+            )
+
+        for eff in effects:
+            name = eff.get("name", "Unknown")
+            rem = eff.get("remaining_seconds", 0.0)
+            end_clock = eff.get("end_clock", "--:--")
+            if "Za Warudo" in name or "Clock" in name:
+                name_styled = f"[bold bright_yellow]{name}[/]"
+            elif "Rage" in name:
+                name_styled = f"[bold bright_red]{name}[/]"
+            elif "Shield" in name:
+                name_styled = f"[bold bright_cyan]{name}[/]"
+            elif "Stonks" in name:
+                name_styled = f"[bold bright_green]{name}[/]"
+            else:
+                name_styled = f"[bold bright_magenta]{name}[/]"
+
+            pu_table.add_row(
+                name_styled,
+                f"[bold white]{rem:.1f}s remaining[/]",
+                f"[bold bright_yellow]{end_clock}[/]",
+                stage_clock,
+            )
+
+        console.print(pu_table)
+    else:
+        print("-" * 80, flush=True)
+        print(f"⚡ ACTIVE POWER-UPS & BUFFS (Stage Clock: {stage_clock}):", flush=True)
+        if za_held > 0:
+            print(f"  * Za Warudo (Held Item x{za_held}): Active Protection (Triggers on lethal damage)", flush=True)
+        for eff in effects:
+            name = eff.get("name", "Unknown")
+            rem = eff.get("remaining_seconds", 0.0)
+            end_clock = eff.get("end_clock", "--:--")
+            print(f"  * {name}: {rem:.1f}s remaining -> Ends at {end_clock} (Stage Clock: {stage_clock})", flush=True)
 
 
 def format_single_powerup_line(
@@ -808,6 +880,7 @@ class PowerupDisplayTracker:
         self.console = console_obj
         self.active_powerup_ids: set[int] = set()
         self.last_seen_effects: dict[int, dict] = {}
+        self.last_seen_za_warudo_held: int = 0
         self.displayed_lines: list[dict] = []
         self.intervening_prints: bool = False
 
@@ -815,6 +888,7 @@ class PowerupDisplayTracker:
         """Reset tracking state for a new run or stage."""
         self.active_powerup_ids.clear()
         self.last_seen_effects.clear()
+        self.last_seen_za_warudo_held = 0
         self.displayed_lines.clear()
         self.intervening_prints = False
 
@@ -863,6 +937,56 @@ class PowerupDisplayTracker:
         current_effect_ids = {e["effect_id"] for e in current_effects}
         current_my_time = pu_data.get("my_time")
         stage_clock = pu_data.get("stage_clock", "--:--")
+        current_za_held = pu_data.get("za_warudo_held", 0)
+
+        # Track Za Warudo held item status
+        if current_za_held > 0 and self.last_seen_za_warudo_held == 0:
+            line_rich = (
+                f"⚡ [bold yellow][HELD ITEM][/] [bold bright_yellow]Za Warudo[/] (x{current_za_held}): "
+                f"[green]Active Protection (Freezes time on lethal damage)[/] [dim](Clock: {stage_clock})[/]"
+            )
+            line_plain = f"⚡ [HELD ITEM] Za Warudo (x{current_za_held}): Active Protection (Freezes time on lethal damage) (Clock: {stage_clock})"
+            line_ended_rich = (
+                f"[dim strike]⚡ [HELD ITEM] Za Warudo: Consumed / Broken (Clock: {stage_clock})[/]"
+            )
+            line_ended_plain = (
+                f"\033[2;9m⚡ [HELD ITEM] Za Warudo: Consumed / Broken (Clock: {stage_clock})\033[0m"
+            )
+
+            self._print_line(line_rich, line_plain)
+
+            self.displayed_lines.append({
+                "effect_id": -25,
+                "name": "Za Warudo (Held)",
+                "end_clock": "--:--",
+                "stage_clock": stage_clock,
+                "expiration_time": None,
+                "line_rich": line_rich,
+                "line_plain": line_plain,
+                "line_ended_rich": line_ended_rich,
+                "line_ended_plain": line_ended_plain,
+                "status": "active",
+            })
+        elif current_za_held > 0 and current_za_held != self.last_seen_za_warudo_held:
+            diff = current_za_held - self.last_seen_za_warudo_held
+            if diff > 0:
+                msg_rich = f"[green]Active Protection (Added +{diff}, total x{current_za_held})[/]"
+                msg_plain = f"Active Protection (Added +{diff}, total x{current_za_held})"
+            else:
+                msg_rich = f"[yellow]Active Protection ({abs(diff)} consumed, x{current_za_held} remaining)[/]"
+                msg_plain = f"Active Protection ({abs(diff)} consumed, x{current_za_held} remaining)"
+            line_rich = (
+                f"⚡ [bold yellow][HELD ITEM][/] [bold bright_yellow]Za Warudo[/] (x{current_za_held}): "
+                f"{msg_rich} [dim](Clock: {stage_clock})[/]"
+            )
+            line_plain = f"⚡ [HELD ITEM] Za Warudo (x{current_za_held}): {msg_plain} (Clock: {stage_clock})"
+            self._print_line(line_rich, line_plain)
+        elif current_za_held == 0 and self.last_seen_za_warudo_held > 0:
+            for idx, entry in enumerate(self.displayed_lines):
+                if entry.get("effect_id") == -25 and entry.get("status") == "active":
+                    self._strike_out_line(idx)
+
+        self.last_seen_za_warudo_held = current_za_held
 
         # 1. Detect newly activated power-ups and renewed power-ups of the same type
         new_or_renewed_buffs = []
@@ -950,6 +1074,10 @@ class PowerupDisplayTracker:
                 continue
 
             eid = entry["effect_id"]
+            if eid == -25:
+                # Za Warudo held item handled separately via za_warudo_held count
+                continue
+
             has_expired = False
 
             if eid not in current_effect_ids:
@@ -2570,9 +2698,13 @@ def print_stage1_report(
     result: dict,
     reroll_num: int | None = None,
     clear_screen: bool = False,
+    powerup_data: dict | None = None,
 ) -> None:
     if clear_screen and CLEAR_CONSOLE_ON_OUTPUT:
         clear_console()
+
+    if powerup_data is None:
+        powerup_data = result.get("powerup_data")
 
     if not result.get("is_stage_1"):
         stage_num = result.get("stage_index", -1) + 1
@@ -2620,26 +2752,28 @@ def print_stage1_report(
         char_name = result.get("character")
         char_info = f" | Character: [bold]{char_name}[/]" if char_name and char_name != "Unknown" else ""
 
-        panel_content = f"{status_text}\nScan took {result['elapsed_s']}s{reroll_info}{char_info}"
-        console.print(
-            Panel(
-                panel_content,
-                title=f"Stage 1 Seed Evaluation{reroll_info}",
-                style=title_color,
-                expand=False,
-            )
+        title = f"STAGE 1 SEED EVALUATION (Scan took {result['elapsed_s']}s{reroll_info}{char_info})"
+        panel = Panel(
+            status_text,
+            title=title,
+            title_align="left",
+            border_style=title_color,
+            expand=False,
         )
+        console.print(panel)
 
         if not result.get("all_matched"):
             # If status is criteria not met, do not populate or display any tables; re-roll immediately
             print("", flush=True)
             return
 
-        # Requirements Checklist Table
-        table = Table(title="Stage 1 Requirements", header_style="bold bright_white")
-        table.add_column("Requirement", style="bold")
+        table = Table(
+            title="Stage 1 Requirements",
+            header_style="bold bright_white",
+        )
+        table.add_column("Condition", style="bold")
         table.add_column("Status", justify="center")
-        table.add_column("Current / Required", justify="right")
+        table.add_column("Current / Target", justify="right")
         table.add_column("Details", style="bright_white")
 
         sm_color = "bold green" if result["sm_pass"] else "bold red"
@@ -2649,25 +2783,21 @@ def print_stage1_report(
 
         moai_list = result.get("moais", [])
         moai_dirs = [m["dir"] for m in moai_list if m.get("dir") and m["dir"] != "Unknown"]
-        if moai_dirs:
-            moais_str = f"Moais: {counts['moai']} ({', '.join(moai_dirs)})"
-        else:
-            moais_str = f"Moais: {counts['moai']}"
-
+        moais_detail = f"Moais: {counts['moai']} ({', '.join(moai_dirs)})" if moai_dirs else f"Moais: {counts['moai']}"
         table.add_row(
             "Shady + Moai",
             f"[{sm_color}]{sm_mark}[/]",
             f"{sm_total} / {THRESHOLD_SHADY_PLUS_MOAI}",
-            f"Shady: {counts['shady']}, {moais_str}",
+            f"Shady: {counts['shady']}, {moais_detail}",
         )
+
         micro_list = result.get("microwaves", [])
-        if micro_list:
-            micro_summaries = []
-            for m in micro_list:
-                sec_str = f" @ {m['map_sector']}" if m.get("map_sector") else ""
-                style = m.get("style", "bright_white")
-                micro_summaries.append(f"[{style}]{m['color']}[/]{sec_str}")
-            micro_details = ", ".join(micro_summaries)
+        micro_parts = []
+        for m in micro_list:
+            sec_str = f" @ {m['map_sector']}" if m.get("map_sector") else ""
+            micro_parts.append(f"{m['color']}{sec_str}")
+        if micro_parts:
+            micro_details = ", ".join(micro_parts)
         else:
             micro_details = ""
 
@@ -2753,27 +2883,49 @@ def print_stage1_report(
                     is_taken = it.get("shady_done", False)
                     dist_str = f"{it['dist']}m" if it.get("dist") is not None else "??m"
                     dir_str = f"{it['direction']} {it['bearing_str']}".strip() if it.get("direction") else "-"
-                    status_str = "[dim red]TAKEN[/]" if is_taken else "[green]AVAILABLE[/]"
 
                     sg_label = f"Shady #{it['shady_num']}"
                     sector_str = it.get("map_sector") or "-"
-                    tier_str = format_shady_rarity(it.get("rarity", "COMMON"), use_rich=True)
+                    tier_str = format_shady_rarity(it.get("shady_rarity") or it.get("rarity", "COMMON"), use_rich=True)
                     name_str = format_item_display(it.get("item_id"), it["item_name"], use_rich=True)
 
                     gold_str = f"{it['gold']}g" if it.get("gold") is not None else "-"
                     mult_str = f"{it['multiplier']:.2f}x" if it.get("multiplier") is not None else "-"
 
+                    if is_taken:
+                        rank_disp = f"[dim strike]{item_rank}[/]"
+                        dist_disp = f"[dim strike]{dist_str}[/]"
+                        dir_disp = f"[dim strike]{dir_str}[/]"
+                        sec_disp = f"[dim strike]{sector_str}[/]"
+                        sg_disp = f"[dim strike]{sg_label}[/] [dim red][DONE][/]"
+                        tier_disp = f"[dim strike]{tier_str}[/]"
+                        name_disp = f"[dim strike]{name_str}[/] [bold red][TAKEN][/]"
+                        gold_disp = f"[dim strike]{gold_str}[/]"
+                        mult_disp = f"[dim strike]{mult_str}[/]"
+                        status_disp = "[dim red]TAKEN[/]"
+                    else:
+                        rank_disp = str(item_rank)
+                        dist_disp = dist_str
+                        dir_disp = dir_str
+                        sec_disp = sector_str
+                        sg_disp = sg_label
+                        tier_disp = tier_str
+                        name_disp = name_str
+                        gold_disp = gold_str
+                        mult_disp = mult_str
+                        status_disp = "[green]AVAILABLE[/]"
+
                     items_table.add_row(
-                        str(item_rank),
-                        dist_str,
-                        dir_str,
-                        sector_str,
-                        sg_label,
-                        tier_str,
-                        name_str,
-                        gold_str,
-                        mult_str,
-                        status_str,
+                        rank_disp,
+                        dist_disp,
+                        dir_disp,
+                        sec_disp,
+                        sg_disp,
+                        tier_disp,
+                        name_disp,
+                        gold_disp,
+                        mult_disp,
+                        status_disp,
                     )
 
                     is_last_in_group = (
@@ -2818,8 +2970,10 @@ def print_stage1_report(
                         if it_idx < len(prices):
                             cost = f" ({prices[it_idx]}g)"
                         styled_name = format_item_display(item_id, name, use_rich=True)
-                        taken_tag = " [dim red][TAKEN][/]" if is_done else ""
-                        item_names.append(f"{styled_name}{cost}{taken_tag}")
+                        if is_done:
+                            item_names.append(f"[dim strike]{styled_name}{cost}[/]")
+                        else:
+                            item_names.append(f"{styled_name}{cost}")
 
                     loc_parts = []
                     if sg.get("rel_dir"):
@@ -2831,13 +2985,26 @@ def print_stage1_report(
                     sector_str = sg.get("map_sector") or "-"
                     tier_str = format_shady_rarity(sg.get("rarity", "COMMON"), use_rich=True)
 
+                    if is_done:
+                        rank_disp = f"[dim strike]{i + 1}[/]"
+                        sg_disp = f"[dim strike]Shady #{sg.get('shady_num', i + 1)}[/]"
+                        tier_disp = f"[dim strike]{tier_str}[/] [dim red][DONE][/]"
+                        loc_disp = f"[dim strike]{loc_str}[/]"
+                        sector_disp = f"[dim strike]{sector_str}[/]"
+                    else:
+                        rank_disp = str(i + 1)
+                        sg_disp = f"Shady #{sg.get('shady_num', i + 1)}"
+                        tier_disp = tier_str
+                        loc_disp = loc_str
+                        sector_disp = sector_str
+
                     sg_table.add_row(
-                        str(i + 1),
-                        f"Shady #{sg.get('shady_num', i + 1)}",
-                        tier_str,
+                        rank_disp,
+                        sg_disp,
+                        tier_disp,
                         status_tag,
-                        loc_str,
-                        sector_str,
+                        loc_disp,
+                        sector_disp,
                         ", ".join(item_names),
                     )
                 console.print(sg_table)
@@ -2894,6 +3061,7 @@ def print_stage1_report(
                 )
             console.print(micro_table)
 
+        render_active_powerups_block(powerup_data, use_rich=True)
         print("", flush=True)
         return
 
@@ -2999,11 +3167,17 @@ def print_stage1_report(
                 else:
                     target_star = " "
                 sec_str = f"[{it['map_sector']}]"
-                taken_tag = " [TAKEN]" if is_taken else ""
-                vendor_done = " [DONE]" if is_taken else ""
-                vendor_str = f"Shady #{it['shady_num']} [{it['shady_rarity']}]{vendor_done}"
-                item_disp = f"{it['item_name']}{target_star}{taken_tag}"
-                print(f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} {cost_str:<16} @ {vendor_str} {sec_str}", flush=True)
+                sh_rarity = it.get("shady_rarity") or it.get("rarity", "")
+                if is_taken:
+                    vendor_str = f"Shady #{it['shady_num']} [{sh_rarity}] [DONE]"
+                    item_disp = f"{it['item_name']}{target_star} [TAKEN]"
+                    line_out = f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} {cost_str:<16} @ {vendor_str} {sec_str}"
+                    print(f"\033[2;9m{line_out}\033[0m", flush=True)
+                else:
+                    vendor_str = f"Shady #{it['shady_num']} [{sh_rarity}]"
+                    item_disp = f"{it['item_name']}{target_star}"
+                    print(f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} {cost_str:<16} @ {vendor_str} {sec_str}", flush=True)
+
                 is_last_in_group = (
                     item_rank == len(ranked_items)
                     or ranked_items[item_rank]["shady_num"] != it["shady_num"]
@@ -3032,8 +3206,10 @@ def print_stage1_report(
                     if it_idx < len(prices):
                         cost = f" ({prices[it_idx]}g)"
                     item_tag = "*" if is_target_item(item_id, name) else (HIGHLIGHTED_ITEM_MARKER if is_highlighted_item(item_id, name) else "")
-                    taken_item_tag = " [TAKEN]" if is_done else ""
-                    item_names.append(f"{name}{item_tag}{cost}{taken_item_tag}")
+                    if is_done:
+                        item_names.append(f"\033[2;9m{name}{item_tag}{cost} [TAKEN]\033[0m")
+                    else:
+                        item_names.append(f"{name}{item_tag}{cost}")
                 loc_parts = []
                 if sg.get("map_sector"):
                     loc_parts.append(f"Map: {sg['map_sector']}")
@@ -3043,7 +3219,11 @@ def print_stage1_report(
                 elif sg.get("dist") is not None:
                     loc_parts.append(f"{sg['dist']}m")
                 loc_str = f" ({', '.join(loc_parts)})" if loc_parts else ""
-                print(f"  Rank #{i+1} - Shady Guy [{sg['rarity']}]{done_tag}{loc_str}: {', '.join(item_names)}", flush=True)
+                line_str = f"  Rank #{i+1} - Shady Guy [{sg.get('rarity', 'COMMON')}]{done_tag}{loc_str}: {', '.join(item_names)}"
+                if is_done:
+                    print(f"\033[2;9m{line_str}\033[0m", flush=True)
+                else:
+                    print(line_str, flush=True)
         elif counts.get("shady", 0) == 0:
             print(f"  [Shady Guys] ℹ No Shady Guys spawned on this map ({counts.get('moai', 0)} Moai Shrines present).", flush=True)
         else:
@@ -3061,13 +3241,21 @@ def print_stage1_report(
             rarity = m.get("rarity", 0)
             uses_str = f"{m.get('uses_left', 3)} uses"
             print(f"  #{i+1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] {sec_str} ({uses_str})", flush=True)
+    render_active_powerups_block(powerup_data, use_rich=False)
     print("=" * 80 + "\n", flush=True)
 
 
-def print_stage_inspect_report(result: dict, clear_screen: bool = False) -> None:
+def print_stage_inspect_report(
+    result: dict,
+    clear_screen: bool = False,
+    powerup_data: dict | None = None,
+) -> None:
     """Print complete inspection stats for Stage 2, Stage 3, etc. without rerolling."""
     if clear_screen and CLEAR_CONSOLE_ON_OUTPUT:
         clear_console()
+
+    if powerup_data is None:
+        powerup_data = result.get("powerup_data")
 
     stage_num = result.get("stage_num", result.get("stage_index", 0) + 1)
     counts = result.get("map_counts", {})
@@ -3319,6 +3507,7 @@ def print_stage_inspect_report(result: dict, clear_screen: bool = False) -> None
                 )
             console.print(micro_table)
 
+        render_active_powerups_block(powerup_data, use_rich=True)
         print("", flush=True)
         return
 
@@ -3380,11 +3569,17 @@ def print_stage_inspect_report(result: dict, clear_screen: bool = False) -> None
             else:
                 target_star = " "
             sec_str = f"[{it['map_sector']}]"
-            taken_tag = " [TAKEN]" if is_taken else ""
-            vendor_done = " [DONE]" if is_taken else ""
-            vendor_str = f"Shady #{it['shady_num']} [{it['shady_rarity']}]{vendor_done}"
-            item_disp = f"{it['item_name']}{target_star}{taken_tag}"
-            print(f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} {cost_str:<16} @ {vendor_str} {sec_str}", flush=True)
+            sh_rarity = it.get("shady_rarity") or it.get("rarity", "")
+            if is_taken:
+                vendor_str = f"Shady #{it['shady_num']} [{sh_rarity}] [DONE]"
+                item_disp = f"{it['item_name']}{target_star} [TAKEN]"
+                line_out = f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} {cost_str:<16} @ {vendor_str} {sec_str}"
+                print(f"\033[2;9m{line_out}\033[0m", flush=True)
+            else:
+                vendor_str = f"Shady #{it['shady_num']} [{sh_rarity}]"
+                item_disp = f"{it['item_name']}{target_star}"
+                print(f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} {cost_str:<16} @ {vendor_str} {sec_str}", flush=True)
+
             is_last_in_group = (
                 item_rank == len(ranked_items)
                 or ranked_items[item_rank]["shady_num"] != it["shady_num"]
@@ -3413,8 +3608,10 @@ def print_stage_inspect_report(result: dict, clear_screen: bool = False) -> None
                 if it_idx < len(prices):
                     cost = f" ({prices[it_idx]}g)"
                 item_tag = "*" if is_target_item(item_id, name) else (HIGHLIGHTED_ITEM_MARKER if is_highlighted_item(item_id, name) else "")
-                taken_item_tag = " [TAKEN]" if is_done else ""
-                item_names.append(f"{name}{item_tag}{cost}{taken_item_tag}")
+                if is_done:
+                    item_names.append(f"\033[2;9m{name}{item_tag}{cost} [TAKEN]\033[0m")
+                else:
+                    item_names.append(f"{name}{item_tag}{cost}")
             loc_parts = []
             if sg.get("map_sector"):
                 loc_parts.append(f"Map: {sg['map_sector']}")
@@ -3424,7 +3621,11 @@ def print_stage_inspect_report(result: dict, clear_screen: bool = False) -> None
             elif sg.get("dist") is not None:
                 loc_parts.append(f"{sg['dist']}m")
             loc_str = f" ({', '.join(loc_parts)})" if loc_parts else ""
-            print(f"  Rank #{i+1} - Shady Guy [{sg.get('rarity', 'COMMON')}]{done_tag}{loc_str}: {', '.join(item_names)}", flush=True)
+            line_str = f"  Rank #{i+1} - Shady Guy [{sg.get('rarity', 'COMMON')}]{done_tag}{loc_str}: {', '.join(item_names)}"
+            if is_done:
+                print(f"\033[2;9m{line_str}\033[0m", flush=True)
+            else:
+                print(line_str, flush=True)
 
     if microwaves:
         print("-" * 80, flush=True)
@@ -3438,6 +3639,7 @@ def print_stage_inspect_report(result: dict, clear_screen: bool = False) -> None
             rarity = m.get("rarity", 0)
             uses_str = f"{m.get('uses_left', 3)} uses"
             print(f"  #{i+1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] {sec_str} ({uses_str})", flush=True)
+    render_active_powerups_block(powerup_data, use_rich=False)
     print("=" * 80 + "\n", flush=True)
 
 
@@ -4502,7 +4704,11 @@ def main():
                 )
                 if scan_res.get("character") and scan_res.get("character") != "Unknown":
                     cached_character = (scan_res.get("character_id"), scan_res.get("character"))
-                print_stage1_report(scan_res, reroll_num=reroll_label)
+                try:
+                    pu_data = read_active_powerups(memory, module_base)
+                except Exception:
+                    pu_data = None
+                print_stage1_report(scan_res, reroll_num=reroll_label, powerup_data=pu_data)
 
                 if TRACK_SEED_OFFERINGS:
                     total_seeds = save_seed_reroll_data(
@@ -4583,7 +4789,11 @@ def main():
                 if scan_res.get("character") and scan_res.get("character") != "Unknown":
                     cached_character = (scan_res.get("character_id"), scan_res.get("character"))
                 active_stage_report = scan_res
-                print_stage_inspect_report(scan_res)
+                try:
+                    pu_data = read_active_powerups(memory, module_base)
+                except Exception:
+                    pu_data = None
+                print_stage_inspect_report(scan_res, powerup_data=pu_data)
 
         # Check for Shady Guy purchases during active gameplay
         if active_stage_report and active_stage_report.get("shady_guys") and (now - last_shady_poll_time >= 0.25):
@@ -4602,10 +4812,14 @@ def main():
                     clear_console()
                 s_num = active_stage_report.get("stage_num", active_stage_report.get("stage_index", 0) + 1)
                 print(f"[*] Shady Guy item taken! Updated Stage {s_num} status:\n", flush=True)
+                try:
+                    pu_data = read_active_powerups(memory, module_base)
+                except Exception:
+                    pu_data = None
                 if active_stage_report.get("is_stage_1"):
-                    print_stage1_report(active_stage_report, reroll_num=None)
+                    print_stage1_report(active_stage_report, reroll_num=None, powerup_data=pu_data)
                 else:
-                    print_stage_inspect_report(active_stage_report)
+                    print_stage_inspect_report(active_stage_report, powerup_data=pu_data)
                 powerup_tracker.on_console_cleared()
 
         # Check for active power-ups and Za Warudo during active gameplay

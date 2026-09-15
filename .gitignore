@@ -20,6 +20,7 @@ gitlog.txt
 map_monitor_log.jsonl
 game_probs/
 logs/
+*shady_seed_data*
 
 # === LEGACY & TEST FILES ===
 old/

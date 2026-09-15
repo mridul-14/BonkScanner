@@ -718,6 +718,82 @@ class TestInspectLivePowerups(unittest.TestCase):
         self.assertIn("Active until 02:00", tracker.displayed_lines[0]["line_plain"])
         self.assertEqual(len(reprinted), 1)
 
+    def test_format_powerups_display_with_za_warudo_held(self) -> None:
+        """format_powerups_display formats held Za Warudo even without active timed effects."""
+        data = {"za_warudo_held": 1, "stage_clock": "08:15", "effects": []}
+        plain = il.format_powerups_display(data, ansi=False)
+        self.assertIn("Za Warudo (Held x1): Active Protection", plain)
+        self.assertIn("[Stage Clock: 08:15]", plain)
+
+        ansi = il.format_powerups_display(data, ansi=True)
+        self.assertIn("Za Warudo (Held x1)", ansi)
+        self.assertIn("Active Protection", ansi)
+
+    def test_powerup_display_tracker_held_za_warudo_lifecycle(self) -> None:
+        """Tracker displays held Za Warudo, updates on count changes, and strikes out when consumed."""
+        printed_lines: list[str] = []
+
+        class MockConsole:
+            def print(self, msg: str) -> None:
+                printed_lines.append(msg)
+
+        tracker = il.PowerupDisplayTracker(console_obj=MockConsole())
+
+        # 1. Player holds 1 Za Warudo item
+        pu_1 = {"my_time": 50.0, "stage_clock": "08:00", "za_warudo_held": 1, "effects": []}
+        tracker.update(pu_1)
+        self.assertEqual(len(tracker.displayed_lines), 1)
+        self.assertEqual(tracker.displayed_lines[0]["status"], "active")
+        self.assertEqual(tracker.displayed_lines[0]["effect_id"], -25)
+        self.assertIn("Za Warudo", printed_lines[0])
+        self.assertIn("Active Protection", printed_lines[0])
+
+        # 2. Player buys a second Za Warudo (count increases to 2)
+        pu_2 = {"my_time": 70.0, "stage_clock": "07:40", "za_warudo_held": 2, "effects": []}
+        tracker.update(pu_2)
+        self.assertEqual(len(tracker.displayed_lines), 1)
+        self.assertEqual(tracker.displayed_lines[0]["status"], "active")
+        self.assertIn("Added +1, total x2", printed_lines[1])
+
+        # 3. Console clear re-prints active held item
+        printed_lines.clear()
+        tracker.on_console_cleared()
+        self.assertEqual(len(tracker.displayed_lines), 1)
+        self.assertEqual(tracker.displayed_lines[0]["status"], "active")
+        self.assertEqual(len(printed_lines), 1)
+
+        # 4. Lethal damage taken: all Za Warudo items consumed / broken (count -> 0)
+        pu_3 = {"my_time": 100.0, "stage_clock": "07:10", "za_warudo_held": 0, "effects": []}
+        tracker.update(pu_3)
+        self.assertEqual(tracker.displayed_lines[0]["status"], "ended")
+
+    def test_render_active_powerups_block(self) -> None:
+        """render_active_powerups_block prints tables with powerup names, remaining time, and end clocks."""
+        pu_data = {
+            "stage_clock": "06:30",
+            "za_warudo_held": 1,
+            "effects": [
+                {
+                    "name": "Shield",
+                    "remaining_seconds": 10.0,
+                    "end_clock": "06:20",
+                }
+            ],
+        }
+        import io
+        from unittest.mock import patch
+
+        # Plain text
+        buf = io.StringIO()
+        with patch.object(il, "console", None):
+            with patch("sys.stdout", buf):
+                il.render_active_powerups_block(pu_data, use_rich=False)
+        output = buf.getvalue()
+        self.assertIn("ACTIVE POWER-UPS & BUFFS", output)
+        self.assertIn("Za Warudo (Held Item x1)", output)
+        self.assertIn("Shield", output)
+        self.assertIn("Ends at 06:20", output)
+
 
 if __name__ == "__main__":
     unittest.main()

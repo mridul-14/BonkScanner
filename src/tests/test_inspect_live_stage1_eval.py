@@ -541,6 +541,95 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
         self.assertIn("CRITERIA NOT MET", output)
         self.assertIn("Dragonfire", output)
 
+    def test_stage1_report_rich_strikethrough_when_shady_done(self) -> None:
+        """When Shady Guy item is purchased (sg['done'] = True), Rich report applies [dim strike]."""
+        if il.console is None:
+            self.skipTest("Rich console not installed")
+        res = dict(self.mock_result)
+        res["shady_guys"] = [
+            {
+                "shady_num": 1,
+                "rarity": "LEGENDARY",
+                "done": True,
+                "dist": 15.0,
+                "rel_dir": ("N", 0.0, 15.0),
+                "map_sector": "North",
+                "gold_prices": [100],
+                "multipliers": [1.5],
+                "items": [{"item_id": 22, "item_name": "Dragonfire"}],
+            }
+        ]
+        with patch.object(il.console, "print") as mock_print:
+            il.print_stage1_report(res)
+            # Find the Ranked Items table and Inventories table
+            tables = [call.args[0] for call in mock_print.call_args_list if call.args and hasattr(call.args[0], "columns")]
+            all_cells = []
+            for t in tables:
+                for col in t.columns:
+                    for cell in col._cells:
+                        all_cells.append(str(cell))
+            # Verify [dim strike] applied to item name, rank, and status
+            self.assertTrue(any("[dim strike]" in c and "Dragonfire" in c for c in all_cells))
+            self.assertTrue(any("[dim strike]" in c and "Shady #1" in c for c in all_cells))
+            self.assertTrue(any("TAKEN" in c for c in all_cells))
+
+    def test_stage1_report_plain_text_strikethrough_when_shady_done(self) -> None:
+        """When Shady Guy item is purchased, plain text report applies ANSI dim/strike (\033[2;9m)."""
+        res = dict(self.mock_result)
+        res["shady_guys"] = [
+            {
+                "shady_num": 1,
+                "rarity": "EPIC",
+                "done": True,
+                "dist": 20.0,
+                "rel_dir": ("E", 90.0, 20.0),
+                "map_sector": "East",
+                "gold_prices": [80],
+                "multipliers": [1.2],
+                "items": [{"item_id": 10, "item_name": "Apple"}],
+            }
+        ]
+        buf = io.StringIO()
+        with patch.object(il, "console", None):
+            with patch("sys.stdout", buf):
+                il.print_stage1_report(res)
+        output = buf.getvalue()
+        self.assertIn("\033[2;9m", output)
+        self.assertIn("[TAKEN]", output)
+        self.assertIn("[DONE]", output)
+
+    def test_stage1_report_renders_active_powerup_block(self) -> None:
+        """When powerup_data has active buffs and held Za Warudo, report includes Active Buffs section."""
+        res = dict(self.mock_result)
+        pu_data = {
+            "stage_clock": "07:30",
+            "za_warudo_held": 2,
+            "effects": [
+                {
+                    "name": "Clock / Za Warudo",
+                    "remaining_seconds": 15.0,
+                    "end_clock": "07:15",
+                }
+            ],
+        }
+        # Test Plain text
+        buf = io.StringIO()
+        with patch.object(il, "console", None):
+            with patch("sys.stdout", buf):
+                il.print_stage1_report(res, powerup_data=pu_data)
+        output = buf.getvalue()
+        self.assertIn("ACTIVE POWER-UPS & BUFFS", output)
+        self.assertIn("Za Warudo (Held Item x2)", output)
+        self.assertIn("Clock / Za Warudo", output)
+        self.assertIn("Ends at 07:15", output)
+
+        # Test Rich
+        if il.console is not None:
+            with patch.object(il.console, "print") as mock_print:
+                il.print_stage1_report(res, powerup_data=pu_data)
+                titles = [getattr(call.args[0], "title", "") for call in mock_print.call_args_list if call.args]
+                self.assertTrue(any("ACTIVE POWER-UPS & BUFFS" in str(t) for t in titles))
+
 
 class TestRequiredItemIdsEvaluation(unittest.TestCase):
     """Test evaluate_stage1_criteria using required_all_item_ids and required_any_item_ids."""
