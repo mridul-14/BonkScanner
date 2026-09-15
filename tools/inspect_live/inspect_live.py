@@ -307,8 +307,8 @@ TARGET_SHADY_ITEMS = {
 #  81 | Crypt Key                 | Crypt key                 | -
 #  50 | Weeb Headset              | Weeb Headset              | -
 # ------------------------------------------------------------------------------
-REQUIRED_ALL_ITEM_IDS: list[int] = []  # Must-have items: ALL must be present on map (AND)
-REQUIRED_ANY_ITEM_IDS: list[int] = [41, 22, 15, 47, 76]      # Any-of items: At least ONE must be present on map (OR)
+REQUIRED_ALL_ITEM_IDS: list[int] = [41]  # Must-have items: ALL must be present on map (AND)
+REQUIRED_ANY_ITEM_IDS: list[int] = [22, 15, 47, 76]      # Any-of items: At least ONE must be present on map (OR)
 
 # Backwards compatibility / legacy aliases
 REQUIRED_ITEM_IDS: list[int] = []
@@ -2268,6 +2268,78 @@ def evaluate_target_item_matches(
     return target_matches
 
 
+def can_satisfy_required_items_on_distinct_shadys(
+    shady_guys: list[dict],
+    req_all: list[int],
+    req_any: list[int],
+) -> tuple[bool, bool, bool]:
+    """Check if all REQUIRED_ALL items and at least one REQUIRED_ANY item can be obtained on distinct Shady Guys.
+
+    Because a Shady Guy disappears after a single item purchase, each must-have item
+    in req_all and the selected any-of item in req_any must come from separate vendors.
+
+    Returns:
+        (all_passed, any_passed, satisfied)
+    """
+    req_all = list(req_all) if req_all else []
+    req_any = list(req_any) if req_any else []
+
+    if not req_all and not req_any:
+        return True, True, True
+
+    shady_item_sets = []
+    for sg in (shady_guys or []):
+        s_items = {it.get("item_id") for it in sg.get("items", []) if it.get("item_id") is not None}
+        shady_item_sets.append(s_items)
+
+    num_shadys = len(shady_item_sets)
+    min_needed = len(req_all) + (1 if req_any else 0)
+
+    def match_all_only(items: list[int], used: set[int]) -> bool:
+        if not items:
+            return True
+        tgt, rest = items[0], items[1:]
+        for idx in range(num_shadys):
+            if idx not in used and tgt in shady_item_sets[idx]:
+                used.add(idx)
+                if match_all_only(rest, used):
+                    return True
+                used.remove(idx)
+        return False
+
+    can_all_only = match_all_only(req_all, set()) if req_all else True
+    can_any_only = any(any(item in s for item in req_any) for s in shady_item_sets) if req_any else True
+
+    if num_shadys < min_needed:
+        return can_all_only, can_any_only, False
+
+    if not req_all:
+        return True, can_any_only, can_any_only
+    if not req_any:
+        return can_all_only, True, can_all_only
+
+    def match_all_and_any(items: list[int], used: set[int]) -> bool:
+        if not items:
+            for idx in range(num_shadys):
+                if idx not in used and any(item in shady_item_sets[idx] for item in req_any):
+                    return True
+            return False
+        tgt, rest = items[0], items[1:]
+        for idx in range(num_shadys):
+            if idx not in used and tgt in shady_item_sets[idx]:
+                used.add(idx)
+                if match_all_and_any(rest, used):
+                    return True
+                used.remove(idx)
+        return False
+
+    satisfied = match_all_and_any(req_all, set())
+    if satisfied:
+        return True, True, True
+
+    return can_all_only, can_any_only, False
+
+
 def evaluate_stage1_criteria(
     sm_pass: bool,
     micro_pass: bool,
@@ -2279,6 +2351,7 @@ def evaluate_stage1_criteria(
     offered_item_ids: set[int] | list[int] | None = None,
     has_white_micro: bool = True,
     is_fox: bool = False,
+    shady_guys: list[dict] | None = None,
     **kwargs: Any,
 ) -> tuple[bool, bool, bool, bool, str]:
     """Pure logic to evaluate shrine thresholds and required items filter (AND / OR lists).
@@ -2319,6 +2392,14 @@ def evaluate_stage1_criteria(
     # Resolve offered items set
     if offered_item_ids is not None:
         present_set = set(offered_item_ids)
+    elif shady_guys is not None or kwargs.get("shady_guys") is not None:
+        sg_source = shady_guys if shady_guys is not None else kwargs.get("shady_guys")
+        present_set = set()
+        for sg in (sg_source or []):
+            for it in sg.get("items", []):
+                it_id = it.get("item_id")
+                if it_id is not None:
+                    present_set.add(it_id)
     else:
         present_set = set()
         if kwargs.get("has_anvil"):
@@ -2327,9 +2408,23 @@ def evaluate_stage1_criteria(
             present_set.add(47)
 
     has_mandatory = bool(req_all) or bool(req_any)
-    all_passed = all(item_id in present_set for item_id in req_all) if req_all else True
-    any_passed = any(item_id in present_set for item_id in req_any) if req_any else True
-    required_items_satisfied = all_passed and any_passed
+
+    sg_list = shady_guys if shady_guys is not None else kwargs.get("shady_guys")
+    if sg_list is not None and has_mandatory:
+        distinct_all, distinct_any, distinct_satisfied = can_satisfy_required_items_on_distinct_shadys(
+            sg_list, req_all, req_any
+        )
+        pool_all = all(item_id in present_set for item_id in req_all) if req_all else True
+        pool_any = any(item_id in present_set for item_id in req_any) if req_any else True
+        is_shady_conflict = (pool_all and pool_any) and not distinct_satisfied
+        all_passed = distinct_all
+        any_passed = distinct_any
+        required_items_satisfied = distinct_satisfied
+    else:
+        all_passed = all(item_id in present_set for item_id in req_all) if req_all else True
+        any_passed = any(item_id in present_set for item_id in req_any) if req_any else True
+        required_items_satisfied = all_passed and any_passed
+        is_shady_conflict = False
 
     if has_mandatory:
         if not required_items_satisfied:
@@ -2337,7 +2432,10 @@ def evaluate_stage1_criteria(
             thresholds_matched = False
             target_only_matched = False
             all_matched = False
-            match_reason = "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS" if thresholds_pass else "MISSING_REQUIRED_ITEMS"
+            if is_shady_conflict:
+                match_reason = "REQUIRED_ITEMS_CONFLICT_SAME_SHADY"
+            else:
+                match_reason = "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS" if thresholds_pass else "MISSING_REQUIRED_ITEMS"
         elif not thresholds_pass:
             target_items_pass = True
             thresholds_matched = False
@@ -2431,9 +2529,10 @@ def scan_stage1_seed_filter(
     counts_pass = sm_pass and micro_pass and boss_pass and magnet_pass
 
     mandatory_active = bool(req_all) or bool(req_any)
+    min_shadys_needed = len(req_all) + (1 if req_any else 0)
     skip_heap = False
     if fast_eval:
-        if not counts_pass or (mandatory_active and map_counts["shady"] == 0):
+        if not counts_pass or (mandatory_active and map_counts["shady"] < min_shadys_needed):
             skip_heap = True
 
     if skip_heap:
@@ -2529,10 +2628,6 @@ def scan_stage1_seed_filter(
                 offered_item_counts[it_id] = offered_item_counts.get(it_id, 0) + 1
                 offered_item_ids.add(it_id)
 
-    all_passed = all(offered_item_counts.get(i, 0) > 0 for i in req_all) if req_all else True
-    any_passed = any(offered_item_counts.get(i, 0) > 0 for i in req_any) if req_any else True
-    required_items_satisfied = all_passed and any_passed
-
     (
         target_items_pass,
         thresholds_matched,
@@ -2550,7 +2645,17 @@ def scan_stage1_seed_filter(
         offered_item_ids=offered_item_ids,
         has_white_micro=has_white_micro,
         is_fox=is_fox,
+        shady_guys=shady_guys,
     )
+
+    if mandatory_active:
+        all_passed, any_passed, required_items_satisfied = can_satisfy_required_items_on_distinct_shadys(
+            shady_guys, req_all, req_any
+        )
+    else:
+        all_passed = True
+        any_passed = True
+        required_items_satisfied = True
 
     return {
         "is_stage_1": True,
@@ -2642,8 +2747,8 @@ def scan_stage_inspect(
     }
 
 
-def _format_required_items_summary(result: dict) -> tuple[str, str, list[int]]:
-    """Return (req_label_str, found_label_str, combined_req_ids) for display."""
+def _format_required_items_summary(result: dict) -> tuple[str, str, list[int], int]:
+    """Return (req_label_str, found_label_str, combined_req_ids, min_shadys_needed) for display."""
     has_req_all = "required_all_item_ids" in result
     has_req_any = "required_any_item_ids" in result
     has_legacy = "required_item_ids" in result
@@ -2670,6 +2775,8 @@ def _format_required_items_summary(result: dict) -> tuple[str, str, list[int]]:
             else:
                 req_any = list(REQUIRED_ITEM_IDS)
 
+    min_shadys_needed = len(req_all) + (1 if req_any else 0)
+
     offered_cnts = result.get("offered_item_counts", {})
     all_names = [get_item_name(i) for i in req_all]
     any_names = [get_item_name(i) for i in req_any]
@@ -2691,7 +2798,7 @@ def _format_required_items_summary(result: dict) -> tuple[str, str, list[int]]:
     found_label = " & ".join(found_names) if found_names else "Required items"
 
     combined_ids = list(dict.fromkeys(req_all + req_any))
-    return req_label, found_label, combined_ids
+    return req_label, found_label, combined_ids, min_shadys_needed
 
 
 def print_stage1_report(
@@ -2720,7 +2827,7 @@ def print_stage1_report(
     target_mark = "PASS" if result["target_items_pass"] else "FAIL"
 
     reroll_info = f" | Reroll #{reroll_num}" if reroll_num is not None else ""
-    req_label, found_label, combined_ids = _format_required_items_summary(result)
+    req_label, found_label, combined_ids, min_shadys_needed = _format_required_items_summary(result)
 
     if console and Table and Panel:
         reason = result.get("match_reason")
@@ -2733,6 +2840,13 @@ def print_stage1_report(
         elif reason == "THRESHOLDS_MATCH":
             title_color = "bold green"
             status_text = "[bold green]🎉 THRESHOLDS MATCH ON STAGE 1![/]\n[green]All shrine & curse thresholds satisfied![/]"
+        elif reason == "REQUIRED_ITEMS_CONFLICT_SAME_SHADY":
+            title_color = "bold red"
+            status_text = (
+                f"[bold red]Status: CRITERIA NOT MET[/]\n"
+                f"[yellow]Required items found on map, but conflict on the same Shady Guy! "
+                f"Must appear across at least {min_shadys_needed} different Shady Guys.[/]"
+            )
         elif reason == "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS":
             title_color = "bold red"
             status_text = f"[bold red]Status: CRITERIA NOT MET[/]\n[yellow]Threshold criteria met ({sm_total}/{THRESHOLD_SHADY_PLUS_MOAI}), but requires {req_label} on map![/]"
@@ -3082,7 +3196,9 @@ def print_stage1_report(
         print(f"[STAGE 1 SEED EVALUATION]{reroll_info}{char_plain} (Scan took {result['elapsed_s']}s)", flush=True)
         print("-" * 80, flush=True)
         reason = result.get("match_reason")
-        if reason == "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS":
+        if reason == "REQUIRED_ITEMS_CONFLICT_SAME_SHADY":
+            print(f"Status: [-] CRITERIA NOT MET (Required items found on map, but conflict on the same Shady Guy! Must appear across at least {min_shadys_needed} different Shady Guys)", flush=True)
+        elif reason == "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS":
             print(f"Status: [-] CRITERIA NOT MET (Threshold criteria met [{sm_total}/{THRESHOLD_SHADY_PLUS_MOAI}], but requires {req_label} on map)", flush=True)
         elif reason == "REQUIRED_ITEMS_FOUND_CRITERIA_FAILED":
             print(f"Status: [-] CRITERIA NOT MET ({found_label} found, but other criteria failed: {sm_total}/{THRESHOLD_SHADY_PLUS_MOAI} Shady+Moai)", flush=True)

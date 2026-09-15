@@ -1015,5 +1015,179 @@ class TestRequiredItemsColorScheme(unittest.TestCase):
         self.assertEqual(disp_plain, "Borgar*")
 
 
+class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
+    """Test distinct Shady Guy constraint evaluation for REQUIRED_ALL_ITEM_IDS and REQUIRED_ANY_ITEM_IDS."""
+
+    def test_can_satisfy_empty_requirements(self) -> None:
+        self.assertEqual(il.can_satisfy_required_items_on_distinct_shadys([], [], []), (True, True, True))
+
+    def test_can_satisfy_single_all_item(self) -> None:
+        shady_guys = [{"items": [{"item_id": 41}]}]
+        all_passed, any_passed, satisfied = il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41], [])
+        self.assertTrue(all_passed)
+        self.assertTrue(any_passed)
+        self.assertTrue(satisfied)
+
+    def test_can_satisfy_all_items_on_distinct_shadys(self) -> None:
+        shady_guys = [
+            {"items": [{"item_id": 41}]},
+            {"items": [{"item_id": 47}]},
+        ]
+        all_passed, any_passed, satisfied = il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41, 47], [])
+        self.assertTrue(all_passed)
+        self.assertTrue(any_passed)
+        self.assertTrue(satisfied)
+
+    def test_can_satisfy_all_items_on_same_shady_fails(self) -> None:
+        shady_guys = [
+            {"items": [{"item_id": 41}, {"item_id": 47}]},
+        ]
+        all_passed, any_passed, satisfied = il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41, 47], [])
+        self.assertFalse(all_passed)
+        self.assertTrue(any_passed)
+        self.assertFalse(satisfied)
+
+    def test_can_satisfy_all_and_any_on_same_shady_fails(self) -> None:
+        shady_guys = [
+            {"items": [{"item_id": 41}, {"item_id": 47}]},
+        ]
+        all_passed, any_passed, satisfied = il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41], [47])
+        self.assertTrue(all_passed)
+        self.assertTrue(any_passed)
+        self.assertFalse(satisfied)
+
+    def test_can_satisfy_all_and_any_on_at_least_two_distinct_shadys_passes(self) -> None:
+        shady_guys = [
+            {"items": [{"item_id": 41}]},
+            {"items": [{"item_id": 47}]},
+        ]
+        all_passed, any_passed, satisfied = il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41], [47])
+        self.assertTrue(all_passed)
+        self.assertTrue(any_passed)
+        self.assertTrue(satisfied)
+
+    def test_evaluate_stage1_criteria_conflict_same_shady_reason(self) -> None:
+        shady_guys = [
+            {"items": [{"item_id": 41}, {"item_id": 47}]},
+        ]
+        (
+            target_items_pass,
+            thresholds_matched,
+            target_only_matched,
+            all_matched,
+            match_reason,
+        ) = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_all_item_ids=[41],
+            required_any_item_ids=[47],
+            shady_guys=shady_guys,
+        )
+        self.assertFalse(target_items_pass)
+        self.assertFalse(thresholds_matched)
+        self.assertFalse(all_matched)
+        self.assertEqual(match_reason, "REQUIRED_ITEMS_CONFLICT_SAME_SHADY")
+
+    def test_evaluate_stage1_criteria_missing_item_not_conflict(self) -> None:
+        shady_guys = [
+            {"items": [{"item_id": 41}]},
+        ]
+        (
+            target_items_pass,
+            thresholds_matched,
+            target_only_matched,
+            all_matched,
+            match_reason,
+        ) = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_all_item_ids=[41],
+            required_any_item_ids=[47],
+            shady_guys=shady_guys,
+        )
+        self.assertFalse(target_items_pass)
+        self.assertFalse(thresholds_matched)
+        self.assertFalse(all_matched)
+        self.assertEqual(match_reason, "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS")
+
+    def test_evaluate_stage1_criteria_distinct_shadys_success(self) -> None:
+        shady_guys = [
+            {"items": [{"item_id": 41}]},
+            {"items": [{"item_id": 47}]},
+        ]
+        (
+            target_items_pass,
+            thresholds_matched,
+            target_only_matched,
+            all_matched,
+            match_reason,
+        ) = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_all_item_ids=[41],
+            required_any_item_ids=[47],
+            shady_guys=shady_guys,
+        )
+        self.assertTrue(target_items_pass)
+        self.assertTrue(thresholds_matched)
+        self.assertTrue(all_matched)
+        self.assertEqual(match_reason, "PERFECT_MATCH_ALL")
+
+    def test_fast_eval_skips_heap_when_shady_count_less_than_min_needed(self) -> None:
+        mock_mem = unittest.mock.MagicMock()
+        with patch.object(il, "get_stage_index", return_value=0), \
+             patch.object(il, "get_map_interactable_counts", return_value={
+                 "shady": 1, "moai": 10, "microwaves": 2, "boss_curses": 1, "magnets": 2,
+             }), \
+             patch.object(il, "scan_heap_interactables") as mock_scan_heap:
+            res = il.scan_stage1_seed_filter(
+                mock_mem,
+                0x1000,
+                fast_eval=True,
+                character=(0, "Fox"),
+                required_all_item_ids=[41],
+                required_any_item_ids=[47],
+            )
+            self.assertTrue(res["shady_skipped"])
+            self.assertFalse(res["all_matched"])
+            mock_scan_heap.assert_not_called()
+
+    def test_print_stage1_report_conflict_message(self) -> None:
+        result = {
+            "is_stage_1": True,
+            "stage_index": 0,
+            "elapsed_s": 0.05,
+            "character": "Fox",
+            "character_id": 0,
+            "map_counts": {"shady": 1, "moai": 10, "microwaves": 2, "boss_curses": 1, "magnets": 2},
+            "sm_total": 11,
+            "sm_pass": True,
+            "micro_pass": True,
+            "boss_pass": True,
+            "magnet_pass": True,
+            "target_items_pass": False,
+            "all_matched": False,
+            "match_reason": "REQUIRED_ITEMS_CONFLICT_SAME_SHADY",
+            "required_all_item_ids": [41],
+            "required_any_item_ids": [47],
+            "offered_item_counts": {41: 1, 47: 1},
+        }
+        buf = io.StringIO()
+        with patch("sys.stdout", buf), patch("inspect_live.console", None):
+            il.print_stage1_report(result)
+        out = buf.getvalue()
+        self.assertIn("conflict on the same Shady Guy", out)
+        self.assertIn("at least 2 different Shady Guys", out)
+
+
 if __name__ == "__main__":
     unittest.main()
