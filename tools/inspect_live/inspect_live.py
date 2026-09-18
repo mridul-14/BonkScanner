@@ -27,7 +27,6 @@ ARTIFACTS_DIR = TOOL_DIR / "artifacts"
 if str(DEPS_DIR) not in sys.path:
     sys.path.insert(0, str(DEPS_DIR))
 
-from core.game_state import StatValue
 from core.item_metadata import (
     ITEM_DISPLAY_NAME_BY_RAW_VALUE,
     ITEM_ENUM_NAMES_BY_ID,
@@ -36,7 +35,7 @@ from core.item_metadata import (
 )
 from infra.memory.game_data_client import GameDataClient
 from infra.memory.map_marker_client import MapMarkerMemoryClient
-from infra.memory.reader import MemoryReadError, ProcessMemory
+from infra.memory.reader import ProcessMemory
 
 try:
     import keyboard
@@ -54,13 +53,11 @@ try:
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
-    from rich.text import Text
     console = Console()
 except ImportError:
     Console = None
     Panel = None
     Table = None
-    Text = None
     console = None
 
 try:
@@ -84,8 +81,6 @@ MAP_CONTROLLER_TYPE_INFO_OFFSET = 0x2F58E08
 MAP_CONTROLLER_STAGE_INDEX_OFFSET = 0x08
 SHADY_GUY_TYPE_INFO_OFFSET = 0x2FB5928
 
-OBJECT_KLASS_OFFSET = 0x00
-CLASS_NAME_POINTER_OFFSET = 0x10
 ITEM_DATA_ENUM_OFFSET = 0x54
 
 SHADY_RARITY_OFFSET = 0x90
@@ -127,7 +122,6 @@ DICT_ENTRY_HASH_CODE_OFFSET = 0x0
 DICT_ENTRY_KEY_OFFSET = 0x8
 DICT_ENTRY_VALUE_OFFSET = 0x10
 
-STATUS_EFFECT_ESTATUS_OFFSET = 0x10
 STATUS_EFFECT_EXPIRATION_OFFSET = 0x20
 STATUS_EFFECT_ADDED_OFFSET = 0x24
 ARRAY_LENGTH_OFFSET = 0x18
@@ -181,7 +175,7 @@ MICROWAVE_COLORS = {
 # ==============================================================================
 # Stage 1 Seed Filter Thresholds (Editable)
 # ==============================================================================
-THRESHOLD_SHADY_PLUS_MOAI = 9
+THRESHOLD_SHADY_PLUS_MOAI = 0
 THRESHOLD_MICROWAVES = 2
 THRESHOLD_BOSS_CURSES = 1
 THRESHOLD_MAGNET_CURSES = 2
@@ -308,11 +302,7 @@ TARGET_SHADY_ITEMS = {
 #  50 | Weeb Headset              | Weeb Headset              | -
 # ------------------------------------------------------------------------------
 REQUIRED_ALL_ITEM_IDS: list[int] = [41]  # Must-have items: ALL must be present on map (AND)
-REQUIRED_ANY_ITEM_IDS: list[int] = [22, 15, 47, 76]      # Any-of items: At least ONE must be present on map (OR)
-
-# Backwards compatibility / legacy aliases
-REQUIRED_ITEM_IDS: list[int] = []
-REQUIRED_ITEMS_MODE: str = "any"
+REQUIRED_ANY_ITEM_IDS: list[int] = [47] #22, 49, 15, 76, 17      # Any-of items: At least ONE must be present on map (OR)
 
 
 # ==============================================================================
@@ -331,10 +321,8 @@ HIGHLIGHTED_SHADY_ITEMS = {
     0: "Key",
     21: "Beefy Ring",
 }
-HIGHLIGHTED_ITEM_STYLE = "bold cyan"           # Fallback highlight style (cyan)
 HIGHLIGHTED_ITEM_MARKER = "+"                  # Visual marker for secondary highlighted items
 TARGET_ITEM_COLOR = "bold bright_red"          # Target items color (bright red)
-TARGET_ITEM_MARKER = "*"                       # Visual marker for target items
 REGULAR_ITEM_COLOR = "bold bright_white"       # Regular filler items (Common/Rare/Epic) (bright white)
 
 # ==============================================================================
@@ -356,19 +344,6 @@ TIER_COLORS = {
     "LEGENDARY": "bold yellow",
     # Legacy alias
     "UNCOMMON": "bold cyan",
-}
-
-# Plain ANSI escape codes for non-Rich / terminal environments
-TIER_ANSI_COLORS = {
-    "COMMON": "\033[92m",      # Light green
-    "RARE": "\033[96m",        # Light cyan
-    "EPIC": "\033[95m",        # Bright magenta
-    "LEGENDARY": "\033[93m",   # Light yellow
-    "UNCOMMON": "\033[96m",    # Light cyan
-    "TARGET": "\033[91;1m",    # Bright bold red
-    "REGULAR": "\033[97;1m",   # Bright bold white
-    "PRICE": "\033[93;1m",     # Bright yellow
-    "RESET": "\033[0m",
 }
 
 # Megabonk internal disassembly keys -> canonical 4-tier game rarities
@@ -593,34 +568,53 @@ def read_active_powerups(memory: ProcessMemory, module_base: int) -> dict:
 
         # Check if Za Warudo item (Item 25) is held in inventory
         try:
-            item_inv = memory.read_ptr(player_inventory + 0x20)
-            if item_inv and item_inv > 0x10000:
-                items_dict = memory.read_ptr(item_inv + 0x10)
-                if items_dict and items_dict > 0x10000:
-                    i_entries = memory.read_ptr(items_dict + DICT_ENTRIES_OFFSET)
-                    i_cap = memory.read_i32(i_entries + ARRAY_LENGTH_OFFSET) if i_entries else 0
-                    if 0 < i_cap <= 256 and hasattr(memory, "read_bytes"):
-                        tot_len = i_cap * DICT_ENTRY_SIZE
-                        i_buf = memory.read_bytes(i_entries + DICT_ENTRY_START_OFFSET, tot_len)
-                        if i_buf and len(i_buf) >= tot_len:
-                            for i in range(i_cap):
-                                off = i * DICT_ENTRY_SIZE
-                                h_code, iid, item_obj = struct.unpack_from("<iiQ", i_buf, off)
-                                if h_code >= 0 and iid == 25:
-                                    cnt = memory.read_i32(item_obj + 0x18) if item_obj else 1
-                                    res["za_warudo_held"] = max(1, cnt)
-                                    break
-                    elif 0 < i_cap <= 256:
+            item_dicts = []
+            # Route 1: inventory_container (0xA0) -> passive_item_dict (0x50)
+            try:
+                inv_container = memory.read_ptr(owner_stats + 0xA0)
+                if inv_container and inv_container > 0x10000:
+                    p_dict = memory.read_ptr(inv_container + 0x50)
+                    if p_dict and p_dict > 0x10000:
+                        item_dicts.append(p_dict)
+            except Exception:
+                pass
+            # Route 2: player_inventory (0x28) -> item_inventory (0x20) -> items_dict (0x10)
+            try:
+                item_inv = memory.read_ptr(player_inventory + 0x20)
+                if item_inv and item_inv > 0x10000:
+                    p_dict = memory.read_ptr(item_inv + 0x10)
+                    if p_dict and p_dict > 0x10000:
+                        item_dicts.append(p_dict)
+            except Exception:
+                pass
+
+            for items_dict in dict.fromkeys(item_dicts):
+                i_entries = memory.read_ptr(items_dict + DICT_ENTRIES_OFFSET)
+                i_cap = memory.read_i32(i_entries + ARRAY_LENGTH_OFFSET) if i_entries else 0
+                if 0 < i_cap <= 256 and hasattr(memory, "read_bytes"):
+                    tot_len = i_cap * DICT_ENTRY_SIZE
+                    i_buf = memory.read_bytes(i_entries + DICT_ENTRY_START_OFFSET, tot_len)
+                    if i_buf and len(i_buf) >= tot_len:
                         for i in range(i_cap):
-                            entry_addr = i_entries + DICT_ENTRY_START_OFFSET + (i * DICT_ENTRY_SIZE)
-                            if memory.read_i32(entry_addr + DICT_ENTRY_HASH_CODE_OFFSET) < 0:
-                                continue
-                            iid = memory.read_i32(entry_addr + DICT_ENTRY_KEY_OFFSET)
-                            if iid == 25:  # Za Warudo
-                                item_obj = memory.read_ptr(entry_addr + DICT_ENTRY_VALUE_OFFSET)
+                            off = i * DICT_ENTRY_SIZE
+                            h_code, _, iid, item_obj = struct.unpack_from("<iii4xQ", i_buf, off)
+                            if h_code >= 0 and iid == 25:
                                 cnt = memory.read_i32(item_obj + 0x18) if item_obj else 1
                                 res["za_warudo_held"] = max(1, cnt)
                                 break
+                elif 0 < i_cap <= 256:
+                    for i in range(i_cap):
+                        entry_addr = i_entries + DICT_ENTRY_START_OFFSET + (i * DICT_ENTRY_SIZE)
+                        if memory.read_i32(entry_addr + DICT_ENTRY_HASH_CODE_OFFSET) < 0:
+                            continue
+                        iid = memory.read_i32(entry_addr + DICT_ENTRY_KEY_OFFSET)
+                        if iid == 25:  # Za Warudo
+                            item_obj = memory.read_ptr(entry_addr + DICT_ENTRY_VALUE_OFFSET)
+                            cnt = memory.read_i32(item_obj + 0x18) if item_obj else 1
+                            res["za_warudo_held"] = max(1, cnt)
+                            break
+                if res["za_warudo_held"] > 0:
+                    break
         except Exception:
             pass
 
@@ -647,7 +641,7 @@ def read_active_powerups(memory: ProcessMemory, module_base: int) -> dict:
         if dict_buf and len(dict_buf) >= tot_bytes:
             for index in range(capacity):
                 off = index * DICT_ENTRY_SIZE
-                hash_code, effect_id, effect_ptr = struct.unpack_from("<iiQ", dict_buf, off)
+                hash_code, _, effect_id, effect_ptr = struct.unpack_from("<iii4xQ", dict_buf, off)
                 if hash_code < 0 or effect_id not in POWERUP_EFFECT_NAMES or effect_ptr < 0x10000:
                     continue
                 try:
@@ -737,46 +731,6 @@ def read_active_powerups(memory: ProcessMemory, module_base: int) -> dict:
     return res
 
 
-def format_powerups_display(powerup_data: dict, ansi: bool = True) -> str:
-    """Format active power-up timers for the live console display line."""
-    effects = powerup_data.get("effects", [])
-    za_held = powerup_data.get("za_warudo_held", 0)
-    if not effects and za_held <= 0:
-        return ""
-    stage_clock = powerup_data.get("stage_clock", "--:--")
-    parts = []
-    if za_held > 0:
-        if ansi:
-            parts.append(
-                f"\033[93;1mZa Warudo (Held x{za_held})\033[0m: \033[92;1mActive Protection\033[0m"
-            )
-        else:
-            parts.append(f"Za Warudo (Held x{za_held}): Active Protection")
-    for eff in effects:
-        name = eff["name"]
-        rem = eff["remaining_seconds"]
-        end_clock = eff["end_clock"]
-        if ansi:
-            if "Za Warudo" in name or "Clock" in name:
-                name_style = "\033[93;1m"   # Bold yellow
-            elif "Rage" in name:
-                name_style = "\033[91;1m"   # Bold red
-            elif "Shield" in name:
-                name_style = "\033[96;1m"   # Bold cyan
-            elif "Stonks" in name:
-                name_style = "\033[92;1m"   # Bold green
-            else:
-                name_style = "\033[95;1m"   # Bold magenta
-            parts.append(
-                f"{name_style}{name}\033[0m: \033[97;1m{rem:.1f}s\033[0m (\033[92;1mEnds at {end_clock}\033[0m)"
-            )
-        else:
-            parts.append(f"{name}: {rem:.1f}s (Ends at {end_clock})")
-
-    joined = " | ".join(parts)
-    if ansi:
-        return f"\033[93;1m[⚡ Active Buffs]\033[0m {joined}  \033[90m[Stage Clock: {stage_clock}]\033[0m"
-    return f"[⚡ Active Buffs] {joined}  [Stage Clock: {stage_clock}]"
 
 
 def render_active_powerups_block(powerup_data: dict | None, use_rich: bool = True) -> None:
@@ -1097,30 +1051,6 @@ class PowerupDisplayTracker:
         self.active_powerup_ids = current_effect_ids
 
 
-_CLASS_NAME_CACHE: dict[int, str] = {}
-
-
-def read_class_name(memory: ProcessMemory, object_ptr: int) -> str | None:
-    if not object_ptr or object_ptr < 0x10000:
-        return None
-    try:
-        class_ptr = memory.read_ptr(object_ptr + OBJECT_KLASS_OFFSET)
-        if not class_ptr or class_ptr < 0x10000:
-            return None
-        cached = _CLASS_NAME_CACHE.get(class_ptr)
-        if cached is not None:
-            return cached
-        name_ptr = memory.read_ptr(class_ptr + CLASS_NAME_POINTER_OFFSET)
-        if not name_ptr or name_ptr < 0x10000:
-            return None
-        name = memory.read_ascii_string(name_ptr, max_length=64)
-        if name:
-            _CLASS_NAME_CACHE[class_ptr] = name
-        return name
-    except Exception:
-        return None
-
-
 def get_item_name(item_id: int) -> str:
     if item_id in ITEM_ENUM_NAMES_BY_ID:
         raw_enum = ITEM_ENUM_NAMES_BY_ID[item_id]
@@ -1131,8 +1061,6 @@ def get_item_name(item_id: int) -> str:
 def is_target_item(item_id: int | None, item_name: str | None = None) -> bool:
     """Check if an item is one of the primary target or required items."""
     req_ids_set = set(REQUIRED_ALL_ITEM_IDS) | set(REQUIRED_ANY_ITEM_IDS)
-    if REQUIRED_ITEM_IDS:
-        req_ids_set.update(REQUIRED_ITEM_IDS)
     if item_id is not None:
         if item_id in TARGET_SHADY_ITEMS or item_id in req_ids_set:
             return True
@@ -1705,17 +1633,9 @@ def scan_heap_interactables(
     boss_curses: list[dict] = []
     seen_addresses: set[int] = set()
 
-    # Get player position and world size if available
-    player_pos = None
+    # Get world size if available
     world_size = 600.0
     if marker_client:
-        try:
-            player = marker_client._resolve_player()
-            p_trans = marker_client._component_transform(player)
-            px, py, pz = marker_client._transform_point(p_trans, (0.0, 0.0, 0.0))
-            player_pos = (px, pz)
-        except Exception:
-            pass
         try:
             full_map = marker_client._resolve_full_map()
             if full_map:
@@ -1823,7 +1743,7 @@ def scan_heap_interactables(
                                                         if marker_client:
                                                             try:
                                                                 s_trans = marker_client._component_transform(cand)
-                                                                sx, sy, sz = marker_client._transform_point(
+                                                                sx, _, sz = marker_client._transform_point(
                                                                     s_trans, (0.0, 0.0, 0.0)
                                                                 )
                                                                 world_pos = (round(sx, 1), round(sz, 1))
@@ -1880,7 +1800,7 @@ def scan_heap_interactables(
                                                         if marker_client:
                                                             try:
                                                                 m_trans = marker_client._component_transform(cand)
-                                                                mx, my, mz = marker_client._transform_point(
+                                                                mx, _, mz = marker_client._transform_point(
                                                                     m_trans, (0.0, 0.0, 0.0)
                                                                 )
                                                                 world_pos = (round(mx, 1), round(mz, 1))
@@ -1920,7 +1840,7 @@ def scan_heap_interactables(
                                                         if marker_client:
                                                             try:
                                                                 m_trans = marker_client._component_transform(cand)
-                                                                mx, my, mz = marker_client._transform_point(
+                                                                mx, _, mz = marker_client._transform_point(
                                                                     m_trans, (0.0, 0.0, 0.0)
                                                                 )
                                                                 world_pos = (round(mx, 1), round(mz, 1))
@@ -1955,7 +1875,7 @@ def scan_heap_interactables(
                                                         if marker_client:
                                                             try:
                                                                 b_trans = marker_client._component_transform(cand)
-                                                                bx, by, bz = marker_client._transform_point(
+                                                                bx, _, bz = marker_client._transform_point(
                                                                     b_trans, (0.0, 0.0, 0.0)
                                                                 )
                                                                 world_pos = (round(bx, 1), round(bz, 1))
@@ -2013,7 +1933,7 @@ def scan_heap_interactables(
                                                                     if marker_client:
                                                                         try:
                                                                             s_trans = marker_client._component_transform(cand)
-                                                                            sx, sy, sz = marker_client._transform_point(s_trans, (0.0, 0.0, 0.0))
+                                                                            sx, _, sz = marker_client._transform_point(s_trans, (0.0, 0.0, 0.0))
                                                                             world_pos = (round(sx, 1), round(sz, 1))
                                                                             map_sector = get_map_sector(world_pos, world_size)
                                                                             distance = round(math.hypot(sx, sz), 1)
@@ -2058,7 +1978,7 @@ def scan_heap_interactables(
                                                                 if marker_client:
                                                                     try:
                                                                         m_trans = marker_client._component_transform(cand)
-                                                                        mx, my, mz = marker_client._transform_point(
+                                                                        mx, _, mz = marker_client._transform_point(
                                                                             m_trans, (0.0, 0.0, 0.0)
                                                                         )
                                                                         world_pos = (round(mx, 1), round(mz, 1))
@@ -2100,7 +2020,7 @@ def scan_heap_interactables(
                                                             if marker_client:
                                                                 try:
                                                                     m_trans = marker_client._component_transform(cand)
-                                                                    mx, my, mz = marker_client._transform_point(
+                                                                    mx, _, mz = marker_client._transform_point(
                                                                         m_trans, (0.0, 0.0, 0.0)
                                                                     )
                                                                     world_pos = (round(mx, 1), round(mz, 1))
@@ -2139,7 +2059,7 @@ def scan_heap_interactables(
                                                             if marker_client:
                                                                 try:
                                                                     b_trans = marker_client._component_transform(cand)
-                                                                    bx, by, bz = marker_client._transform_point(
+                                                                    bx, _, bz = marker_client._transform_point(
                                                                         b_trans, (0.0, 0.0, 0.0)
                                                                     )
                                                                     world_pos = (round(bx, 1), round(bz, 1))
@@ -2362,32 +2282,12 @@ def evaluate_stage1_criteria(
     thresholds_pass = sm_pass and micro_pass and boss_pass and magnet_pass and shady_pass
 
     # Resolve required item lists
-    req_all: list[int] = []
-    req_any: list[int] = []
-
-    has_explicit_new = (required_all_item_ids is not None) or (required_any_item_ids is not None)
-    has_explicit_legacy = "required_item_ids" in kwargs
-
-    if has_explicit_new:
-        if required_all_item_ids is not None:
-            req_all = list(required_all_item_ids)
-        if required_any_item_ids is not None:
-            req_any = list(required_any_item_ids)
-    elif has_explicit_legacy:
-        legacy_ids = kwargs.get("required_item_ids") or []
-        legacy_mode = (kwargs.get("required_items_mode") or REQUIRED_ITEMS_MODE).lower()
-        if legacy_mode == "all":
-            req_all = list(legacy_ids)
-        else:
-            req_any = list(legacy_ids)
+    if (required_all_item_ids is not None) or (required_any_item_ids is not None):
+        req_all = list(required_all_item_ids or [])
+        req_any = list(required_any_item_ids or [])
     else:
         req_all = list(REQUIRED_ALL_ITEM_IDS) if REQUIRED_ALL_ITEM_IDS else []
         req_any = list(REQUIRED_ANY_ITEM_IDS) if REQUIRED_ANY_ITEM_IDS else []
-        if not req_all and not req_any and REQUIRED_ITEM_IDS:
-            if REQUIRED_ITEMS_MODE.lower() == "all":
-                req_all = list(REQUIRED_ITEM_IDS)
-            else:
-                req_any = list(REQUIRED_ITEM_IDS)
 
     # Resolve offered items set
     if offered_item_ids is not None:
@@ -2482,34 +2382,12 @@ def scan_stage1_seed_filter(
     if stage_idx != 0:
         return {"is_stage_1": False, "stage_index": stage_idx}
 
-    req_all: list[int] = []
-    req_any: list[int] = []
-
-    has_explicit_new = (required_all_item_ids is not None) or (required_any_item_ids is not None)
-    has_explicit_legacy = "required_item_ids" in kwargs
-
-    if has_explicit_new:
-        if required_all_item_ids is not None:
-            req_all = list(required_all_item_ids)
-        if required_any_item_ids is not None:
-            req_any = list(required_any_item_ids)
-    elif has_explicit_legacy:
-        legacy_ids = kwargs.get("required_item_ids") or []
-        legacy_mode = (kwargs.get("required_items_mode") or REQUIRED_ITEMS_MODE).lower()
-        if legacy_mode == "all":
-            req_all = list(legacy_ids)
-        else:
-            req_any = list(legacy_ids)
+    if (required_all_item_ids is not None) or (required_any_item_ids is not None):
+        req_all = list(required_all_item_ids or [])
+        req_any = list(required_any_item_ids or [])
     else:
         req_all = list(REQUIRED_ALL_ITEM_IDS) if REQUIRED_ALL_ITEM_IDS else []
         req_any = list(REQUIRED_ANY_ITEM_IDS) if REQUIRED_ANY_ITEM_IDS else []
-        if not req_all and not req_any and REQUIRED_ITEM_IDS:
-            if REQUIRED_ITEMS_MODE.lower() == "all":
-                req_all = list(REQUIRED_ITEM_IDS)
-            else:
-                req_any = list(REQUIRED_ITEM_IDS)
-
-    combined_req_ids = list(dict.fromkeys(req_all + req_any))
 
     if character is None:
         character = get_character_identity(memory, module_base)
@@ -2551,7 +2429,6 @@ def scan_stage1_seed_filter(
             "is_fox": is_fox,
             "required_all_item_ids": req_all,
             "required_any_item_ids": req_any,
-            "required_item_ids": combined_req_ids,
             "required_items_satisfied": False if mandatory_active else True,
             "required_all_satisfied": False if req_all else True,
             "required_any_satisfied": False if req_any else True,
@@ -2579,11 +2456,16 @@ def scan_stage1_seed_filter(
 
     # 3. Scan Shady Guy, Microwave, Moai, and Boss Curse instances across the heap
     target_shady = map_counts.get("shady", 0)
-    target_micro = map_counts.get("microwaves", 0)
-    target_moai = map_counts.get("moai", 0)
-    target_boss = map_counts.get("boss_curses", 0)
+    target_micro = map_counts.get("microwaves", 0) if (REQUIRE_BOTH_MICROWAVES_WHITE or not fast_eval) else 0
+    # In fast evaluation (auto-rerolls), Boss Curses and Moais are already verified from map_counts;
+    # skipping their heap scans prevents slow multi-pass retries for missing instances.
+    target_moai = 0 if fast_eval else map_counts.get("moai", 0)
+    target_boss = 0 if fast_eval else map_counts.get("boss_curses", 0)
 
-    max_scan_attempts = 15 if (target_shady > 0 or target_micro > 0 or target_moai > 0 or target_boss > 0) else 1
+    # Shady Guy items take ~0.85s - 0.95s after map load to be rolled and populated in Unity memory.
+    # 16 attempts with 60ms sleep gives a ~0.96s window. The loop breaks immediately the moment
+    # all Shady Guys are populated, so it only waits as long as Unity needs to generate the items.
+    max_scan_attempts = 16 if (target_shady > 0 or target_micro > 0 or target_moai > 0 or target_boss > 0) else 1
 
     shady_guys, microwaves, moais, boss_curses = scan_heap_interactables(
         memory,
@@ -2615,7 +2497,6 @@ def scan_stage1_seed_filter(
     shady_resolved = (target_shady == 0) or (len(shady_guys) >= target_shady)
     shady_pass = (target_shady == 0) or (len(shady_guys) > 0)
 
-    thresholds_pass = sm_pass and micro_pass and boss_pass and magnet_pass and shady_pass
     has_white_micro = len(white_microwaves) >= 1
 
     # Count offered items across all Shady Guys
@@ -2666,7 +2547,6 @@ def scan_stage1_seed_filter(
         "is_fox": is_fox,
         "required_all_item_ids": req_all,
         "required_any_item_ids": req_any,
-        "required_item_ids": combined_req_ids,
         "required_items_satisfied": required_items_satisfied,
         "required_all_satisfied": all_passed,
         "required_any_satisfied": any_passed,
@@ -2751,29 +2631,13 @@ def _format_required_items_summary(result: dict) -> tuple[str, str, list[int], i
     """Return (req_label_str, found_label_str, combined_req_ids, min_shadys_needed) for display."""
     has_req_all = "required_all_item_ids" in result
     has_req_any = "required_any_item_ids" in result
-    has_legacy = "required_item_ids" in result
-
-    req_all: list[int] = []
-    req_any: list[int] = []
 
     if has_req_all or has_req_any:
         req_all = list(result.get("required_all_item_ids") or [])
         req_any = list(result.get("required_any_item_ids") or [])
-    elif has_legacy:
-        legacy_ids = result.get("required_item_ids") or []
-        legacy_m = result.get("required_items_mode", REQUIRED_ITEMS_MODE).lower()
-        if legacy_m == "all":
-            req_all = list(legacy_ids)
-        else:
-            req_any = list(legacy_ids)
     else:
         req_all = list(REQUIRED_ALL_ITEM_IDS) if REQUIRED_ALL_ITEM_IDS else []
         req_any = list(REQUIRED_ANY_ITEM_IDS) if REQUIRED_ANY_ITEM_IDS else []
-        if not req_all and not req_any and REQUIRED_ITEM_IDS:
-            if REQUIRED_ITEMS_MODE.lower() == "all":
-                req_all = list(REQUIRED_ITEM_IDS)
-            else:
-                req_any = list(REQUIRED_ITEM_IDS)
 
     min_shadys_needed = len(req_all) + (1 if req_any else 0)
 
@@ -2824,7 +2688,6 @@ def print_stage1_report(
     micro_mark = "PASS" if result["micro_pass"] else "FAIL"
     boss_mark = "PASS" if result["boss_pass"] else "FAIL"
     magnet_mark = "PASS" if result["magnet_pass"] else "FAIL"
-    target_mark = "PASS" if result["target_items_pass"] else "FAIL"
 
     reroll_info = f" | Reroll #{reroll_num}" if reroll_num is not None else ""
     req_label, found_label, combined_ids, min_shadys_needed = _format_required_items_summary(result)
@@ -3075,7 +2938,6 @@ def print_stage1_report(
                     is_done = sg.get("done", False)
                     status_tag = "[dim red]COMPLETED[/]" if is_done else "[green]AVAILABLE[/]"
                     prices = sg.get("gold_prices", [])
-                    mults = sg.get("multipliers", [])
                     item_names = []
                     for it_idx, it in enumerate(sg["items"]):
                         name = it.get("item_name", "?")
@@ -4107,8 +3969,6 @@ def save_seed_reroll_data(
             "character_id": scan_result.get("character_id"),
             "required_all_item_ids": scan_result.get("required_all_item_ids", REQUIRED_ALL_ITEM_IDS),
             "required_any_item_ids": scan_result.get("required_any_item_ids", REQUIRED_ANY_ITEM_IDS),
-            "required_item_ids": scan_result.get("required_item_ids", REQUIRED_ITEM_IDS),
-            "required_items_mode": scan_result.get("required_items_mode", REQUIRED_ITEMS_MODE),
             "required_items_satisfied": bool(scan_result.get("required_items_satisfied", False)),
             "found_count": len(target_matches),
             "targets_sought": list(TARGET_SHADY_ITEMS.values()),
@@ -4165,31 +4025,6 @@ def save_seed_reroll_data(
     return len(data)
 
 
-def save_seed_shady_items(
-    seed: int | str | None,
-    shady_guys: list[dict] | dict,
-    target_matches: list[dict] | None = None,
-    file_path: Path = SEED_TRACKER_FILE,
-) -> int:
-    """Backwards-compatible wrapper calling save_seed_reroll_data."""
-    if isinstance(shady_guys, dict) and "map_counts" in shady_guys:
-        return save_seed_reroll_data(seed, shady_guys, file_path=file_path)
-    sg_list = shady_guys if isinstance(shady_guys, list) else []
-    scan_res = {
-        "is_stage_1": True,
-        "elapsed_s": 0.0,
-        "map_counts": {"shady": len(sg_list), "moai": 0, "microwaves": 0, "boss_curses": 0, "magnets": 0},
-        "sm_total": len(sg_list),
-        "sm_pass": len(sg_list) >= THRESHOLD_SHADY_PLUS_MOAI,
-        "micro_pass": False,
-        "boss_pass": False,
-        "magnet_pass": False,
-        "target_items_pass": bool(target_matches),
-        "all_matched": False,
-        "target_matches": target_matches or [],
-        "shady_guys": sg_list,
-    }
-    return save_seed_reroll_data(seed, scan_res, file_path=file_path)
 
 
 def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = True) -> None:
@@ -4287,7 +4122,7 @@ def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = 
                 magnet_p = magnet_info.get("passed", False)
                 target_info = reqs.get("required_items", reqs.get("target_items", {}))
                 target_p = target_info.get("passed", False)
-                has_req = bool(REQUIRED_ALL_ITEM_IDS or REQUIRED_ANY_ITEM_IDS or REQUIRED_ITEM_IDS)
+                has_req = bool(REQUIRED_ALL_ITEM_IDS or REQUIRED_ANY_ITEM_IDS)
                 all_p = sm_p and micro_p and boss_p and magnet_p and (target_p if has_req else True)
 
                 req_records.append(
@@ -4326,8 +4161,6 @@ def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = 
                 parts.append(f"ALL: {', '.join(req_all_names)}")
             if req_any_names:
                 parts.append(f"ANY: {', '.join(req_any_names)}")
-            if not parts and REQUIRED_ITEM_IDS:
-                parts.append(f"Legacy: {', '.join(get_item_name(i) for i in REQUIRED_ITEM_IDS)}")
             target_crit_label = f"Required Items ({'; '.join(parts)})" if parts else "Required Items (None configured)"
             criteria = [
                 (f"Shady + Moai (>= {THRESHOLD_SHADY_PLUS_MOAI})", "sm_pass"),
@@ -4544,13 +4377,12 @@ def main():
         analyze_seed_data()
         return
 
-    global REQUIRED_ALL_ITEM_IDS, REQUIRED_ANY_ITEM_IDS, REQUIRED_ITEM_IDS, REQUIRED_ITEMS_MODE
+    global REQUIRED_ALL_ITEM_IDS, REQUIRED_ANY_ITEM_IDS
 
-    # Parse REQUIRED_ALL_ITEM_IDS, REQUIRED_ANY_ITEM_IDS, REQUIRED_ITEM_IDS, and REQUIRED_ITEMS_MODE from CLI / env
+    # Parse REQUIRED_ALL_ITEM_IDS and REQUIRED_ANY_ITEM_IDS from CLI / env
     if "--no-required-items" in sys.argv:
         REQUIRED_ALL_ITEM_IDS = []
         REQUIRED_ANY_ITEM_IDS = []
-        REQUIRED_ITEM_IDS = []
 
     # REQUIRED_ALL_ITEM_IDS (--required-all-items, --must-have-items)
     if any(arg.startswith(("--required-all-items=", "--must-have-items=", "--required-all-item-ids=")) for arg in sys.argv):
@@ -4610,52 +4442,6 @@ def main():
         else:
             REQUIRED_ANY_ITEM_IDS = []
 
-    # Legacy REQUIRED_ITEM_IDS
-    if any(arg.startswith(("--required-items=", "--required-item-ids=")) for arg in sys.argv):
-        for arg in sys.argv:
-            if arg.startswith(("--required-items=", "--required-item-ids=")):
-                val = arg.split("=", 1)[1].strip()
-                try:
-                    REQUIRED_ITEM_IDS = [int(x.strip()) for x in val.split(",") if x.strip().isdigit()]
-                except Exception:
-                    pass
-    elif any(arg in sys.argv for arg in ("--required-items", "--required-item-ids")):
-        for i, arg in enumerate(sys.argv):
-            if arg in ("--required-items", "--required-item-ids") and i + 1 < len(sys.argv):
-                val = sys.argv[i + 1].strip()
-                try:
-                    REQUIRED_ITEM_IDS = [int(x.strip()) for x in val.split(",") if x.strip().isdigit()]
-                except Exception:
-                    pass
-                break
-    elif "REQUIRED_ITEM_IDS" in os.environ:
-        raw_env = os.environ["REQUIRED_ITEM_IDS"].strip()
-        cleaned = raw_env.strip("[]() ")
-        if cleaned:
-            try:
-                REQUIRED_ITEM_IDS = [int(x.strip()) for x in cleaned.split(",") if x.strip().isdigit()]
-            except Exception:
-                pass
-        else:
-            REQUIRED_ITEM_IDS = []
-
-    if any(arg.startswith("--required-items-mode=") for arg in sys.argv):
-        for arg in sys.argv:
-            if arg.startswith("--required-items-mode="):
-                m_val = arg.split("=", 1)[1].strip().lower()
-                if m_val in ("any", "all"):
-                    REQUIRED_ITEMS_MODE = m_val
-    elif "--required-items-mode" in sys.argv:
-        for i, arg in enumerate(sys.argv):
-            if arg == "--required-items-mode" and i + 1 < len(sys.argv):
-                m_val = sys.argv[i + 1].strip().lower()
-                if m_val in ("any", "all"):
-                    REQUIRED_ITEMS_MODE = m_val
-                break
-    elif "REQUIRED_ITEMS_MODE" in os.environ:
-        m_val = os.environ["REQUIRED_ITEMS_MODE"].strip().lower()
-        if m_val in ("any", "all"):
-            REQUIRED_ITEMS_MODE = m_val
 
     print(f"[*] Attaching to {PROCESS_NAME}...", flush=True)
     try:
@@ -4708,7 +4494,6 @@ def main():
         except Exception:
             pass
 
-    key_source = "Auto-detected from game settings" if (READ_SETTINGS_FROM_GAME and MANUAL_RESET_HOTKEY is None) else "Config override"
     print("[*] Stage 1 Seed Filter ready!", flush=True)
     if TRACK_SEED_OFFERINGS:
         print(f"[*] Seed Offerings Tracker: ACTIVE -> {SEED_TRACKER_FILE.name}", flush=True)
@@ -4722,10 +4507,6 @@ def main():
     if REQUIRED_ANY_ITEM_IDS:
         any_names = [get_item_name(i) for i in REQUIRED_ANY_ITEM_IDS]
         banner_parts.append(f"ANY (At least 1): {', '.join(any_names)} [IDs: {REQUIRED_ANY_ITEM_IDS}]")
-    if not banner_parts and REQUIRED_ITEM_IDS:
-        legacy_names = [get_item_name(i) for i in REQUIRED_ITEM_IDS]
-        mode_str = "ANY (at least 1)" if REQUIRED_ITEMS_MODE == "any" else "ALL"
-        banner_parts.append(f"{mode_str}: {', '.join(legacy_names)} [IDs: {REQUIRED_ITEM_IDS}]")
 
     if banner_parts:
         print(f"[*] Required Items: ENABLED ({' | '.join(banner_parts)})", flush=True)
@@ -4849,9 +4630,6 @@ def main():
                         if scan_res.get("required_any_item_ids"):
                             r_names = [get_item_name(i) for i in scan_res["required_any_item_ids"]]
                             parts.append(f"ANY: {', '.join(r_names)}")
-                        if not parts and scan_res.get("required_item_ids"):
-                            r_names = [get_item_name(i) for i in scan_res["required_item_ids"]]
-                            parts.append(f"{', '.join(r_names)}")
 
                         items_str = f" + Required Items ({'; '.join(parts)})" if parts else ""
                         print(f"🎉 [PERFECT SEED FOUND (Thresholds{items_str})!] Stopping auto-restart. Enjoy your run!\n", flush=True)

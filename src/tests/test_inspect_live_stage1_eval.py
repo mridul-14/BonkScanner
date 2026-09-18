@@ -26,18 +26,12 @@ class TestStage1Evaluation(unittest.TestCase):
     def setUp(self) -> None:
         self._orig_required_all_item_ids = list(il.REQUIRED_ALL_ITEM_IDS)
         self._orig_required_any_item_ids = list(il.REQUIRED_ANY_ITEM_IDS)
-        self._orig_required_item_ids = list(il.REQUIRED_ITEM_IDS)
-        self._orig_required_items_mode = il.REQUIRED_ITEMS_MODE
         il.REQUIRED_ALL_ITEM_IDS = []
         il.REQUIRED_ANY_ITEM_IDS = []
-        il.REQUIRED_ITEM_IDS = []
-        il.REQUIRED_ITEMS_MODE = "any"
 
     def tearDown(self) -> None:
         il.REQUIRED_ALL_ITEM_IDS = self._orig_required_all_item_ids
         il.REQUIRED_ANY_ITEM_IDS = self._orig_required_any_item_ids
-        il.REQUIRED_ITEM_IDS = self._orig_required_item_ids
-        il.REQUIRED_ITEMS_MODE = self._orig_required_items_mode
 
     def test_thresholds_pass_no_required_items(self) -> None:
         """When no items are required and shrine thresholds are met, seed passes with THRESHOLDS_MATCH."""
@@ -53,7 +47,6 @@ class TestStage1Evaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            required_item_ids=[],
         )
         self.assertTrue(thresholds_matched)
         self.assertTrue(all_matched)
@@ -74,7 +67,6 @@ class TestStage1Evaluation(unittest.TestCase):
             boss_pass=True,
             magnet_pass=True,
             shady_pass=True,
-            required_item_ids=[],
         )
         self.assertFalse(thresholds_matched)
         self.assertFalse(all_matched)
@@ -300,12 +292,8 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
     def setUp(self) -> None:
         self._orig_required_all_item_ids = list(il.REQUIRED_ALL_ITEM_IDS)
         self._orig_required_any_item_ids = list(il.REQUIRED_ANY_ITEM_IDS)
-        self._orig_required_item_ids = list(il.REQUIRED_ITEM_IDS)
-        self._orig_required_items_mode = il.REQUIRED_ITEMS_MODE
         il.REQUIRED_ALL_ITEM_IDS = []
         il.REQUIRED_ANY_ITEM_IDS = []
-        il.REQUIRED_ITEM_IDS = []
-        il.REQUIRED_ITEMS_MODE = "any"
         self.mock_shady_guys = [
             {
                 "ptr": 0x12345678,
@@ -353,16 +341,12 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
             "target_matches": [],
             "required_all_item_ids": [],
             "required_any_item_ids": [],
-            "required_item_ids": [],
-            "required_items_mode": "any",
             "offered_item_counts": {},
         }
 
     def tearDown(self) -> None:
         il.REQUIRED_ALL_ITEM_IDS = self._orig_required_all_item_ids
         il.REQUIRED_ANY_ITEM_IDS = self._orig_required_any_item_ids
-        il.REQUIRED_ITEM_IDS = self._orig_required_item_ids
-        il.REQUIRED_ITEMS_MODE = self._orig_required_items_mode
 
     def test_shady_tables_printed_in_plain_text_during_reroll(self) -> None:
         """When reroll_num is an integer (auto-restart active) and all_matched=True, Shady tables are printed."""
@@ -637,18 +621,12 @@ class TestRequiredItemIdsEvaluation(unittest.TestCase):
     def setUp(self) -> None:
         self._orig_required_all_item_ids = list(il.REQUIRED_ALL_ITEM_IDS)
         self._orig_required_any_item_ids = list(il.REQUIRED_ANY_ITEM_IDS)
-        self._orig_required_item_ids = list(il.REQUIRED_ITEM_IDS)
-        self._orig_required_items_mode = il.REQUIRED_ITEMS_MODE
         il.REQUIRED_ALL_ITEM_IDS = []
         il.REQUIRED_ANY_ITEM_IDS = []
-        il.REQUIRED_ITEM_IDS = []
-        il.REQUIRED_ITEMS_MODE = "any"
 
     def tearDown(self) -> None:
         il.REQUIRED_ALL_ITEM_IDS = self._orig_required_all_item_ids
         il.REQUIRED_ANY_ITEM_IDS = self._orig_required_any_item_ids
-        il.REQUIRED_ITEM_IDS = self._orig_required_item_ids
-        il.REQUIRED_ITEMS_MODE = self._orig_required_items_mode
 
     def test_empty_required_item_ids_passes_thresholds_normally(self) -> None:
         """When required item lists are empty, evaluation passes on thresholds alone."""
@@ -981,15 +959,12 @@ class TestRequiredItemsColorScheme(unittest.TestCase):
     def setUp(self) -> None:
         self._orig_required_all_item_ids = list(il.REQUIRED_ALL_ITEM_IDS)
         self._orig_required_any_item_ids = list(il.REQUIRED_ANY_ITEM_IDS)
-        self._orig_required_item_ids = list(il.REQUIRED_ITEM_IDS)
         il.REQUIRED_ALL_ITEM_IDS = [58]  # Borgar (Common item 58)
         il.REQUIRED_ANY_ITEM_IDS = [7]   # Battery (Common item 7)
-        il.REQUIRED_ITEM_IDS = []
 
     def tearDown(self) -> None:
         il.REQUIRED_ALL_ITEM_IDS = self._orig_required_all_item_ids
         il.REQUIRED_ANY_ITEM_IDS = self._orig_required_any_item_ids
-        il.REQUIRED_ITEM_IDS = self._orig_required_item_ids
 
     def test_required_all_item_is_treated_as_target_item(self) -> None:
         """Items in REQUIRED_ALL_ITEM_IDS must return True for is_target_item."""

@@ -55,6 +55,15 @@ class MockProcessMemory:
             return 0.0
         return struct.unpack("<f", data[:4])[0]
 
+    def read_bytes(self, address: int, size: int) -> bytes:
+        res = bytearray(size)
+        for offset in range(size):
+            val = self.raw_data.get(address + offset)
+            if val is not None:
+                end = min(size, offset + len(val))
+                res[offset:end] = val[: end - offset]
+        return bytes(res)
+
 
 class TestInspectLivePowerups(unittest.TestCase):
     def test_format_clock_time_standard(self) -> None:
@@ -69,39 +78,6 @@ class TestInspectLivePowerups(unittest.TestCase):
         self.assertEqual(il.format_clock_time(75.0, is_overtime=True), "+01:15")
         self.assertEqual(il.format_clock_time(125.4, is_overtime=True), "+02:05")
 
-    def test_format_powerups_display_empty(self) -> None:
-        self.assertEqual(il.format_powerups_display({"effects": []}), "")
-        self.assertEqual(il.format_powerups_display({}), "")
-
-    def test_format_powerups_display_single_and_multiple(self) -> None:
-        data = {
-            "stage_clock": "05:20",
-            "effects": [
-                {
-                    "effect_id": 4,
-                    "name": "Clock / Za Warudo",
-                    "remaining_seconds": 8.4,
-                    "end_clock": "05:12",
-                },
-                {
-                    "effect_id": 1,
-                    "name": "Rage",
-                    "remaining_seconds": 14.1,
-                    "end_clock": "05:06",
-                },
-            ],
-        }
-        # Plain text
-        plain = il.format_powerups_display(data, ansi=False)
-        self.assertIn("Clock / Za Warudo: 8.4s (Ends at 05:12)", plain)
-        self.assertIn("Rage: 14.1s (Ends at 05:06)", plain)
-        self.assertIn("[Stage Clock: 05:20]", plain)
-
-        # ANSI text
-        ansi = il.format_powerups_display(data, ansi=True)
-        self.assertIn("Clock / Za Warudo", ansi)
-        self.assertIn("8.4s", ansi)
-        self.assertIn("Ends at 05:12", ansi)
 
     def test_read_active_powerups_countdown(self) -> None:
         module_base = 0x180000000
@@ -718,16 +694,15 @@ class TestInspectLivePowerups(unittest.TestCase):
         self.assertIn("Active until 02:00", tracker.displayed_lines[0]["line_plain"])
         self.assertEqual(len(reprinted), 1)
 
-    def test_format_powerups_display_with_za_warudo_held(self) -> None:
-        """format_powerups_display formats held Za Warudo even without active timed effects."""
-        data = {"za_warudo_held": 1, "stage_clock": "08:15", "effects": []}
-        plain = il.format_powerups_display(data, ansi=False)
-        self.assertIn("Za Warudo (Held x1): Active Protection", plain)
-        self.assertIn("[Stage Clock: 08:15]", plain)
+    def test_powerup_display_tracker_on_other_print(self) -> None:
+        """on_other_print marks intervening_prints as True so terminal cursor doesn't overwrite wrong line."""
+        tracker = il.PowerupDisplayTracker()
+        self.assertFalse(tracker.intervening_prints)
+        tracker.on_other_print()
+        self.assertTrue(tracker.intervening_prints)
+        tracker.on_console_cleared()
+        self.assertFalse(tracker.intervening_prints)
 
-        ansi = il.format_powerups_display(data, ansi=True)
-        self.assertIn("Za Warudo (Held x1)", ansi)
-        self.assertIn("Active Protection", ansi)
 
     def test_powerup_display_tracker_held_za_warudo_lifecycle(self) -> None:
         """Tracker displays held Za Warudo, updates on count changes, and strikes out when consumed."""
