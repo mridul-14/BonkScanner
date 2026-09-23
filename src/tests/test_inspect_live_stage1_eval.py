@@ -1163,6 +1163,156 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
         self.assertIn("conflict on the same Shady Guy", out)
         self.assertIn("at least 2 different Shady Guys", out)
 
+    def test_print_stage1_report_consumed_target_item_and_depleted_microwave_rich(self) -> None:
+        """When target items are consumed and microwaves depleted, rich tables render DONE / DEPLETED."""
+        from rich.console import Console
+        test_buf = io.StringIO()
+        test_console = Console(file=test_buf, record=True, width=140)
+        result = {
+            "is_stage_1": True,
+            "stage_index": 0,
+            "elapsed_s": 0.05,
+            "character": "Fox",
+            "character_id": 0,
+            "map_counts": {"shady": 1, "moai": 0, "microwaves": 1, "boss_curses": 0, "magnets": 0},
+            "sm_total": 1,
+            "sm_pass": True,
+            "micro_pass": True,
+            "boss_pass": True,
+            "magnet_pass": True,
+            "target_items_pass": True,
+            "all_matched": True,
+            "match_reason": "PERFECT_MATCH_ALL",
+            "required_all_item_ids": [41],
+            "required_any_item_ids": [],
+            "offered_item_counts": {41: 1},
+            "shady_guys": [
+                {
+                    "shady_num": 1,
+                    "rarity": "COMMON",
+                    "dist": 25.0,
+                    "done": True,
+                    "items": [{"item_id": 41, "item_name": "Anvil"}],
+                    "gold_prices": [10],
+                    "multipliers": [1.0],
+                }
+            ],
+            "microwaves": [
+                {
+                    "color": "White",
+                    "rarity": 0,
+                    "dist": 30.0,
+                    "uses_left": 0,
+                    "map_sector": "N",
+                }
+            ],
+        }
+        with patch.object(il, "console", test_console):
+            il.print_stage1_report(result)
+        text = test_console.export_text(clear=False)
+        html = test_console.export_html(clear=False)
+        self.assertIn("0 (DEPLETED)", text)
+        self.assertIn("DONE", text)
+        self.assertIn("TAKEN", text)
+        self.assertTrue("line-through" in html or "strike" in html)
+
+    def test_print_stage1_report_consumed_target_item_and_depleted_microwave_plain(self) -> None:
+        """When plain text fallback is used, consumed target items and depleted microwaves render properly."""
+        result = {
+            "is_stage_1": True,
+            "stage_index": 0,
+            "elapsed_s": 0.05,
+            "character": "Fox",
+            "character_id": 0,
+            "map_counts": {"shady": 1, "moai": 0, "microwaves": 1, "boss_curses": 0, "magnets": 0},
+            "sm_total": 1,
+            "sm_pass": True,
+            "micro_pass": True,
+            "boss_pass": True,
+            "magnet_pass": True,
+            "target_items_pass": True,
+            "all_matched": True,
+            "match_reason": "PERFECT_MATCH_ALL",
+            "required_all_item_ids": [41],
+            "required_any_item_ids": [],
+            "offered_item_counts": {41: 1},
+            "shady_guys": [
+                {
+                    "shady_num": 1,
+                    "rarity": "COMMON",
+                    "dist": 25.0,
+                    "done": True,
+                    "items": [{"item_id": 41, "item_name": "Anvil"}],
+                    "gold_prices": [10],
+                    "multipliers": [1.0],
+                }
+            ],
+            "microwaves": [
+                {
+                    "color": "White",
+                    "rarity": 0,
+                    "dist": 30.0,
+                    "uses_left": 0,
+                    "map_sector": "N",
+                }
+            ],
+        }
+        buf = io.StringIO()
+        with patch("sys.stdout", buf), patch.object(il, "console", None):
+            il.print_stage1_report(result)
+        out = buf.getvalue()
+        self.assertIn("[DONE] Target Items (Anvil):    CONSUMED", out)
+        self.assertIn("0 uses - DEPLETED", out)
+
+    def test_print_stage_inspect_report_depleted_microwave_and_target_item(self) -> None:
+        """In Stage 2+ inspection report, depleted microwaves and target items show proper state."""
+        from rich.console import Console
+        test_buf = io.StringIO()
+        test_console = Console(file=test_buf, record=True, width=140)
+        result = {
+            "is_stage_1": False,
+            "stage_num": 2,
+            "elapsed_s": 0.05,
+            "character": "Fox",
+            "character_id": 0,
+            "map_counts": {"shady": 1, "moai": 0, "microwaves": 1, "boss_curses": 0, "magnets": 0},
+            "target_matches": [
+                {
+                    "shady_num": 1,
+                    "item_id": 41,
+                    "item_name": "Tape",
+                    "shady_done": True,
+                }
+            ],
+            "shady_guys": [
+                {
+                    "shady_num": 1,
+                    "rarity": "COMMON",
+                    "dist": 25.0,
+                    "done": True,
+                    "items": [{"item_id": 41, "item_name": "Tape"}],
+                    "gold_prices": [10],
+                    "multipliers": [1.0],
+                }
+            ],
+            "microwaves": [
+                {
+                    "color": "White",
+                    "rarity": 0,
+                    "dist": 30.0,
+                    "uses_left": 0,
+                    "map_sector": "N",
+                }
+            ],
+        }
+        with patch.object(il, "console", test_console):
+            il.print_stage_inspect_report(result)
+        text = test_console.export_text()
+        self.assertIn("0 (DEPLETED)", text)
+        self.assertIn("Target: Tape", text)
+        self.assertIn("TAKEN", text)
+
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -769,6 +769,71 @@ class TestInspectLivePowerups(unittest.TestCase):
         self.assertIn("Shield", output)
         self.assertIn("Ends at 06:20", output)
 
+    def test_enable_powerup_tracking_default_and_toggle(self) -> None:
+        """ENABLE_POWERUP_TRACKING defaults to False; when False, report ignores result['powerup_data']."""
+        self.assertFalse(il.ENABLE_POWERUP_TRACKING)
+
+        mock_res = {
+            "is_stage_1": True,
+            "stage_index": 0,
+            "elapsed_s": 0.5,
+            "map_counts": {
+                "shady": 1,
+                "moai": 0,
+                "microwaves": 2,
+                "boss_curses": 1,
+                "magnets": 2,
+            },
+            "sm_total": 1,
+            "sm_pass": True,
+            "micro_total": 2,
+            "micro_pass": True,
+            "boss_pass": True,
+            "magnet_pass": True,
+            "shady_guys": [],
+            "microwaves": [],
+            "all_criteria_met": True,
+            "thresholds_pass": True,
+            "thresholds_matched": True,
+            "all_matched": True,
+            "target_only_matched": False,
+            "match_reason": "PERFECT_MATCH_ALL",
+            "shady_count": 0,
+            "target_matches": [],
+            "required_items_pass": True,
+            "required_all_item_ids": [],
+            "required_any_item_ids": [],
+            "offered_item_counts": {},
+            "powerup_data": {
+                "stage_clock": "05:00",
+                "za_warudo_held": 1,
+                "effects": [{"name": "Rage", "remaining_seconds": 12.0, "end_clock": "04:48"}],
+            },
+        }
+
+        import io
+        from unittest.mock import patch
+
+        # 1. With ENABLE_POWERUP_TRACKING = False (default), powerup block should NOT appear
+        buf = io.StringIO()
+        with patch.object(il, "console", None):
+            with patch("sys.stdout", buf):
+                il.print_stage1_report(mock_res)
+        out = buf.getvalue()
+        self.assertNotIn("ACTIVE POWER-UPS & BUFFS", out)
+        self.assertNotIn("Za Warudo (Held Item", out)
+
+        # 2. When toggled to True, powerup block from result['powerup_data'] renders
+        buf_enabled = io.StringIO()
+        with patch.object(il, "ENABLE_POWERUP_TRACKING", True):
+            with patch.object(il, "console", None):
+                with patch("sys.stdout", buf_enabled):
+                    il.print_stage1_report(mock_res)
+        out_enabled = buf_enabled.getvalue()
+        self.assertIn("ACTIVE POWER-UPS & BUFFS", out_enabled)
+        self.assertIn("Za Warudo (Held Item x1)", out_enabled)
+        self.assertIn("Rage", out_enabled)
+
 
 if __name__ == "__main__":
     unittest.main()

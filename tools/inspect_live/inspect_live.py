@@ -302,7 +302,7 @@ TARGET_SHADY_ITEMS = {
 #  50 | Weeb Headset              | Weeb Headset              | -
 # ------------------------------------------------------------------------------
 REQUIRED_ALL_ITEM_IDS: list[int] = [41]  # Must-have items: ALL must be present on map (AND)
-REQUIRED_ANY_ITEM_IDS: list[int] = [47] #22, 49, 15, 76, 17      # Any-of items: At least ONE must be present on map (OR)
+REQUIRED_ANY_ITEM_IDS: list[int] = []#47, 22, 49, 15, 76, 17]      # Any-of items: At least ONE must be present on map (OR)
 
 
 # ==============================================================================
@@ -393,6 +393,10 @@ MAX_REROLLS = 0                    # Maximum rerolls (0 = unlimited until match)
 # Console Display Settings (Editable)
 # ==============================================================================
 CLEAR_CONSOLE_ON_OUTPUT = True      # Always clear old console output before displaying a new scan/evaluation report
+# ==============================================================================
+# Power-Up & Za Warudo Tracking Settings (Editable)
+# ==============================================================================
+ENABLE_POWERUP_TRACKING = False     # Set to True to track active power-ups, buffs & held Za Warudo
 # ==============================================================================
 
 _RARITIES = ["COMMON", "RARE", "EPIC", "LEGENDARY"]
@@ -2674,7 +2678,7 @@ def print_stage1_report(
     if clear_screen and CLEAR_CONSOLE_ON_OUTPUT:
         clear_console()
 
-    if powerup_data is None:
+    if powerup_data is None and ENABLE_POWERUP_TRACKING:
         powerup_data = result.get("powerup_data")
 
     if not result.get("is_stage_1"):
@@ -2772,7 +2776,10 @@ def print_stage1_report(
         micro_parts = []
         for m in micro_list:
             sec_str = f" @ {m['map_sector']}" if m.get("map_sector") else ""
-            micro_parts.append(f"{m['color']}{sec_str}")
+            if m.get("uses_left", 3) <= 0:
+                micro_parts.append(f"[dim strike]{m['color']}{sec_str}[/]")
+            else:
+                micro_parts.append(f"{m['color']}{sec_str}")
         if micro_parts:
             micro_details = ", ".join(micro_parts)
         else:
@@ -2785,12 +2792,21 @@ def print_stage1_report(
             if REQUIRE_BOTH_MICROWAVES_WHITE
             else f"{counts['microwaves']}"
         )
-        table.add_row(
-            micro_label,
-            f"[{micro_color}]{micro_mark}[/]",
-            f"{micro_cur_str} / {THRESHOLD_MICROWAVES}",
-            micro_details,
-        )
+        all_micros_depleted = bool(micro_list and all(m.get("uses_left", 3) <= 0 for m in micro_list))
+        if all_micros_depleted:
+            table.add_row(
+                f"[dim strike]{micro_label}[/]",
+                "[dim strike green]DEPLETED[/]",
+                f"[dim strike]{micro_cur_str} / {THRESHOLD_MICROWAVES}[/]",
+                micro_details,
+            )
+        else:
+            table.add_row(
+                micro_label,
+                f"[{micro_color}]{micro_mark}[/]",
+                f"{micro_cur_str} / {THRESHOLD_MICROWAVES}",
+                micro_details,
+            )
         boss_list = result.get("boss_curses", [])
         boss_dirs = [b["dir"] for b in boss_list if b.get("dir") and b["dir"] != "Unknown"]
         boss_detail = f"Directions: {', '.join(boss_dirs)}" if boss_dirs else ""
@@ -2814,13 +2830,36 @@ def print_stage1_report(
                 item_name = get_item_name(iid)
                 target_label = f"Target Items ({item_name})"
                 item_cnt = offered_counts.get(iid, 0)
+                shadys_with_item = [
+                    sg for sg in result.get("shady_guys", [])
+                    if any(it.get("item_id") == iid for it in sg.get("items", []))
+                ]
+                consumed_count = sum(1 for sg in shadys_with_item if sg.get("done", False))
+                all_consumed = bool(shadys_with_item and consumed_count == len(shadys_with_item))
+
                 if item_cnt > 0:
-                    table.add_row(
-                        target_label,
-                        "[bold green]PASS[/]",
-                        f"{item_cnt} / 1 {item_name}",
-                        item_name,
-                    )
+                    if all_consumed:
+                        table.add_row(
+                            f"[dim strike]{target_label}[/]",
+                            "[dim strike green]DONE[/]",
+                            f"[dim strike]{item_cnt} / 1 {item_name}[/]",
+                            f"[dim strike]{item_name}[/] [dim red][TAKEN][/]",
+                        )
+                    elif consumed_count > 0:
+                        avail_cnt = len(shadys_with_item) - consumed_count
+                        table.add_row(
+                            target_label,
+                            "[bold green]PASS[/]",
+                            f"{avail_cnt} avail ({consumed_count} taken)",
+                            f"{item_name} [green]({avail_cnt} available)[/]",
+                        )
+                    else:
+                        table.add_row(
+                            target_label,
+                            "[bold green]PASS[/]",
+                            f"{item_cnt} / 1 {item_name}",
+                            item_name,
+                        )
                 else:
                     table.add_row(
                         target_label,
@@ -2875,8 +2914,11 @@ def print_stage1_report(
                         dir_disp = f"[dim strike]{dir_str}[/]"
                         sec_disp = f"[dim strike]{sector_str}[/]"
                         sg_disp = f"[dim strike]{sg_label}[/] [dim red][DONE][/]"
-                        tier_disp = f"[dim strike]{tier_str}[/]"
-                        name_disp = f"[dim strike]{name_str}[/] [bold red][TAKEN][/]"
+                        sh_rarity = it.get("shady_rarity") or it.get("rarity", "COMMON")
+                        tier_disp = f"[dim strike]{sh_rarity}[/]"
+                        is_tgt = is_target_item(it.get("item_id"), it.get("item_name"))
+                        marker = "*" if is_tgt else ""
+                        name_disp = f"[dim strike]{it['item_name']}{marker}[/] [bold red][TAKEN][/]"
                         gold_disp = f"[dim strike]{gold_str}[/]"
                         mult_disp = f"[dim strike]{mult_str}[/]"
                         status_disp = "[dim red]TAKEN[/]"
@@ -2945,10 +2987,12 @@ def print_stage1_report(
                         cost = ""
                         if it_idx < len(prices):
                             cost = f" ({prices[it_idx]}g)"
-                        styled_name = format_item_display(item_id, name, use_rich=True)
                         if is_done:
-                            item_names.append(f"[dim strike]{styled_name}{cost}[/]")
+                            is_tgt = is_target_item(item_id, name)
+                            marker = "*" if is_tgt else ""
+                            item_names.append(f"[dim strike]{name}{marker}{cost}[/]")
                         else:
+                            styled_name = format_item_display(item_id, name, use_rich=True)
                             item_names.append(f"{styled_name}{cost}")
 
                     loc_parts = []
@@ -2964,7 +3008,8 @@ def print_stage1_report(
                     if is_done:
                         rank_disp = f"[dim strike]{i + 1}[/]"
                         sg_disp = f"[dim strike]Shady #{sg.get('shady_num', i + 1)}[/]"
-                        tier_disp = f"[dim strike]{tier_str}[/] [dim red][DONE][/]"
+                        sh_rarity = sg.get("rarity", "COMMON")
+                        tier_disp = f"[dim strike]{sh_rarity}[/] [dim red][DONE][/]"
                         loc_disp = f"[dim strike]{loc_str}[/]"
                         sector_disp = f"[dim strike]{sector_str}[/]"
                     else:
@@ -3017,6 +3062,8 @@ def print_stage1_report(
             micro_table.add_column("Uses Left", justify="center")
 
             for i, m in enumerate(microwaves, 1):
+                uses = m.get("uses_left", 3)
+                is_depleted = uses <= 0
                 dist_disp = f"{m['dist']}m" if m.get("dist") is not None else "-"
                 rel = m.get("rel_dir")
                 if rel:
@@ -3025,15 +3072,27 @@ def print_stage1_report(
                     dir_disp = "-"
                 c_style = m.get("style", "bright_white")
                 rarity = m.get("rarity", 0)
-                color_tier_str = f"[{c_style}]{m['color']} (Tier {rarity})[/]"
                 sector_disp = m.get("map_sector") or "-"
+
+                if is_depleted:
+                    rank_disp = f"[dim strike]{i}[/]"
+                    color_tier_str = f"[dim strike]{m['color']} (Tier {rarity})[/]"
+                    dist_disp = f"[dim strike]{dist_disp}[/]"
+                    dir_disp = f"[dim strike]{dir_disp}[/]"
+                    sector_disp = f"[dim strike]{sector_disp}[/]"
+                    uses_disp = "[dim red strike]0 (DEPLETED)[/]"
+                else:
+                    rank_disp = str(i)
+                    color_tier_str = f"[{c_style}]{m['color']} (Tier {rarity})[/]"
+                    uses_disp = str(uses)
+
                 micro_table.add_row(
-                    str(i),
+                    rank_disp,
                     color_tier_str,
                     dist_disp,
                     dir_disp,
                     sector_disp,
-                    str(m.get("uses_left", 3)),
+                    uses_disp,
                 )
             console.print(micro_table)
 
@@ -3106,8 +3165,21 @@ def print_stage1_report(
             item_name = get_item_name(iid)
             target_label = f"Target Items ({item_name})"
             item_cnt = offered_counts_plain.get(iid, 0)
+            shadys_with_item = [
+                sg for sg in result.get("shady_guys", [])
+                if any(it.get("item_id") == iid for it in sg.get("items", []))
+            ]
+            consumed_count = sum(1 for sg in shadys_with_item if sg.get("done", False))
+            all_consumed = bool(shadys_with_item and consumed_count == len(shadys_with_item))
+
             if item_cnt > 0:
-                print(f"  [PASS] {target_label}:    MATCHED ({item_cnt} {item_name} found on map)", flush=True)
+                if all_consumed:
+                    print(f"\033[2;9m  [DONE] {target_label}:    CONSUMED (All {consumed_count} taken)\033[0m", flush=True)
+                elif consumed_count > 0:
+                    avail_cnt = len(shadys_with_item) - consumed_count
+                    print(f"  [PASS] {target_label}:    MATCHED ({avail_cnt} available, {consumed_count} taken)", flush=True)
+                else:
+                    print(f"  [PASS] {target_label}:    MATCHED ({item_cnt} {item_name} found on map)", flush=True)
             else:
                 print(f"  [FAIL] {target_label}:    FAILED (0 {item_name} found on map)", flush=True)
 
@@ -3165,10 +3237,11 @@ def print_stage1_report(
 
             print("-" * 80, flush=True)
             available_sgs = sum(1 for sg in result["shady_guys"] if not sg.get("done"))
+            sh_total = result.get("shady_count", len(result["shady_guys"]))
             sg_avail_str = (
-                f"{available_sgs}/{result['shady_count']} available"
-                if available_sgs < result["shady_count"]
-                else f"{result['shady_count']} found on map"
+                f"{available_sgs}/{sh_total} available"
+                if available_sgs < sh_total
+                else f"{sh_total} found on map"
             )
             print(f"SHADY GUY INVENTORIES ({sg_avail_str} - Ranked by Distance):", flush=True)
             for i, sg in enumerate(result["shady_guys"]):
@@ -3217,8 +3290,13 @@ def print_stage1_report(
             loc_str = f"{dist_str} {dir_str}".strip()
             sec_str = f"[{m.get('map_sector', 'Unknown')}]"
             rarity = m.get("rarity", 0)
-            uses_str = f"{m.get('uses_left', 3)} uses"
-            print(f"  #{i+1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] {sec_str} ({uses_str})", flush=True)
+            uses = m.get("uses_left", 3)
+            if uses <= 0:
+                line_str = f"  #{i+1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] {sec_str} (0 uses - DEPLETED)"
+                print(f"\033[2;9m{line_str}\033[0m", flush=True)
+            else:
+                uses_str = f"{uses} uses"
+                print(f"  #{i+1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] {sec_str} ({uses_str})", flush=True)
     render_active_powerups_block(powerup_data, use_rich=False)
     print("=" * 80 + "\n", flush=True)
 
@@ -3232,7 +3310,7 @@ def print_stage_inspect_report(
     if clear_screen and CLEAR_CONSOLE_ON_OUTPUT:
         clear_console()
 
-    if powerup_data is None:
+    if powerup_data is None and ENABLE_POWERUP_TRACKING:
         powerup_data = result.get("powerup_data")
 
     stage_num = result.get("stage_num", result.get("stage_index", 0) + 1)
@@ -3293,16 +3371,39 @@ def print_stage_inspect_report(
             for m in microwaves:
                 sec_str = f" @ {m['map_sector']}" if m.get("map_sector") else ""
                 style = m.get("style", "bright_white")
-                micro_summaries.append(f"[{style}]{m['color']}[/]{sec_str}")
+                uses = m.get("uses_left", 3)
+                if uses <= 0:
+                    micro_summaries.append(f"[dim strike][{style}]{m['color']}[/]{sec_str} (0 uses)[/]")
+                else:
+                    micro_summaries.append(f"[{style}]{m['color']}[/]{sec_str}")
             micro_details = ", ".join(micro_summaries)
+            all_micro_depleted = all(m.get("uses_left", 3) <= 0 for m in microwaves)
+            active_micro_cnt = sum(1 for m in microwaves if m.get("uses_left", 3) > 0)
+            if all_micro_depleted:
+                table.add_row(
+                    "[dim strike]Microwaves[/]",
+                    f"[dim strike]0 / {len(microwaves)}[/]",
+                    micro_details,
+                )
+            elif active_micro_cnt < len(microwaves):
+                table.add_row(
+                    "Microwaves",
+                    f"{active_micro_cnt} / {len(microwaves)}",
+                    micro_details,
+                )
+            else:
+                table.add_row(
+                    "Microwaves",
+                    str(len(microwaves)),
+                    micro_details,
+                )
         else:
             micro_details = f"{counts.get('microwaves', 0)} reported by map"
-
-        table.add_row(
-            "Microwaves",
-            str(len(microwaves)),
-            micro_details,
-        )
+            table.add_row(
+                "Microwaves",
+                str(len(microwaves)),
+                micro_details,
+            )
         boss_list = result.get("boss_curses", [])
         boss_dirs = [b["dir"] for b in boss_list if b.get("dir") and b["dir"] != "Unknown"]
         boss_detail = f"Directions: {', '.join(boss_dirs)}" if boss_dirs else ""
@@ -3316,6 +3417,27 @@ def print_stage_inspect_report(
             str(counts.get("magnets", 0)),
             "",
         )
+
+        if target_matches:
+            target_groups: dict[str, list[dict]] = {}
+            for tm in target_matches:
+                target_groups.setdefault(tm["item_name"], []).append(tm)
+            for item_name, items in target_groups.items():
+                all_done = all(it.get("shady_done") for it in items)
+                shadys_str = ", ".join(f"Shady #{it['shady_num']}" for it in items)
+                if all_done:
+                    table.add_row(
+                        f"[dim strike]Target: {item_name}[/]",
+                        "[dim red]TAKEN[/]",
+                        f"[dim strike]{shadys_str}[/]",
+                    )
+                else:
+                    avail = sum(1 for it in items if not it.get("shady_done"))
+                    table.add_row(
+                        f"Target: {item_name}",
+                        f"[green]{avail}/{len(items)} Avail[/]",
+                        shadys_str,
+                    )
 
         console.print(table)
 
@@ -3362,9 +3484,12 @@ def print_stage_inspect_report(
                     dist_disp = f"[dim strike]{dist_disp}[/]"
                     dir_disp = f"[dim strike]{dir_disp}[/]"
                     sec_disp = f"[dim strike]{it['map_sector']}[/]"
-                    name_disp = f"[dim strike]{name_styled}[/] [bold red][TAKEN][/]"
+                    is_tgt = is_target_item(item_id, name)
+                    marker = "*" if is_tgt else ""
+                    name_disp = f"[dim strike]{name}{marker}[/] [bold red][TAKEN][/]"
                     cost_disp = f"[dim strike]{cost_str}[/]"
-                    vendor_disp = f"[dim strike]{vendor_str}[/] [dim red][DONE][/]"
+                    sh_rarity = it.get("shady_rarity") or "COMMON"
+                    vendor_disp = f"[dim strike]Shady #{it['shady_num']} [{sh_rarity}][/] [dim red][DONE][/]"
                 else:
                     rank_disp = str(item_rank)
                     sec_disp = it["map_sector"]
@@ -3425,17 +3550,19 @@ def print_stage_inspect_report(
                         if it_idx < len(mults):
                             p_val += f", {mults[it_idx]}x"
                             cost_info = f" ({p_val})"
-                    item_str = format_item_display(item_id, name, cost_info=cost_info, use_rich=True)
                     if is_done:
-                        item_strs.append(f"[dim strike]{item_str}[/]")
+                        is_tgt = is_target_item(item_id, name)
+                        marker = "*" if is_tgt else ""
+                        item_strs.append(f"[dim strike]{name}{marker}{cost_info}[/]")
                     else:
+                        item_str = format_item_display(item_id, name, cost_info=cost_info, use_rich=True)
                         item_strs.append(item_str)
 
                 sector_str = sg.get("map_sector") or "-"
                 vendor_rarity = format_shady_rarity(sg.get("rarity", "-"), use_rich=True)
                 if is_done:
                     rank_str = f"[dim strike]{i + 1}[/]"
-                    vendor_rarity = f"[dim strike]{vendor_rarity}[/] [dim red][DONE][/]"
+                    vendor_rarity = f"[dim strike]{sg.get('rarity', '-')}[/] [dim red][DONE][/]"
                     sector_str = f"[dim strike]{sector_str}[/]"
                     dist_str = f"[dim strike]{dist_str}[/]"
                 else:
@@ -3465,6 +3592,8 @@ def print_stage_inspect_report(
             micro_table.add_column("Uses Left", justify="right")
 
             for i, m in enumerate(microwaves, 1):
+                uses = m.get("uses_left", 3)
+                is_depleted = uses <= 0
                 dist_disp = f"{m['dist']}m" if m.get("dist") is not None else "-"
                 rel = m.get("rel_dir")
                 if rel:
@@ -3473,15 +3602,27 @@ def print_stage_inspect_report(
                     dir_disp = "-"
                 c_style = m.get("style", "bright_white")
                 rarity = m.get("rarity", 0)
-                color_tier_str = f"[{c_style}]{m['color']} (Tier {rarity})[/]"
                 sector_disp = m.get("map_sector") or "-"
+
+                if is_depleted:
+                    rank_disp = f"[dim strike]{i}[/]"
+                    color_tier_str = f"[dim strike]{m['color']} (Tier {rarity})[/]"
+                    dist_disp = f"[dim strike]{dist_disp}[/]"
+                    dir_disp = f"[dim strike]{dir_disp}[/]"
+                    sector_disp = f"[dim strike]{sector_disp}[/]"
+                    uses_disp = "[dim red strike]0 (DEPLETED)[/]"
+                else:
+                    rank_disp = str(i)
+                    color_tier_str = f"[{c_style}]{m['color']} (Tier {rarity})[/]"
+                    uses_disp = str(uses)
+
                 micro_table.add_row(
-                    str(i),
+                    rank_disp,
                     color_tier_str,
                     dist_disp,
                     dir_disp,
                     sector_disp,
-                    str(m.get("uses_left", 3)),
+                    uses_disp,
                 )
             console.print(micro_table)
 
@@ -3615,8 +3756,13 @@ def print_stage_inspect_report(
             loc_str = f"{dist_str} {dir_str}".strip()
             sec_str = f"[{m.get('map_sector', 'Unknown')}]"
             rarity = m.get("rarity", 0)
-            uses_str = f"{m.get('uses_left', 3)} uses"
-            print(f"  #{i+1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] {sec_str} ({uses_str})", flush=True)
+            uses = m.get("uses_left", 3)
+            if uses <= 0:
+                line_str = f"  #{i+1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] {sec_str} (0 uses - DEPLETED)"
+                print(f"\033[2;9m{line_str}\033[0m", flush=True)
+            else:
+                uses_str = f"{uses} uses"
+                print(f"  #{i+1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] {sec_str} ({uses_str})", flush=True)
     render_active_powerups_block(powerup_data, use_rich=False)
     print("=" * 80 + "\n", flush=True)
 
@@ -4442,6 +4588,14 @@ def main():
         else:
             REQUIRED_ANY_ITEM_IDS = []
 
+    # Power-Up & Za Warudo tracking toggle
+    global ENABLE_POWERUP_TRACKING
+    if any(arg in sys.argv for arg in ("--enable-powerups", "--track-powerups", "--enable-powerup-tracking")):
+        ENABLE_POWERUP_TRACKING = True
+    elif any(arg in sys.argv for arg in ("--disable-powerups", "--no-powerups", "--disable-powerup-tracking")):
+        ENABLE_POWERUP_TRACKING = False
+    elif "ENABLE_POWERUP_TRACKING" in os.environ:
+        ENABLE_POWERUP_TRACKING = os.environ["ENABLE_POWERUP_TRACKING"].strip().lower() in ("1", "true", "yes", "on")
 
     print(f"[*] Attaching to {PROCESS_NAME}...", flush=True)
     try:
@@ -4513,7 +4667,9 @@ def main():
     else:
         print("[*] Required Items: DISABLED (Shrine thresholds only)", flush=True)
     restart_mode_str = f"ENABLED (Press {HOTKEY_TOGGLE_AUTORESTART.upper()} to toggle)" if auto_restart_active else "DISABLED"
-    print(f"[*] Auto-Restart on fail: {restart_mode_str}\n", flush=True)
+    print(f"[*] Auto-Restart on fail: {restart_mode_str}", flush=True)
+    powerup_mode_str = "ENABLED" if ENABLE_POWERUP_TRACKING else "DISABLED"
+    print(f"[*] Power-Up & Za Warudo Tracking: {powerup_mode_str}\n", flush=True)
 
     heartbeat_time = 0
     scanned_stage_key = None
@@ -4563,7 +4719,8 @@ def main():
 
         # Check if new run / stage started -> trigger Stage 1 evaluation
         if map_ready and scan_key != scanned_stage_key:
-            powerup_tracker.reset()
+            if ENABLE_POWERUP_TRACKING:
+                powerup_tracker.reset()
             scanned_stage_key = scan_key
             active_stage_report = None
             char_info = get_character_identity(memory, module_base)
@@ -4602,7 +4759,7 @@ def main():
                 if scan_res.get("character") and scan_res.get("character") != "Unknown":
                     cached_character = (scan_res.get("character_id"), scan_res.get("character"))
                 try:
-                    pu_data = read_active_powerups(memory, module_base)
+                    pu_data = read_active_powerups(memory, module_base) if ENABLE_POWERUP_TRACKING else None
                 except Exception:
                     pu_data = None
                 print_stage1_report(scan_res, reroll_num=reroll_label, powerup_data=pu_data)
@@ -4684,40 +4841,64 @@ def main():
                     cached_character = (scan_res.get("character_id"), scan_res.get("character"))
                 active_stage_report = scan_res
                 try:
-                    pu_data = read_active_powerups(memory, module_base)
+                    pu_data = read_active_powerups(memory, module_base) if ENABLE_POWERUP_TRACKING else None
                 except Exception:
                     pu_data = None
                 print_stage_inspect_report(scan_res, powerup_data=pu_data)
 
-        # Check for Shady Guy purchases during active gameplay
-        if active_stage_report and active_stage_report.get("shady_guys") and (now - last_shady_poll_time >= 0.25):
+        # Check for Shady Guy purchases and Microwave uses during active gameplay
+        if active_stage_report and (now - last_shady_poll_time >= 0.25):
             last_shady_poll_time = now
             shady_state_changed = False
-            for sg in active_stage_report["shady_guys"]:
-                if sg.get("done", False):
-                    continue
-                ptr = sg.get("ptr")
-                if ptr:
-                    if is_shady_guy_done(memory, ptr, sg_dict=sg, marker_client=marker_client):
-                        sg["done"] = True
-                        shady_state_changed = True
-            if shady_state_changed:
+            micro_state_changed = False
+
+            # 1. Shady Guys
+            if active_stage_report.get("shady_guys"):
+                for sg in active_stage_report["shady_guys"]:
+                    if sg.get("done", False):
+                        continue
+                    ptr = sg.get("ptr")
+                    if ptr:
+                        if is_shady_guy_done(memory, ptr, sg_dict=sg, marker_client=marker_client):
+                            sg["done"] = True
+                            shady_state_changed = True
+
+            # 2. Microwaves
+            if active_stage_report.get("microwaves"):
+                for m in active_stage_report["microwaves"]:
+                    m_ptr = m.get("ptr")
+                    if m_ptr:
+                        try:
+                            cur_uses = memory.read_i32(m_ptr + MICROWAVE_USES_LEFT_OFFSET)
+                            if cur_uses != m.get("uses_left"):
+                                m["uses_left"] = cur_uses
+                                micro_state_changed = True
+                        except Exception:
+                            pass
+
+            if shady_state_changed or micro_state_changed:
                 if CLEAR_CONSOLE_ON_OUTPUT:
                     clear_console()
                 s_num = active_stage_report.get("stage_num", active_stage_report.get("stage_index", 0) + 1)
-                print(f"[*] Shady Guy item taken! Updated Stage {s_num} status:\n", flush=True)
+                if shady_state_changed and micro_state_changed:
+                    print(f"[*] Map interactables updated! Updated Stage {s_num} status:\n", flush=True)
+                elif shady_state_changed:
+                    print(f"[*] Shady Guy item taken! Updated Stage {s_num} status:\n", flush=True)
+                else:
+                    print(f"[*] Microwave used! Updated Stage {s_num} status:\n", flush=True)
                 try:
-                    pu_data = read_active_powerups(memory, module_base)
+                    pu_data = read_active_powerups(memory, module_base) if ENABLE_POWERUP_TRACKING else None
                 except Exception:
                     pu_data = None
                 if active_stage_report.get("is_stage_1"):
                     print_stage1_report(active_stage_report, reroll_num=None, powerup_data=pu_data)
                 else:
                     print_stage_inspect_report(active_stage_report, powerup_data=pu_data)
-                powerup_tracker.on_console_cleared()
+                if ENABLE_POWERUP_TRACKING:
+                    powerup_tracker.on_console_cleared()
 
         # Check for active power-ups and Za Warudo during active gameplay
-        if (map_ready or player) and (now - last_powerup_poll_time >= 0.15):
+        if ENABLE_POWERUP_TRACKING and (map_ready or player) and (now - last_powerup_poll_time >= 0.15):
             last_powerup_poll_time = now
             try:
                 pu_data = read_active_powerups(memory, module_base)
@@ -4730,7 +4911,8 @@ def main():
             heartbeat_time = now
             if not player and not (map_state and map_state.has_loaded_map):
                 print("[*] Waiting for active game/player...", flush=True)
-                powerup_tracker.on_other_print()
+                if ENABLE_POWERUP_TRACKING:
+                    powerup_tracker.on_other_print()
 
 
 if __name__ == "__main__":
