@@ -49,7 +49,9 @@ class FormatStatsTests(unittest.TestCase):
 
     def test_bald_heads_are_omitted_when_no_active_template_requires_them(self) -> None:
         with patch.object(config, "EVALUATION_MODE", "templates"):
-            with patch.object(config, "TEMPLATES", [{"name": "PLAIN", "bald_heads": 0}]):
+            with patch.object(
+                config, "TEMPLATES", [{"name": "PLAIN", "bald_heads": 0}]
+            ):
                 text = format_stats(BALD_STATS, ["PLAIN"])
 
         self.assertNotIn("Bald Heads", text)
@@ -101,7 +103,13 @@ class EvaluateCandidateTests(unittest.TestCase):
                 "bald_heads": 0,
             }
         ]
-        stats = {"Shady Guy": 5, "Moais": 5, "Microwaves": 5, "Boss Curses": 5, "Magnet Shrines": 5}
+        stats = {
+            "Shady Guy": 5,
+            "Moais": 5,
+            "Microwaves": 5,
+            "Boss Curses": 5,
+            "Magnet Shrines": 5,
+        }
         with patch.object(config, "EVALUATION_MODE", "templates"):
             with patch.object(config, "TEMPLATES", templates):
                 matched = evaluate_candidate(stats, ["Easy"])

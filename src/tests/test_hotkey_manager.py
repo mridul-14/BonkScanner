@@ -52,11 +52,17 @@ class FakeKeyboard:
         callback = self.hook_callback
         if callback is None:
             raise AssertionError("Keyboard hook is not active")
-        callback(types.SimpleNamespace(scan_code=self.scan_codes[key_name][0], event_type=event_type))
+        callback(
+            types.SimpleNamespace(
+                scan_code=self.scan_codes[key_name][0], event_type=event_type
+            )
+        )
 
 
 class ModifierAwareHotkeyManagerTests(unittest.TestCase):
-    def make_manager(self, *, game_active: bool = True, allowed_keys=("w", "left shift")):
+    def make_manager(
+        self, *, game_active: bool = True, allowed_keys=("w", "left shift")
+    ):
         keyboard = FakeKeyboard()
         manager = ModifierAwareHotkeyManager(
             keyboard,
@@ -83,13 +89,15 @@ class ModifierAwareHotkeyManagerTests(unittest.TestCase):
             allowed_game_keys=("w",),
             is_game_window_active=lambda: game_active,
         )
-        manager.start((
-            HotkeyBinding(
-                "w",
-                lambda: calls.append("movement"),
-                require_game_window=True,
-            ),
-        ))
+        manager.start(
+            (
+                HotkeyBinding(
+                    "w",
+                    lambda: calls.append("movement"),
+                    require_game_window=True,
+                ),
+            )
+        )
 
         keyboard.emit("w", "down")
         keyboard.emit("w", "up")
@@ -107,13 +115,15 @@ class ModifierAwareHotkeyManagerTests(unittest.TestCase):
             allowed_game_keys=(),
             is_game_window_active=lambda: True,
         )
-        manager.start((
-            HotkeyBinding(
-                "w",
-                lambda: calls.append("movement"),
-                require_game_window=True,
-            ),
-        ))
+        manager.start(
+            (
+                HotkeyBinding(
+                    "w",
+                    lambda: calls.append("movement"),
+                    require_game_window=True,
+                ),
+            )
+        )
 
         keyboard.emit("ctrl", "down")
         keyboard.emit("w", "down")
@@ -203,7 +213,9 @@ class ModifierAwareHotkeyManagerTests(unittest.TestCase):
         self.assertEqual(calls, ["f9", "f9"])
 
     def test_right_shift_is_distinct_from_allowed_left_shift(self) -> None:
-        keyboard, _manager, calls = self.make_manager(game_active=True, allowed_keys=("left shift",))
+        keyboard, _manager, calls = self.make_manager(
+            game_active=True, allowed_keys=("left shift",)
+        )
 
         keyboard.emit("right shift", "down")
         keyboard.emit("f9", "down")
@@ -211,7 +223,9 @@ class ModifierAwareHotkeyManagerTests(unittest.TestCase):
         self.assertEqual(calls, [])
 
     def test_allowed_left_shift_fires_while_game_is_active(self) -> None:
-        keyboard, _manager, calls = self.make_manager(game_active=True, allowed_keys=("left shift",))
+        keyboard, _manager, calls = self.make_manager(
+            game_active=True, allowed_keys=("left shift",)
+        )
 
         keyboard.emit("left shift", "down")
         keyboard.emit("f9", "down")

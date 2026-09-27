@@ -88,7 +88,9 @@ class StylesheetOrphanTests(unittest.TestCase):
             "which ships only when the redesign asset cannot be read -- so in "
             "a real build they are unstyled. Move the rule into "
             "src/media/bonkscanner_theme.qss:\n"
-            + "\n".join(f"  {name}: {', '.join(w)}" for name, w in sorted(orphans.items())),
+            + "\n".join(
+                f"  {name}: {', '.join(w)}" for name, w in sorted(orphans.items())
+            ),
         )
 
     def test_the_slice_actually_finds_the_fallback_block(self) -> None:

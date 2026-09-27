@@ -44,7 +44,9 @@ def _modifier(
 
 
 def _reading(character_id: int, **changes) -> CharacterPassiveReading:
-    spec = next(spec for spec in CHARACTER_PASSIVE_SPECS if spec.character_id == character_id)
+    spec = next(
+        spec for spec in CHARACTER_PASSIVE_SPECS if spec.character_id == character_id
+    )
     values = dict(
         character_id=spec.character_id,
         character_name=spec.character_name,
@@ -60,13 +62,17 @@ def _reading(character_id: int, **changes) -> CharacterPassiveReading:
 
 class CharacterPassiveCatalogTests(unittest.TestCase):
     def test_catalog_covers_all_21_characters_and_uses_dice_name(self) -> None:
-        self.assertEqual([spec.character_id for spec in CHARACTER_PASSIVE_SPECS], list(range(21)))
+        self.assertEqual(
+            [spec.character_id for spec in CHARACTER_PASSIVE_SPECS], list(range(21))
+        )
         dice = CHARACTER_PASSIVE_SPECS[18]
         self.assertEqual(dice.character_name, "Dice")
         self.assertEqual(dice.passive_name, "Gamba")
 
     def test_approved_mvp_has_nine_linear_adapters_plus_gamba(self) -> None:
-        self.assertEqual(sum(spec.linear is not None for spec in CHARACTER_PASSIVE_SPECS), 9)
+        self.assertEqual(
+            sum(spec.linear is not None for spec in CHARACTER_PASSIVE_SPECS), 9
+        )
         self.assertEqual(sum(spec.is_gamba for spec in CHARACTER_PASSIVE_SPECS), 1)
 
 
@@ -170,12 +176,24 @@ class GambaAdapterTests(unittest.TestCase):
         )
         passives.update(
             state,
-            _reading(18, level=1, gamba_current_level=0, permanent_modifiers=(roll,), **common),
+            _reading(
+                18,
+                level=1,
+                gamba_current_level=0,
+                permanent_modifiers=(roll,),
+                **common,
+            ),
         )
         self.assertEqual(passives.snapshot(state).pending, 1)
         passives.update(
             state,
-            _reading(18, level=1, gamba_current_level=1, permanent_modifiers=(roll,), **common),
+            _reading(
+                18,
+                level=1,
+                gamba_current_level=1,
+                permanent_modifiers=(roll,),
+                **common,
+            ),
         )
         result = passives.snapshot(state)
         self.assertEqual(result.status, CharacterPassiveStatus.SUPPORTED)
@@ -204,7 +222,9 @@ class GambaAdapterTests(unittest.TestCase):
         result = passives.snapshot(state)
         self.assertEqual(result.status, CharacterPassiveStatus.SUPPORTED)
         self.assertEqual(result.effects[0].count, 4)
-        self.assertAlmostEqual(result.effects[0].value, sum(roll.value for roll in rolls))
+        self.assertAlmostEqual(
+            result.effects[0].value, sum(roll.value for roll in rolls)
+        )
 
     def test_shrine_reserved_pointer_cannot_be_claimed(self) -> None:
         state = _CharacterPassiveState()
@@ -406,7 +426,9 @@ class GambaAdapterTests(unittest.TestCase):
 
         tracker._reset_for_new_run()
 
-        self.assertFalse(tracker.apply_permanent_source_recovery(token, result, reading))
+        self.assertFalse(
+            tracker.apply_permanent_source_recovery(token, result, reading)
+        )
         self.assertIsNone(tracker.character_passive_snapshot())
 
 
@@ -432,21 +454,26 @@ class CharacterPassiveMemoryReaderTests(unittest.TestCase):
             pointers={
                 owner + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: inventory,
                 inventory + PlayerStatsClient.CHARACTER_DATA_OFFSET: character_data,
-                character_data + PlayerStatsClient.CHARACTER_DATA_PASSIVE_DATA_OFFSET: passive_data,
+                character_data
+                + PlayerStatsClient.CHARACTER_DATA_PASSIVE_DATA_OFFSET: passive_data,
                 inventory + PlayerStatsClient.PASSIVE_ABILITY_OFFSET: passive_object,
                 passive_object + PlayerStatsClient.OBJECT_KLASS_OFFSET: class_meta,
                 class_meta + PlayerStatsClient.KLASS_NAME_PTR_OFFSET: class_name,
                 inventory + PlayerStatsClient.PLAYER_XP_OFFSET: player_xp,
-                passive_object + PlayerStatsClient.PASSIVE_ABILITY_STAT_MODIFIERS_OFFSET: outer,
+                passive_object
+                + PlayerStatsClient.PASSIVE_ABILITY_STAT_MODIFIERS_OFFSET: outer,
                 outer + PlayerStatsClient.DICT_ENTRIES_OFFSET: outer_entries,
                 outer_entry + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET: container,
-                container + PlayerStatsClient.PASSIVE_STAT_MODIFIERS_CONTAINER_DICT_OFFSET: inner,
+                container
+                + PlayerStatsClient.PASSIVE_STAT_MODIFIERS_CONTAINER_DICT_OFFSET: inner,
                 inner + PlayerStatsClient.DICT_ENTRIES_OFFSET: inner_entries,
                 inner_entry + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET: modifier,
             },
             ints={
-                character_data + PlayerStatsClient.CHARACTER_DATA_CHARACTER_ID_OFFSET: 0,
-                passive_data + PlayerStatsClient.PASSIVE_DATA_PASSIVE_ID_OFFSET: passive_id,
+                character_data
+                + PlayerStatsClient.CHARACTER_DATA_CHARACTER_ID_OFFSET: 0,
+                passive_data
+                + PlayerStatsClient.PASSIVE_DATA_PASSIVE_ID_OFFSET: passive_id,
                 player_xp + PlayerStatsClient.PLAYER_XP_LEVEL_OFFSET: 35,
                 outer + PlayerStatsClient.DICT_COUNT_OFFSET: 1,
                 outer_entry + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
@@ -457,8 +484,10 @@ class CharacterPassiveMemoryReaderTests(unittest.TestCase):
                 modifier + PlayerStatsClient.STAT_MODIFIER_STAT_OFFSET: 30,
             },
             floats={
-                passive_object + PlayerStatsClient.PASSIVE_LINEAR_PER_LEVEL_OFFSET: 0.015,
-                modifier + PlayerStatsClient.STAT_MODIFIER_VALUE_OFFSET: 0.5249999761581421,
+                passive_object
+                + PlayerStatsClient.PASSIVE_LINEAR_PER_LEVEL_OFFSET: 0.015,
+                modifier
+                + PlayerStatsClient.STAT_MODIFIER_VALUE_OFFSET: 0.5249999761581421,
             },
             ascii_strings={class_name: "PassiveAbilityRngBlessing"},
         )
@@ -471,7 +500,9 @@ class CharacterPassiveMemoryReaderTests(unittest.TestCase):
 
         self.assertEqual(identity, (0, "Fox"))
 
-    def test_reads_validated_fox_identity_runtime_field_and_owned_modifier(self) -> None:
+    def test_reads_validated_fox_identity_runtime_field_and_owned_modifier(
+        self,
+    ) -> None:
         memory, owner = self._fox_memory()
         reading = PlayerStatsClient(memory=memory).get_character_passive_reading(owner)
         self.assertEqual(reading.character_name, "Fox")

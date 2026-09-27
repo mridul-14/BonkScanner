@@ -83,7 +83,9 @@ class WindowStateMemoryTests(unittest.TestCase):
 
         self.assertEqual(self._saved(), "maximized")
 
-    def test_shutdown_window_transitions_do_not_overwrite_the_remembered_choice(self) -> None:
+    def test_shutdown_window_transitions_do_not_overwrite_the_remembered_choice(
+        self,
+    ) -> None:
         owner = self._owner()
         config.user_config[MegabonkApp._WINDOW_STATE_KEY] = "maximized"
         owner._is_shutting_down = True

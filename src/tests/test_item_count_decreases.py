@@ -15,6 +15,7 @@ makes the confirmation ladder load-bearing rather than defensive -- the game
 rebuilds the item array in place, and a decrease applied on first sight would
 turn every torn read into a phantom craft.
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401  -- puts `src/` on sys.path regardless of collection order
@@ -97,7 +98,9 @@ class ConfirmedItemDecreaseTests(unittest.TestCase):
         self.assertEqual(tracker.last_item_losses(), ())
         self.assertEqual(anvils(tracker), 2)
 
-    def test_re_acquiring_after_a_confirmed_decrease_credits_the_gain_once(self) -> None:
+    def test_re_acquiring_after_a_confirmed_decrease_credits_the_gain_once(
+        self,
+    ) -> None:
         """The live bug. With the baseline stuck at its high-water mark, the
         re-acquisition read never exceeds it and no gain is ever credited."""
         tracker = self.tracker_holding_two_anvils()
@@ -114,7 +117,9 @@ class ConfirmedItemDecreaseTests(unittest.TestCase):
         tracker.update(snapshot(time_seconds=7.0, items=("Anvil x2",)))
         self.assertEqual(anvils(tracker), 3)
 
-    def test_an_item_that_leaves_the_inventory_outright_is_a_confirmed_loss(self) -> None:
+    def test_an_item_that_leaves_the_inventory_outright_is_a_confirmed_loss(
+        self,
+    ) -> None:
         """`Za Warudo` breaking, and the case the iteration set had to grow for:
         an item at zero is absent from `current_counts` altogether, so before
         this it was never visited and its baseline never moved."""
@@ -124,9 +129,13 @@ class ConfirmedItemDecreaseTests(unittest.TestCase):
         tracker.update(snapshot(time_seconds=4.0, items=()))
 
         losses = tracker.last_item_losses()
-        self.assertEqual([(event.item_name, event.lost_count) for event in losses], [("Anvil", 2)])
+        self.assertEqual(
+            [(event.item_name, event.lost_count) for event in losses], [("Anvil", 2)]
+        )
 
-    def test_a_still_falling_count_confirms_in_steps_rather_than_all_at_once(self) -> None:
+    def test_a_still_falling_count_confirms_in_steps_rather_than_all_at_once(
+        self,
+    ) -> None:
         """Each observation is credited only by the read that agrees with it, so
         a two-stage drop yields two losses and never over-counts the first."""
         tracker = LiveRunTracker(tracked_item_rules=(ANVIL_RULE,), clock=lambda: 1000.0)

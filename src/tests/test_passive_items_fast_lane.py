@@ -19,6 +19,7 @@ resolves once per `RefreshTickContext`, so items, banishes, interactable counter
 and Luck carry one timestamp and are coherent by construction rather than by
 matching timestamps afterwards.
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401  -- puts `src/` on sys.path regardless of collection order
@@ -128,7 +129,9 @@ class FastLaneItemDeltaTests(unittest.TestCase):
 
         self.assertEqual(anvils(tracker), 3)
 
-    def test_a_transiently_empty_dictionary_does_not_discard_a_pending_gain(self) -> None:
+    def test_a_transiently_empty_dictionary_does_not_discard_a_pending_gain(
+        self,
+    ) -> None:
         """The game exposes an empty inventory dictionary for a single read
         while it rebuilds it in place. Credited, that empty read would drop
         `current_count` below the confirmed count and silently discard the
@@ -188,7 +191,9 @@ class FastLaneTaskTests(unittest.TestCase):
             },
         )()
 
-    def test_the_task_forwards_the_inventory_to_the_narrow_tracker_entry_point(self) -> None:
+    def test_the_task_forwards_the_inventory_to_the_narrow_tracker_entry_point(
+        self,
+    ) -> None:
         seen: list[tuple] = []
         service, world = build_refresh_tasks(
             stats_client=self._client(lambda: ("Anvil x1",))
@@ -330,7 +335,9 @@ class FastLaneTaskTests(unittest.TestCase):
         self.assertEqual(world.overlay_syncs, [])
         self.assertEqual(world.session_tracked_item_refreshes, [])
 
-    def test_a_read_failure_leaves_the_reconnect_streak_to_the_full_snapshot(self) -> None:
+    def test_a_read_failure_leaves_the_reconnect_streak_to_the_full_snapshot(
+        self,
+    ) -> None:
         """Memory health for `PASSIVE_ITEMS` belongs to the primary consumer.
         A second consumer recording its own failure would advance the streak
         twice for what may be a single physical read."""
@@ -368,7 +375,10 @@ class FastLaneTaskTests(unittest.TestCase):
         deleting the registration would leave them all passing while the feature
         is dead in the app. This is the test that fails when the task is removed
         or folded back onto the 10 s interval."""
-        from tests.support.legacy_runtime import ensure_refresh_coordinator, refresh_tasks
+        from tests.support.legacy_runtime import (
+            ensure_refresh_coordinator,
+            refresh_tasks,
+        )
 
         owner = SimpleNamespace(coordinator=None)
         coordinator = ensure_refresh_coordinator(owner)
@@ -441,9 +451,7 @@ class LootSamplePassTests(unittest.TestCase):
                 "get_passive_items": lambda self, owner=None: (
                     items() if callable(items) else items
                 ),
-                "get_luck": lambda self, owner=None: (
-                    luck() if callable(luck) else luck
-                ),
+                "get_luck": lambda self, owner=None: luck() if callable(luck) else luck,
                 "get_live_banishes": lambda self: (
                     banishes() if callable(banishes) else banishes
                 ),
@@ -473,7 +481,9 @@ class LootSamplePassTests(unittest.TestCase):
         service, world = build_refresh_tasks(world=world_state, **kwargs)
         world.tracker.update_fast_luck = lambda value: world.luck.append(value)
         world.tracker.update_banishes = lambda value: world.banishes.append(value)
-        world.tracker.update_powerup_map_context = lambda ctx: world.contexts.append(ctx)
+        world.tracker.update_powerup_map_context = lambda ctx: world.contexts.append(
+            ctx
+        )
         world.tracker.update_items = lambda items: world.items.append(items) or True
         return service, world
 
@@ -495,7 +505,9 @@ class LootSamplePassTests(unittest.TestCase):
         for key in (PASSIVE_ITEMS, LIVE_BANISHES, MAP_ACTIVITY_VALUES, LUCK):
             self.assertIsNotNone(self.context.metadata_for(key), key)
 
-    def test_the_counters_cost_no_extra_read_when_the_snapshot_is_also_due(self) -> None:
+    def test_the_counters_cost_no_extra_read_when_the_snapshot_is_also_due(
+        self,
+    ) -> None:
         """`get_map_activity_values` already walks the whole dictionary and
         returns every key. Both consumers resolve the one `MAP_ACTIVITY_VALUES`
         key, so the pass cache shares the single physical walk."""
@@ -511,7 +523,9 @@ class LootSamplePassTests(unittest.TestCase):
 
         self.assertEqual(calls, [1])
 
-    def test_a_counter_read_failure_leaves_the_health_streaks_to_the_snapshot(self) -> None:
+    def test_a_counter_read_failure_leaves_the_health_streaks_to_the_snapshot(
+        self,
+    ) -> None:
         """Error policy, decided: the full snapshot stays the health owner for
         `MAP_ACTIVITY_VALUES`. It records health in its own task body from the
         cached result, so a second consumer must not steal that accounting nor
@@ -529,7 +543,9 @@ class LootSamplePassTests(unittest.TestCase):
         self.assertEqual(world.memory._game_data_source_error_streaks, {})
         self.assertEqual(world.contexts, [])
 
-    def test_the_snapshot_still_sees_a_counter_failure_this_task_swallowed(self) -> None:
+    def test_the_snapshot_still_sees_a_counter_failure_this_task_swallowed(
+        self,
+    ) -> None:
         """Swallowing must not hide the failure from the health owner. The pass
         caches the *exception*, so the snapshot's own resolution of the key
         re-raises it and records its health exactly as before -- one physical
@@ -550,7 +566,9 @@ class LootSamplePassTests(unittest.TestCase):
             world.memory.read_map_activity_values(self.context)
         self.assertEqual(calls, [1])
 
-    def test_an_empty_counter_dictionary_does_not_blank_a_good_map_context(self) -> None:
+    def test_an_empty_counter_dictionary_does_not_blank_a_good_map_context(
+        self,
+    ) -> None:
         """`get_map_activity_values` returns `{}` whenever a pointer in its
         chain reads zero, and outside a run that is legitimate. Publishing an
         empty context would replace a good reading with a blank one; deciding
@@ -565,7 +583,9 @@ class LootSamplePassTests(unittest.TestCase):
 
         self.assertEqual(world.contexts, [])
 
-    def test_a_failing_inventory_read_still_publishes_luck_and_the_counters(self) -> None:
+    def test_a_failing_inventory_read_still_publishes_luck_and_the_counters(
+        self,
+    ) -> None:
         """Per-source failure isolation. The inventory is the one source here
         that raises, and it is read last for exactly this reason."""
         service, world = self._build(
@@ -581,7 +601,9 @@ class LootSamplePassTests(unittest.TestCase):
         self.assertEqual(world.luck, [1.25])
         self.assertEqual(len(world.contexts), 1)
 
-    def test_an_unreadable_luck_clears_the_reading_rather_than_publishing_zero(self) -> None:
+    def test_an_unreadable_luck_clears_the_reading_rather_than_publishing_zero(
+        self,
+    ) -> None:
         """`None` is "no fresh read". Zero is a real Luck the rarity model
         produces a valid distribution from, so publishing it for a failed read
         would render a failure as a reading."""

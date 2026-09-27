@@ -43,7 +43,9 @@ class _Coordinator:
         return ()
 
 
-def _ports(calls: list[str], deadlines: list[object], *, scanner_result=True) -> AppRuntimePorts:
+def _ports(
+    calls: list[str], deadlines: list[object], *, scanner_result=True
+) -> AppRuntimePorts:
     def with_deadline(name, result=None):
         def callback(deadline):
             calls.append(name)
@@ -88,7 +90,9 @@ class AppRuntimeTests(unittest.TestCase):
         calls: list[str] = []
         coordinator = _Coordinator(calls)
         ports = _ports(calls, [])
-        with patch("app.runtime.AppCoordinator", return_value=coordinator) as constructor:
+        with patch(
+            "app.runtime.AppCoordinator", return_value=coordinator
+        ) as constructor:
             runtime = AppRuntime.create(
                 ports=ports,
                 tracked_item_rules=("rule",),
@@ -112,8 +116,16 @@ class AppRuntimeTests(unittest.TestCase):
         coordinator = _Coordinator(calls)
         runtime = AppRuntime(coordinator, _ports(calls, []))
 
-        runtime.start(schedule=lambda _delay, _callback: None, is_active=lambda: True, interval_ms=lambda: 10)
-        runtime.start(schedule=lambda _delay, _callback: None, is_active=lambda: True, interval_ms=lambda: 10)
+        runtime.start(
+            schedule=lambda _delay, _callback: None,
+            is_active=lambda: True,
+            interval_ms=lambda: 10,
+        )
+        runtime.start(
+            schedule=lambda _delay, _callback: None,
+            is_active=lambda: True,
+            interval_ms=lambda: 10,
+        )
 
         self.assertEqual(coordinator.start_calls, 1)
         self.assertIsInstance(runtime.diagnostics(), tuple)
@@ -123,9 +135,15 @@ class AppRuntimeTests(unittest.TestCase):
 
         order = [entry.task_id for entry in runtime.diagnostics()]
 
-        self.assertLess(order.index("run_lifecycle_probe"), order.index("recording_lifecycle"))
-        self.assertLess(order.index("recording_lifecycle"), order.index("full_player_snapshot"))
-        self.assertLess(order.index("expected_chest_inputs"), order.index("chest_counters"))
+        self.assertLess(
+            order.index("run_lifecycle_probe"), order.index("recording_lifecycle")
+        )
+        self.assertLess(
+            order.index("recording_lifecycle"), order.index("full_player_snapshot")
+        )
+        self.assertLess(
+            order.index("expected_chest_inputs"), order.index("chest_counters")
+        )
         self.assertLess(order.index("charge_shrines"), order.index("chaos_tome"))
 
     def test_shutdown_closes_gates_first_and_shares_one_deadline(self) -> None:
@@ -157,7 +175,9 @@ class AppRuntimeTests(unittest.TestCase):
 
     def test_shutdown_reports_a_stuck_worker(self) -> None:
         calls: list[str] = []
-        runtime = AppRuntime(_Coordinator(calls), _ports(calls, [], scanner_result=False))
+        runtime = AppRuntime(
+            _Coordinator(calls), _ports(calls, [], scanner_result=False)
+        )
 
         report = runtime.shutdown(ShutdownDeadline.after(0.0))
 

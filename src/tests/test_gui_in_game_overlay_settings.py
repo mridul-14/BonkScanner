@@ -74,9 +74,10 @@ class WeaponTrackerSettingsDialogTests(unittest.TestCase):
                 dialog.close()
 
     def test_save_preserves_explicit_empty_selection_and_current_layout(self) -> None:
-        with patch.object(config, "IN_GAME_OVERLAY", self.overlay), patch.object(
-            config, "save_config"
-        ) as save_config:
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", self.overlay),
+            patch.object(config, "save_config") as save_config,
+        ):
             dialog = WeaponTrackerSettingsDialog(self.parent)
             try:
                 for checkbox in dialog.metric_checkboxes.values():
@@ -88,9 +89,7 @@ class WeaponTrackerSettingsDialogTests(unittest.TestCase):
                 self.assertEqual(settings["selected_stats"], [])
                 self.assertEqual(settings["layout"], "compact")
                 self.assertEqual(dialog.result(), QDialog.Accepted)
-                self.assertEqual(
-                    self.parent.apply_in_game_overlay_settings_calls, 1
-                )
+                self.assertEqual(self.parent.apply_in_game_overlay_settings_calls, 1)
                 self.assertEqual(
                     self.parent.igo_weapon_tracker_summary_label.text(),
                     "0 stats",
@@ -100,9 +99,10 @@ class WeaponTrackerSettingsDialogTests(unittest.TestCase):
                 dialog.close()
 
     def test_cancel_does_not_mutate_or_persist_settings(self) -> None:
-        with patch.object(config, "IN_GAME_OVERLAY", self.overlay), patch.object(
-            config, "save_config"
-        ) as save_config:
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", self.overlay),
+            patch.object(config, "save_config") as save_config,
+        ):
             dialog = WeaponTrackerSettingsDialog(self.parent)
             try:
                 dialog.metric_checkboxes["damage"].setChecked(False)
@@ -130,10 +130,8 @@ class WeaponTrackerSettingsDialogTests(unittest.TestCase):
         )
 
     def test_options_row_debounces_rapid_layout_switching(self) -> None:
-        self.parent._queue_igo_weapon_tracker_layout_change = (
-            lambda *_args: InGameOverlay._queue_igo_weapon_tracker_layout_change(
-                self.parent
-            )
+        self.parent._queue_igo_weapon_tracker_layout_change = lambda *_args: (
+            InGameOverlay._queue_igo_weapon_tracker_layout_change(self.parent)
         )
         with patch.object(config, "IN_GAME_OVERLAY", self.overlay):
             holder = _igo_widget_options(self.parent, "weapon_tracker")
@@ -212,9 +210,10 @@ class WeaponTrackerSettingsDialogTests(unittest.TestCase):
             )
             setattr(parent, IGO_SCALE_SPIN_ATTRIBUTES[widget_id], _Value(1.0))
 
-        with patch.object(config, "IN_GAME_OVERLAY", self.overlay), patch.object(
-            config, "save_config"
-        ) as save_config:
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", self.overlay),
+            patch.object(config, "save_config") as save_config,
+        ):
             InGameOverlay._on_igo_settings_changed(parent)
 
         self.assertEqual(
@@ -245,10 +244,14 @@ class WeaponTrackerSettingsDialogTests(unittest.TestCase):
             igo_map_markers_summary=QLabel(),
             _rebind_hotkeys=MagicMock(),
         )
-        with patch.object(config, "IN_GAME_OVERLAY", overlay), patch(
-            "gui_in_game_overlay_settings.MapMarkerSettingsDialog",
-            return_value=dialog,
-        ) as dialog_factory, patch.object(config, "save_config") as save_config:
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", overlay),
+            patch(
+                "gui_in_game_overlay_settings.MapMarkerSettingsDialog",
+                return_value=dialog,
+            ) as dialog_factory,
+            patch.object(config, "save_config") as save_config,
+        ):
             _open_map_marker_settings_dialog(parent)
 
         dialog_factory.assert_called_once_with(

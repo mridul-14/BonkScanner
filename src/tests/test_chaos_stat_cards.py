@@ -22,8 +22,12 @@ class ChaosStatCardsTests(unittest.TestCase):
         cls.qt_app = QApplication.instance() or QApplication([])
 
     def test_stats_are_sorted_by_roll_count_then_game_order(self) -> None:
-        low_game_position = min(CHAOS_TOME_GAME_STAT_ORDER, key=CHAOS_TOME_GAME_STAT_ORDER.get)
-        high_game_position = max(CHAOS_TOME_GAME_STAT_ORDER, key=CHAOS_TOME_GAME_STAT_ORDER.get)
+        low_game_position = min(
+            CHAOS_TOME_GAME_STAT_ORDER, key=CHAOS_TOME_GAME_STAT_ORDER.get
+        )
+        high_game_position = max(
+            CHAOS_TOME_GAME_STAT_ORDER, key=CHAOS_TOME_GAME_STAT_ORDER.get
+        )
         stats = (
             SimpleNamespace(stat_id=high_game_position, label="Later", rolls=2),
             SimpleNamespace(stat_id=low_game_position, label="Earlier", rolls=2),
@@ -44,8 +48,12 @@ class ChaosStatCardsTests(unittest.TestCase):
 
         self.assertAlmostEqual(chaos_average_roll_quality(low), 0.0)
         self.assertAlmostEqual(chaos_average_roll_quality(high), 1.0)
-        self.assertEqual(chaos_roll_quality_color(chaos_average_roll_quality(low)), "#98A7BA")
-        self.assertEqual(chaos_roll_quality_color(chaos_average_roll_quality(high)), "#FACC15")
+        self.assertEqual(
+            chaos_roll_quality_color(chaos_average_roll_quality(low)), "#98A7BA"
+        )
+        self.assertEqual(
+            chaos_roll_quality_color(chaos_average_roll_quality(high)), "#FACC15"
+        )
 
     def test_quality_is_unavailable_without_rolls_or_known_fingerprints(self) -> None:
         self.assertIsNone(
@@ -88,12 +96,8 @@ class ChaosStatCardsTests(unittest.TestCase):
             passive_name="Gamba",
             level=145,
         )
-        dice_effect = SimpleNamespace(
-            label="Evasion", display_delta="+10.6%", count=4
-        )
-        fox_effect = SimpleNamespace(
-            label="Luck", display_delta="+259.5%", count=None
-        )
+        dice_effect = SimpleNamespace(label="Evasion", display_delta="+10.6%", count=4)
+        fox_effect = SimpleNamespace(label="Luck", display_delta="+259.5%", count=None)
 
         summary = StatCardsView._build_character_passive_summary_card(passive)
         dice_card = StatCardsView._build_character_passive_effect_card(dice_effect)

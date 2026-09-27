@@ -141,7 +141,9 @@ class SettingsDialogLifecycleTests(unittest.TestCase):
         self.assertIsNot(replacement, first)
         self.assertIs(self.owner._settings_dialog, replacement)
         first.deleteLater.assert_called_once_with()
-        self.assertTrue(any("native handle was deleted" in text for text, _ in self.owner.logs))
+        self.assertTrue(
+            any("native handle was deleted" in text for text, _ in self.owner.logs)
+        )
 
     def test_help_dialog_is_deleted_after_its_modal_session(self) -> None:
         dialog = MagicMock()
@@ -161,14 +163,17 @@ class SettingsDialogLifecycleTests(unittest.TestCase):
         # missing game file opens the intentional modal result notice and makes
         # this offscreen loop wait for user input; the real persistence path has
         # dedicated transaction tests.
-        with patch.object(
-            config,
-            "read_game_quick_reset_time",
-            return_value=config.GameConfigReadResult(True, value=game_value),
-        ), patch.object(
-            config,
-            "save_settings_with_game_reset",
-            return_value=config.SettingsSaveResult(True),
+        with (
+            patch.object(
+                config,
+                "read_game_quick_reset_time",
+                return_value=config.GameConfigReadResult(True, value=game_value),
+            ),
+            patch.object(
+                config,
+                "save_settings_with_game_reset",
+                return_value=config.SettingsSaveResult(True),
+            ),
         ):
             for cycle in range(100):
                 self.owner.open_settings_dialog()
@@ -190,7 +195,9 @@ class SettingsDialogLifecycleTests(unittest.TestCase):
                 self.assertEqual(dialog.hotkey_entry.text(), str(config.HOTKEY))
                 dialog.reject()
 
-    def test_snapshot_interval_control_accepts_then_clamps_subminimum_input(self) -> None:
+    def test_snapshot_interval_control_accepts_then_clamps_subminimum_input(
+        self,
+    ) -> None:
         self.owner.open_settings_dialog()
         dialog = self.owner._settings_dialog
 

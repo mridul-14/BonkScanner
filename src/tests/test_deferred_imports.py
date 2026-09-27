@@ -103,7 +103,9 @@ def _deferred_imports() -> list[tuple[str, int, str, tuple[str, ...]]]:
                     continue
                 if node.module.split(".")[0] not in LOCAL_ROOTS:
                     continue
-                found.append((rel, node.lineno, node.module, tuple(a.name for a in node.names)))
+                found.append(
+                    (rel, node.lineno, node.module, tuple(a.name for a in node.names))
+                )
     return found
 
 
@@ -133,7 +135,9 @@ class DeferredImportTests(unittest.TestCase):
     def test_the_scan_actually_finds_the_deferred_imports(self) -> None:
         """Step 13's guard: a scan that finds nothing passes trivially."""
         found = _deferred_imports()
-        self.assertGreater(len(found), 8, "the deferred-import scan found almost nothing")
+        self.assertGreater(
+            len(found), 8, "the deferred-import scan found almost nothing"
+        )
         # Re-pointed at step 27b, not deleted. The pin used to name
         # `gui_layout`: `live_stats.build()` deferred its layout helpers to
         # dodge a real `gui_layout -> ui.tabs.player_stats -> live_stats ->

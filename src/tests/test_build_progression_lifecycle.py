@@ -44,7 +44,9 @@ class BuildProgressionLifecycleTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.app = QApplication.instance() or QApplication([])
 
-    def test_config_write_does_not_publish_runtime_memory_on_failed_result(self) -> None:
+    def test_config_write_does_not_publish_runtime_memory_on_failed_result(
+        self,
+    ) -> None:
         previous = _library()
         candidate = deepcopy(previous)
         candidate["active_build_id"] = "two"
@@ -60,9 +62,11 @@ class BuildProgressionLifecycleTests(unittest.TestCase):
             writes.append(payload)
             return config.ConfigSaveResult(False, "disk full")
 
-        with patch.object(config, "BUILD_PROGRESSION", previous), patch.object(
-            config, "user_config", user_config
-        ), patch.object(config, "update_config", side_effect=update):
+        with (
+            patch.object(config, "BUILD_PROGRESSION", previous),
+            patch.object(config, "user_config", user_config),
+            patch.object(config, "update_config", side_effect=update),
+        ):
             with self.assertRaisesRegex(OSError, "disk full"):
                 ConfigBuildProgressionSettings().write(candidate)
 
@@ -77,12 +81,14 @@ class BuildProgressionLifecycleTests(unittest.TestCase):
         candidate["active_build_id"] = "two"
         user_config = {"BUILD_PROGRESSION": deepcopy(previous)}
 
-        with patch.object(config, "BUILD_PROGRESSION", previous), patch.object(
-            config, "user_config", user_config
-        ), patch.object(
-            config,
-            "update_config",
-            return_value=config.ConfigSaveResult(True),
+        with (
+            patch.object(config, "BUILD_PROGRESSION", previous),
+            patch.object(config, "user_config", user_config),
+            patch.object(
+                config,
+                "update_config",
+                return_value=config.ConfigSaveResult(True),
+            ),
         ):
             saved = ConfigBuildProgressionSettings().write(candidate)
 
@@ -97,14 +103,18 @@ class BuildProgressionLifecycleTests(unittest.TestCase):
         candidate = deepcopy(previous)
         candidate["active_build_id"] = "two"
 
-        with patch.object(config, "BUILD_PROGRESSION", previous), patch.object(
-            config,
-            "user_config",
-            {"BUILD_PROGRESSION": deepcopy(previous)},
-        ), patch.object(
-            config,
-            "update_config",
-            side_effect=OSError(),
+        with (
+            patch.object(config, "BUILD_PROGRESSION", previous),
+            patch.object(
+                config,
+                "user_config",
+                {"BUILD_PROGRESSION": deepcopy(previous)},
+            ),
+            patch.object(
+                config,
+                "update_config",
+                side_effect=OSError(),
+            ),
         ):
             with self.assertRaisesRegex(OSError, "OSError"):
                 ConfigBuildProgressionSettings().write(candidate)
@@ -163,9 +173,7 @@ class BuildProgressionLifecycleTests(unittest.TestCase):
         manager = dialogs.BuildProgressionManagerDialog(settings, service)
         self.addCleanup(manager.deleteLater)
         manager._library["active_build_id"] = "two"
-        manager._refresh_cards = MagicMock(
-            side_effect=lambda: events.append("refresh")
-        )
+        manager._refresh_cards = MagicMock(side_effect=lambda: events.append("refresh"))
 
         def fail_refresh(_definition) -> None:
             events.append("service")
@@ -189,13 +197,17 @@ class BuildProgressionLifecycleTests(unittest.TestCase):
 
         with patch.object(dialogs, "BuildProgressionNoticeDialog", return_value=notice):
             dialogs._show_notice(None, "Title", "Message")
-        with patch.object(dialogs, "BuildProgressionConfirmDialog", return_value=confirm):
+        with patch.object(
+            dialogs, "BuildProgressionConfirmDialog", return_value=confirm
+        ):
             self.assertTrue(
                 dialogs._ask_confirmation(
                     None, "Title", "Message", confirm_text="Confirm"
                 )
             )
-        with patch.object(dialogs, "BuildProgressionHelpDialog", return_value=help_dialog):
+        with patch.object(
+            dialogs, "BuildProgressionHelpDialog", return_value=help_dialog
+        ):
             dialogs.show_build_progression_help()
         with patch.object(
             dialogs, "BuildProgressionManagerDialog", return_value=manager
@@ -232,7 +244,9 @@ class BuildProgressionLifecycleTests(unittest.TestCase):
 
         editor.deleteLater.assert_called_once_with()
 
-    def test_real_dialog_tree_survives_refresh_failure_and_deferred_deletion(self) -> None:
+    def test_real_dialog_tree_survives_refresh_failure_and_deferred_deletion(
+        self,
+    ) -> None:
         script = textwrap.dedent(
             """
             import os

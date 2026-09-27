@@ -38,8 +38,16 @@ class LatestWinsLoaderTests(unittest.TestCase):
         release = threading.Event()
         completed = []
         loader = LatestWinsLoader(schedule=lambda callback: callback())
-        loader.submit("first", load=lambda value: release.wait(2.0) or value, complete=lambda *args: completed.append(args))
-        loader.submit("last", load=lambda value: value, complete=lambda *args: completed.append(args))
+        loader.submit(
+            "first",
+            load=lambda value: release.wait(2.0) or value,
+            complete=lambda *args: completed.append(args),
+        )
+        loader.submit(
+            "last",
+            load=lambda value: value,
+            complete=lambda *args: completed.append(args),
+        )
         loader.dispose()
         release.set()
         self.assertEqual(completed, [])

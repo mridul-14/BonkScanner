@@ -106,9 +106,7 @@ def build_router(
         ),
         recordings_view=lambda: FakeRecordingsView(calls) if views else None,
         compare_runs_view=lambda: FakeCompareRunsView(calls) if views else None,
-        overlay=SimpleNamespace(
-            refresh_overlay_ui=lambda: calls.append("overlay")
-        ),
+        overlay=SimpleNamespace(refresh_overlay_ui=lambda: calls.append("overlay")),
         template_filters=SimpleNamespace(
             sync=lambda announce=False: calls.append(f"sync:{announce}")
         ),
@@ -134,9 +132,7 @@ class TabActiveTests(unittest.TestCase):
         self.assertFalse(_is_tab_active(None, "Live Stats"))
 
     def test_predicate_answers_no_when_the_bar_has_no_current_page(self) -> None:
-        self.assertFalse(
-            _is_tab_active(FakeEmptyTabWidget("Live Stats"), "Live Stats")
-        )
+        self.assertFalse(_is_tab_active(FakeEmptyTabWidget("Live Stats"), "Live Stats"))
 
 
 class RightTabRouterTests(unittest.TestCase):
@@ -171,7 +167,9 @@ class RightTabRouterTests(unittest.TestCase):
 
         self.assertEqual(calls, ["vods", "vods_chooser"])
 
-    def test_refresh_right_tab_after_switch_immediately_refreshes_live_stats(self) -> None:
+    def test_refresh_right_tab_after_switch_immediately_refreshes_live_stats(
+        self,
+    ) -> None:
         """Moved from `test_gui_run_control.py`; same assertion, real object."""
         router, calls, _idle = build_router(active_tab="Live Stats")
 
@@ -216,9 +214,11 @@ class LeftTabRouterTests(unittest.TestCase):
         router, calls, _idle = build_router(left_tab="Scores")
         user_config: dict[str, object] = {}
 
-        with patch.object(config, "EVALUATION_MODE", "templates"), \
-             patch.object(config, "user_config", user_config), \
-             patch.object(config, "save_config") as save_config:
+        with (
+            patch.object(config, "EVALUATION_MODE", "templates"),
+            patch.object(config, "user_config", user_config),
+            patch.object(config, "save_config") as save_config,
+        ):
             router.on_left_tab_changed()
 
             self.assertEqual(config.EVALUATION_MODE, "scores")
@@ -230,9 +230,11 @@ class LeftTabRouterTests(unittest.TestCase):
     def test_left_tab_switch_to_templates_writes_templates(self) -> None:
         router, _calls, _idle = build_router(left_tab="Templates")
 
-        with patch.object(config, "EVALUATION_MODE", "scores"), \
-             patch.object(config, "user_config", {}), \
-             patch.object(config, "save_config"):
+        with (
+            patch.object(config, "EVALUATION_MODE", "scores"),
+            patch.object(config, "user_config", {}),
+            patch.object(config, "save_config"),
+        ):
             router.on_left_tab_changed()
 
             self.assertEqual(config.EVALUATION_MODE, "templates")
@@ -241,9 +243,11 @@ class LeftTabRouterTests(unittest.TestCase):
         router, calls, _idle = build_router(left_tab="Scores")
         user_config = {"EVALUATION_MODE": "scores"}
 
-        with patch.object(config, "EVALUATION_MODE", "scores"), \
-             patch.object(config, "user_config", user_config), \
-             patch.object(config, "save_config") as save_config:
+        with (
+            patch.object(config, "EVALUATION_MODE", "scores"),
+            patch.object(config, "user_config", user_config),
+            patch.object(config, "save_config") as save_config,
+        ):
             router.on_left_tab_changed()
 
         save_config.assert_not_called()
@@ -268,15 +272,19 @@ class LeftTabRouterTests(unittest.TestCase):
             recordings_view=lambda: None,
             compare_runs_view=lambda: None,
             overlay=SimpleNamespace(refresh_overlay_ui=lambda: None),
-            template_filters=SimpleNamespace(sync=lambda **_kwargs: calls.append("sync")),
+            template_filters=SimpleNamespace(
+                sync=lambda **_kwargs: calls.append("sync")
+            ),
             update_status=lambda: calls.append("status"),
             refresh_live_player_stats=lambda: None,
             schedule_idle=lambda _callback: None,
         )
 
-        with patch.object(config, "EVALUATION_MODE", "scores"), \
-             patch.object(config, "user_config", {"EVALUATION_MODE": "scores"}), \
-             patch.object(config, "save_config") as save_config:
+        with (
+            patch.object(config, "EVALUATION_MODE", "scores"),
+            patch.object(config, "user_config", {"EVALUATION_MODE": "scores"}),
+            patch.object(config, "save_config") as save_config,
+        ):
             router.on_left_tab_changed()
 
             self.assertEqual(config.EVALUATION_MODE, "scores")
@@ -287,8 +295,10 @@ class LeftTabRouterTests(unittest.TestCase):
         """A partial-construction caller cannot touch an absent panel."""
         router, calls, _idle = build_router(left_tab="Scores", templates_panel=False)
 
-        with patch.object(config, "user_config", {}), \
-             patch.object(config, "save_config"):
+        with (
+            patch.object(config, "user_config", {}),
+            patch.object(config, "save_config"),
+        ):
             router.on_left_tab_changed()
 
         self.assertEqual(calls, ["sync:True", "status"])

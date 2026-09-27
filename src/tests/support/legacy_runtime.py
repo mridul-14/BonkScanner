@@ -76,21 +76,28 @@ def _legacy_shutdown(owner, deadline) -> ShutdownReport:
     run_control = owner.__dict__.get("_run_control")
     if run_control is not None:
         step("hotkeys", run_control.stop_hotkeys)
-    overlay = step("in_game_overlay", lambda: _deadline_call(owner.shutdown_in_game_overlay, deadline))
+    overlay = step(
+        "in_game_overlay",
+        lambda: _deadline_call(owner.shutdown_in_game_overlay, deadline),
+    )
     timed_out.extend(f"in_game_overlay.{name}" for name in (overlay or ()) if name)
     recorder = owner.__dict__.get("player_stats_vod_recorder")
     if recorder is not None:
         step("vod_recorder", recorder.stop if recorder.is_recording else recorder.close)
     scanner = owner.__dict__.get("_scanner")
     if scanner is not None:
-        scanner_result = step("scanner", lambda: _deadline_call(scanner.shutdown, deadline))
+        scanner_result = step(
+            "scanner", lambda: _deadline_call(scanner.shutdown, deadline)
+        )
         if scanner_result is False:
             timed_out.append("scanner")
     twitch = step("twitch", lambda: _deadline_call(owner.stop_twitch_bot, deadline))
     timed_out.extend(f"twitch.{name}" for name in (twitch or ()) if name)
     wait_background = getattr(owner, "_wait_for_background_threads", None)
     if callable(wait_background):
-        background = step("background_threads", lambda: wait_background(deadline=deadline))
+        background = step(
+            "background_threads", lambda: wait_background(deadline=deadline)
+        )
         timed_out.extend(f"background.{name}" for name in (background or ()) if name)
     coordinator = owner.__dict__.get("coordinator")
     if coordinator is not None:
@@ -100,7 +107,9 @@ def _legacy_shutdown(owner, deadline) -> ShutdownReport:
             step("scanner_client", scanner.close_client)
         memory = player_stats_memory(owner)
         step("player_stats_client", memory.close_player_stats_client)
-        step("player_stats_game_data_client", memory.close_player_stats_game_data_client)
+        step(
+            "player_stats_game_data_client", memory.close_player_stats_game_data_client
+        )
     step("overlay_server", owner.close_overlay_server)
     return ShutdownReport(
         errors=tuple(errors),
@@ -148,16 +157,26 @@ def player_stats_memory(owner) -> PlayerStatsMemory:
         read_stats_client=lambda: owner.player_stats_client,
         write_stats_client=lambda value: setattr(owner, "player_stats_client", value),
         read_game_data_client=lambda: owner.player_stats_game_data_client,
-        write_game_data_client=lambda value: setattr(owner, "player_stats_game_data_client", value),
+        write_game_data_client=lambda value: setattr(
+            owner, "player_stats_game_data_client", value
+        ),
         snapshot_store=lambda: live_snapshot_store(owner),
         recording_active=lambda: owner.player_stats_vod_recorder.is_recording,
         live_stats_tab_active=lambda: owner._is_live_stats_tab_active(),
         twitch_bot_active=lambda: owner._is_twitch_bot_active(),
         overlay_refresh_wanted=lambda: owner.overlay_should_refresh_live_stats(),
-        read_disabled_items_cache=lambda: getattr(owner, "player_stats_disabled_items_cache", None),
-        write_disabled_items_cache=lambda value: setattr(owner, "player_stats_disabled_items_cache", value),
-        read_disabled_items_refresh_pending=lambda: getattr(owner, "player_stats_disabled_items_refresh_pending", False),
-        write_disabled_items_refresh_pending=lambda value: setattr(owner, "player_stats_disabled_items_refresh_pending", value),
+        read_disabled_items_cache=lambda: getattr(
+            owner, "player_stats_disabled_items_cache", None
+        ),
+        write_disabled_items_cache=lambda value: setattr(
+            owner, "player_stats_disabled_items_cache", value
+        ),
+        read_disabled_items_refresh_pending=lambda: getattr(
+            owner, "player_stats_disabled_items_refresh_pending", False
+        ),
+        write_disabled_items_refresh_pending=lambda value: setattr(
+            owner, "player_stats_disabled_items_refresh_pending", value
+        ),
     )
     runtime.player_stats_memory = service
     coordinator = owner.__dict__.get("coordinator")
@@ -172,8 +191,12 @@ def run_lifecycle(owner) -> RunLifecycle:
     if existing is not None:
         return existing
     lifecycle = RunLifecycle(
-        read_activity_state=lambda context=None: player_stats_memory(owner)._read_player_stats_runtime_activity_state_safe(context),
-        read_game_state=lambda context=None: player_stats_memory(owner)._read_player_stats_runtime_game_state_safe(context),
+        read_activity_state=lambda context=None: player_stats_memory(
+            owner
+        )._read_player_stats_runtime_activity_state_safe(context),
+        read_game_state=lambda context=None: player_stats_memory(
+            owner
+        )._read_player_stats_runtime_game_state_safe(context),
         live_run_tracker=lambda: owner.live_run_tracker,
     )
     runtime.run_lifecycle = lifecycle
@@ -217,9 +240,15 @@ def vod_capture(owner) -> VodCapture:
         return existing
     service = VodCapture(
         recorder=lambda: owner.player_stats_vod_recorder,
-        read_recording_state=lambda context=None: player_stats_memory(owner)._read_player_stats_recording_state_safe(context),
-        read_run_timer=lambda context=None: player_stats_memory(owner)._read_player_stats_recording_run_timer_safe(context),
-        close_game_data_client=lambda: player_stats_memory(owner).close_player_stats_game_data_client(),
+        read_recording_state=lambda context=None: player_stats_memory(
+            owner
+        )._read_player_stats_recording_state_safe(context),
+        read_run_timer=lambda context=None: player_stats_memory(
+            owner
+        )._read_player_stats_recording_run_timer_safe(context),
+        close_game_data_client=lambda: player_stats_memory(
+            owner
+        ).close_player_stats_game_data_client(),
         run_lifecycle=lambda: run_lifecycle(owner),
         refresh_now=lambda **kwargs: player_stats_refresh(owner).refresh_now(**kwargs),
         player_stats_view=lambda: player_stats_view(owner),
@@ -254,7 +283,13 @@ def player_stats_refresh_required(owner) -> bool:
         or bool(getattr(config, "AUTO_START_RECORDING", False))
         or any(
             overlay_widget_refresh_active(owner, widget_id)
-            for widget_id in ("stage_summary", "tracked_items", "stats", "banishes", "build_progression")
+            for widget_id in (
+                "stage_summary",
+                "tracked_items",
+                "stats",
+                "banishes",
+                "build_progression",
+            )
         )
         or in_game_overlay_requires_player_stats_refresh()
         or owner._is_twitch_bot_active()
@@ -276,12 +311,22 @@ def refresh_tasks(owner) -> RefreshTasks:
         tab_active=lambda: owner._is_live_stats_tab_active(),
         twitch_active=lambda: owner._is_twitch_bot_active(),
         pinned=lambda: player_stats_snapshot_is_pinned(owner),
-        widget_refresh_active=lambda widget_id: overlay_widget_refresh_active(owner, widget_id),
+        widget_refresh_active=lambda widget_id: overlay_widget_refresh_active(
+            owner, widget_id
+        ),
         sync_overlay_state=lambda: owner.update_overlay_state_from_tracker(),
         sync_in_game_kps=lambda: owner.refresh_in_game_overlay_kps(),
-        refresh_session_tracked_items=lambda: owner.refresh_session_tracked_item_stats_ui(),
+        refresh_session_tracked_items=lambda: (
+            owner.refresh_session_tracked_item_stats_ui()
+        ),
         refresh_required=lambda: player_stats_refresh_required(owner),
-        build_progression_service=lambda: getattr(owner, "build_progression_service", getattr(getattr(owner, "coordinator", None), "build_progression_service", None)),
+        build_progression_service=lambda: getattr(
+            owner,
+            "build_progression_service",
+            getattr(
+                getattr(owner, "coordinator", None), "build_progression_service", None
+            ),
+        ),
     )
     runtime.refresh_tasks = service
     return service
@@ -294,7 +339,9 @@ def ensure_refresh_coordinator(owner) -> RefreshCoordinator:
         return existing
     coordinator = build_refresh_coordinator(
         refresh_tasks(owner),
-        refresh_full_snapshot=lambda **kwargs: owner.refresh_live_player_stats_now(**kwargs),
+        refresh_full_snapshot=lambda **kwargs: owner.refresh_live_player_stats_now(
+            **kwargs
+        ),
     )
     runtime.refresh_coordinator = coordinator
     app_coordinator = owner.__dict__.get("coordinator")
@@ -323,9 +370,13 @@ def player_stats_refresh(owner) -> PlayerStatsRefresh:
         tab_is_active=lambda: owner._is_live_stats_tab_active(),
         snapshot_is_pinned=lambda: player_stats_snapshot_is_pinned(owner),
         snapshot_buffer=lambda: owner.player_stats_vod_snapshots,
-        select_snapshot=lambda index: setattr(owner, "player_stats_selected_snapshot_index", index),
+        select_snapshot=lambda index: setattr(
+            owner, "player_stats_selected_snapshot_index", index
+        ),
         game_data_client=lambda: owner.player_stats_game_data_client,
-        set_game_data_client=lambda value: setattr(owner, "player_stats_game_data_client", value),
+        set_game_data_client=lambda value: setattr(
+            owner, "player_stats_game_data_client", value
+        ),
     )
     runtime.player_stats_refresh = service
     return service

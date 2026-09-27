@@ -206,4 +206,6 @@ class ProcessMemory:
 
     @staticmethod
     def _missing_module_lookup(_handle: Any, module_name: str) -> Any:
-        raise ModuleNotFoundError(f"Module lookup is not configured for '{module_name}'.")
+        raise ModuleNotFoundError(
+            f"Module lookup is not configured for '{module_name}'."
+        )

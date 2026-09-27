@@ -249,7 +249,9 @@ class FakeSettingsMaster:
 
 
 class FakeThread:
-    def __init__(self, *, target: object, args: tuple[object, ...] = (), daemon: bool) -> None:
+    def __init__(
+        self, *, target: object, args: tuple[object, ...] = (), daemon: bool
+    ) -> None:
         self.target = target
         self.args = args
         self.daemon = daemon
@@ -509,7 +511,9 @@ class FakeKeyboardModule:
 
 
 class FakeRecordingRecorder:
-    def __init__(self, *, is_recording: bool = True, should_capture: bool = False) -> None:
+    def __init__(
+        self, *, is_recording: bool = True, should_capture: bool = False
+    ) -> None:
         self.is_recording = is_recording
         self.should_capture_value = should_capture
         self.start_calls: list[dict[str, object]] = []
@@ -732,7 +736,9 @@ class FakeUser32:
         self.AttachThreadInput = FakeCtypesFunction(self._attach_thread_input)
         self.keybd_event = FakeCtypesFunction(self._keybd_event)
 
-    def _attach_thread_input(self, current_thread: int, target_thread: int, attach: bool) -> bool:
+    def _attach_thread_input(
+        self, current_thread: int, target_thread: int, attach: bool
+    ) -> bool:
         self.attach_calls.append((current_thread, target_thread, attach))
         return True
 
@@ -866,7 +872,9 @@ class GuiRunControlTests(unittest.TestCase):
             reads.append("read")
             return next(states)
 
-        player_stats_memory(app).read_player_stats_runtime_activity_state = read_activity_state
+        player_stats_memory(
+            app
+        ).read_player_stats_runtime_activity_state = read_activity_state
         player_stats_memory(app).close_player_stats_game_data_client = lambda: None
         # `run_lifecycle`'s activity reader now calls the real
         # `player_stats_memory(app)._read_player_stats_runtime_activity_state_safe`,
@@ -902,7 +910,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertFalse(MegabonkApp._is_twitch_bot_active(SimpleNamespace()))
 
     def test_app_reports_the_twitch_bot_active_from_the_session(self) -> None:
-        app = SimpleNamespace(_twitch_session=SimpleNamespace(is_bot_active=lambda: True))
+        app = SimpleNamespace(
+            _twitch_session=SimpleNamespace(is_bot_active=lambda: True)
+        )
 
         self.assertTrue(MegabonkApp._is_twitch_bot_active(app))
 
@@ -1053,8 +1063,13 @@ class GuiRunControlTests(unittest.TestCase):
         app._live_items_section = RecordingItemsSectionView()
         attach_player_stats_view(app)
         player_stats_memory(app).close_player_stats_client = lambda: None
-        player_stats_memory(app).read_player_stats_only = lambda _context=None: ({}, 0x1234)
-        player_stats_memory(app).read_passive_items_only = lambda owner_stats=None, _context=None: ()
+        player_stats_memory(app).read_player_stats_only = lambda _context=None: (
+            {},
+            0x1234,
+        )
+        player_stats_memory(app).read_passive_items_only = (
+            lambda owner_stats=None, _context=None: ()
+        )
         # Both lifecycle readers, and deliberately the same value: production
         # computes `mode` identically in get_runtime_game_state and the cheaper
         # cached get_runtime_activity_state (verified exhaustively over every
@@ -1065,8 +1080,12 @@ class GuiRunControlTests(unittest.TestCase):
             mode=RuntimeGameMode.IN_GAME,
             is_playing=True,
         )
-        player_stats_memory(app).read_player_stats_runtime_game_state = lambda _context=None: _runtime_state
-        player_stats_memory(app).read_player_stats_runtime_activity_state = lambda _context=None: _runtime_state
+        player_stats_memory(app).read_player_stats_runtime_game_state = (
+            lambda _context=None: _runtime_state
+        )
+        player_stats_memory(app).read_player_stats_runtime_activity_state = (
+            lambda _context=None: _runtime_state
+        )
         app._is_live_stats_tab_active = lambda: True
         app._is_twitch_bot_active = lambda: False
         app.log_messages = []
@@ -1108,16 +1127,9 @@ class GuiRunControlTests(unittest.TestCase):
     SAVED_HOLD_DURATION = 0.25
     PREVIOUS_HOLD_DURATION = 0.4
 
-
-
-
-
-
-
-
-
-
-    def test_settings_save_updates_community_settings_and_applies_run_control_mode(self) -> None:
+    def test_settings_save_updates_community_settings_and_applies_run_control_mode(
+        self,
+    ) -> None:
         master = FakeSettingsMaster()
         master.player_stats_vod_recorder = SimpleNamespace(interval_seconds=60)
         vod_capture(master).player_stats_auto_recording_suppressed = True
@@ -1193,7 +1205,9 @@ class GuiRunControlTests(unittest.TestCase):
         notice.exec.assert_called_once_with()
         notice.deleteLater.assert_called_once_with()
 
-    def test_settings_save_contains_live_refresh_failure_after_persistence(self) -> None:
+    def test_settings_save_contains_live_refresh_failure_after_persistence(
+        self,
+    ) -> None:
         master = FakeSettingsMaster()
         master.player_stats_vod_recorder = SimpleNamespace(interval_seconds=60)
 
@@ -1347,18 +1361,22 @@ class GuiRunControlTests(unittest.TestCase):
     def test_game_process_id_keeps_a_live_attached_process(self) -> None:
         run_control = gui_run_control.RunControl.__new__(gui_run_control.RunControl)
 
-        with patch.object(
-            run_control,
-            "attached_game_process_id",
-            return_value=1234,
-        ), patch.object(
-            run_control,
-            "_process_id_matches_name",
-            return_value=True,
-        ) as matches_name, patch.object(
-            run_control,
-            "find_game_process_id",
-        ) as find_process:
+        with (
+            patch.object(
+                run_control,
+                "attached_game_process_id",
+                return_value=1234,
+            ),
+            patch.object(
+                run_control,
+                "_process_id_matches_name",
+                return_value=True,
+            ) as matches_name,
+            patch.object(
+                run_control,
+                "find_game_process_id",
+            ) as find_process,
+        ):
             self.assertEqual(run_control.get_game_process_id(), 1234)
 
         matches_name.assert_called_once_with(1234, config.PROCESS_NAME)
@@ -1367,19 +1385,23 @@ class GuiRunControlTests(unittest.TestCase):
     def test_game_process_id_rejects_a_stale_attached_process(self) -> None:
         run_control = gui_run_control.RunControl.__new__(gui_run_control.RunControl)
 
-        with patch.object(
-            run_control,
-            "attached_game_process_id",
-            return_value=1234,
-        ), patch.object(
-            run_control,
-            "_process_id_matches_name",
-            return_value=False,
-        ) as matches_name, patch.object(
-            run_control,
-            "find_game_process_id",
-            return_value=None,
-        ) as find_process:
+        with (
+            patch.object(
+                run_control,
+                "attached_game_process_id",
+                return_value=1234,
+            ),
+            patch.object(
+                run_control,
+                "_process_id_matches_name",
+                return_value=False,
+            ) as matches_name,
+            patch.object(
+                run_control,
+                "find_game_process_id",
+                return_value=None,
+            ) as find_process,
+        ):
             self.assertIsNone(run_control.get_game_process_id())
 
         matches_name.assert_called_once_with(1234, config.PROCESS_NAME)
@@ -1388,24 +1410,30 @@ class GuiRunControlTests(unittest.TestCase):
     def test_game_process_id_finds_current_process_after_stale_attachment(self) -> None:
         run_control = gui_run_control.RunControl.__new__(gui_run_control.RunControl)
 
-        with patch.object(
-            run_control,
-            "attached_game_process_id",
-            return_value=1234,
-        ), patch.object(
-            run_control,
-            "_process_id_matches_name",
-            return_value=False,
-        ), patch.object(
-            run_control,
-            "find_game_process_id",
-            return_value=5678,
-        ) as find_process:
+        with (
+            patch.object(
+                run_control,
+                "attached_game_process_id",
+                return_value=1234,
+            ),
+            patch.object(
+                run_control,
+                "_process_id_matches_name",
+                return_value=False,
+            ),
+            patch.object(
+                run_control,
+                "find_game_process_id",
+                return_value=5678,
+            ) as find_process,
+        ):
             self.assertEqual(run_control.get_game_process_id(), 5678)
 
         find_process.assert_called_once_with(config.PROCESS_NAME)
 
-    def test_settings_save_keeps_dialog_open_when_game_reset_time_cannot_be_applied(self) -> None:
+    def test_settings_save_keeps_dialog_open_when_game_reset_time_cannot_be_applied(
+        self,
+    ) -> None:
         original_duration = config.RESET_HOLD_DURATION
         original_user_config = deepcopy(config.user_config)
         accepted: list[bool] = []
@@ -1453,7 +1481,9 @@ class GuiRunControlTests(unittest.TestCase):
         notice.exec.assert_called_once_with()
         notice.deleteLater.assert_called_once_with()
 
-    def test_unchanged_reset_values_are_still_verified_and_game_drift_is_repaired(self) -> None:
+    def test_unchanged_reset_values_are_still_verified_and_game_drift_is_repaired(
+        self,
+    ) -> None:
         duration = round(float(config.RESET_HOLD_DURATION), 2)
         margin = round(float(config.RESET_HOLD_SAFETY_MARGIN), 2)
         dialog = types.SimpleNamespace(
@@ -1531,7 +1561,9 @@ class GuiRunControlTests(unittest.TestCase):
                 "save_settings_with_game_reset",
                 return_value=config.SettingsSaveResult(True),
             ) as save_settings:
-                with patch.object(gui_dialogs, "GameResetTimeNoticeDialog") as notice_cls:
+                with patch.object(
+                    gui_dialogs, "GameResetTimeNoticeDialog"
+                ) as notice_cls:
                     SettingsDialog.save(dialog)
 
         self.assertTrue(save_settings.call_args.kwargs["sync_game"])
@@ -1560,35 +1592,42 @@ class GuiRunControlTests(unittest.TestCase):
             accept=lambda: None,
         )
 
-        with patch.object(
-            config,
-            "RESET_HOLD_DURATION",
-            refreshed_duration,
-        ), patch.object(
-            config,
-            "RESET_HOLD_SAFETY_MARGIN",
-            stale_margin,
-        ), patch.dict(
-            config.user_config,
-            {
-                "RESET_HOLD_DURATION": refreshed_duration,
-                "RESET_HOLD_SAFETY_MARGIN": stale_margin,
-            },
-        ), patch.object(
-            config,
-            "read_game_quick_reset_time",
-            return_value=config.GameConfigReadResult(
-                True,
-                value=refreshed_game_value,
+        with (
+            patch.object(
+                config,
+                "RESET_HOLD_DURATION",
+                refreshed_duration,
             ),
-        ), patch.object(
-            config,
-            "save_settings_with_game_reset",
-            return_value=config.SettingsSaveResult(True),
-        ) as save_settings, patch.object(
-            gui_dialogs,
-            "GameResetTimeNoticeDialog",
-        ) as notice_cls:
+            patch.object(
+                config,
+                "RESET_HOLD_SAFETY_MARGIN",
+                stale_margin,
+            ),
+            patch.dict(
+                config.user_config,
+                {
+                    "RESET_HOLD_DURATION": refreshed_duration,
+                    "RESET_HOLD_SAFETY_MARGIN": stale_margin,
+                },
+            ),
+            patch.object(
+                config,
+                "read_game_quick_reset_time",
+                return_value=config.GameConfigReadResult(
+                    True,
+                    value=refreshed_game_value,
+                ),
+            ),
+            patch.object(
+                config,
+                "save_settings_with_game_reset",
+                return_value=config.SettingsSaveResult(True),
+            ) as save_settings,
+            patch.object(
+                gui_dialogs,
+                "GameResetTimeNoticeDialog",
+            ) as notice_cls,
+        ):
             SettingsDialog.save(dialog)
 
             settings_updates = save_settings.call_args.args[0]
@@ -1604,14 +1643,19 @@ class GuiRunControlTests(unittest.TestCase):
             self.assertEqual(dialog._initial_reset_hold_duration, refreshed_duration)
             notice_cls.assert_not_called()
 
-    def test_twitch_command_settings_save_persists_commands_announcement_interval(self) -> None:
+    def test_twitch_command_settings_save_persists_commands_announcement_interval(
+        self,
+    ) -> None:
         accepted: list[bool] = []
         dialog = types.SimpleNamespace(
             stat_checkboxes={"Damage": FakeCheckbox(True)},
             stats_tpl_entry=FakeEntry("Live Stats: {Damage}"),
             templates_entries={"stats": FakeEntry("Live Stats: {Damage}")},
             template_pool_entries={},
-            disabled_item_checkboxes={"Anvil": FakeCheckbox(True), "Coin": FakeCheckbox(False)},
+            disabled_item_checkboxes={
+                "Anvil": FakeCheckbox(True),
+                "Coin": FakeCheckbox(False),
+            },
             commands_announcement_interval_spin=FakeSpinBox(42),
             weapons_include_globals_cb=FakeCheckbox(True),
             accept=lambda: accepted.append(True),
@@ -1620,13 +1664,17 @@ class GuiRunControlTests(unittest.TestCase):
         with patch.object(config, "save_config") as save_config:
             TwitchCommandSettingsDialog.save(dialog)
 
-        self.assertEqual(config.TWITCH_BOT["commands_announcement_interval_minutes"], 42)
+        self.assertEqual(
+            config.TWITCH_BOT["commands_announcement_interval_minutes"], 42
+        )
         self.assertTrue(config.TWITCH_BOT["weapons_include_globals"])
         self.assertEqual(config.TWITCH_BOT["highlighted_disabled_items"], ["Anvil"])
         self.assertEqual(accepted, [True])
         save_config.assert_called_once_with(config.user_config)
 
-    def test_twitch_command_settings_save_refreshes_session_snapshot_immediately(self) -> None:
+    def test_twitch_command_settings_save_refreshes_session_snapshot_immediately(
+        self,
+    ) -> None:
         """The double is only given what the application really has.
 
         It used to carry `_combined_tracked_item_rules` and a `live_run_tracker`
@@ -1657,7 +1705,9 @@ class GuiRunControlTests(unittest.TestCase):
 
         self.assertEqual(refreshed, [True])
 
-    def test_twitch_command_settings_filter_shows_ingame_disabled_items_without_show_all(self) -> None:
+    def test_twitch_command_settings_filter_shows_ingame_disabled_items_without_show_all(
+        self,
+    ) -> None:
         class FakeGridItem:
             def __init__(self, widget: object) -> None:
                 self._widget = widget
@@ -1682,7 +1732,9 @@ class GuiRunControlTests(unittest.TestCase):
                 self.widgets.append(widget)
 
         class FilterCheckbox(FakeCheckbox):
-            def __init__(self, value: bool, *, is_disabled_ingame: bool = False) -> None:
+            def __init__(
+                self, value: bool, *, is_disabled_ingame: bool = False
+            ) -> None:
                 super().__init__(value)
                 self.visible = True
                 self.props = {"is_disabled_ingame": is_disabled_ingame}
@@ -1718,10 +1770,16 @@ class GuiRunControlTests(unittest.TestCase):
     def test_twitch_command_settings_reset_restores_default_interval(self) -> None:
         dialog = types.SimpleNamespace(
             _init_guard=False,
-            stat_checkboxes={"Damage": FakeCheckbox(False), "XP Gain": FakeCheckbox(False)},
+            stat_checkboxes={
+                "Damage": FakeCheckbox(False),
+                "XP Gain": FakeCheckbox(False),
+            },
             stats_tpl_entry=FakeEntry("custom"),
             disabled_item_checkboxes={"Anvil": FakeCheckbox(True)},
-            templates_entries={"stats": FakeEntry("custom"), "disabled": FakeEntry("custom")},
+            templates_entries={
+                "stats": FakeEntry("custom"),
+                "disabled": FakeEntry("custom"),
+            },
             template_pool_entries={},
             commands_announcement_interval_spin=FakeSpinBox(99),
             weapons_include_globals_cb=FakeCheckbox(True),
@@ -1807,25 +1865,6 @@ class GuiRunControlTests(unittest.TestCase):
 
         callback.assert_not_called()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     def test_load_selected_vod_converts_qt_string_path_to_path(self) -> None:
         loaded_vod = types.SimpleNamespace(
             metadata=types.SimpleNamespace(path=Path("run.jsonl"), name="Run"),
@@ -1844,7 +1883,9 @@ class GuiRunControlTests(unittest.TestCase):
         load_vod.assert_called_once_with(Path("C:/tmp/run.jsonl"))
         self.assertIs(app._loaded_vod, loaded_vod)
 
-    def test_load_selected_vod_disables_old_recording_actions_until_background_load_finishes(self) -> None:
+    def test_load_selected_vod_disables_old_recording_actions_until_background_load_finishes(
+        self,
+    ) -> None:
         old_vod = types.SimpleNamespace(
             metadata=types.SimpleNamespace(path=Path("old.jsonl"), name="Old"),
             snapshots=(object(),),
@@ -1862,7 +1903,9 @@ class GuiRunControlTests(unittest.TestCase):
         app._snapshot_index = 0
         app._compare_start_index = None
         app._name_entry = FakeEntry("Old")
-        app._name_entry.setEnabled = lambda enabled: setattr(app._name_entry, "enabled", bool(enabled))
+        app._name_entry.setEnabled = lambda enabled: setattr(
+            app._name_entry, "enabled", bool(enabled)
+        )
         app._rename_btn = FakeControl()
         app._cleanup_btn = FakeControl()
         app._delete_btn = FakeControl()
@@ -1873,7 +1916,9 @@ class GuiRunControlTests(unittest.TestCase):
         pending = []
         app._load_lane.dispose()
         app._load_lane = SimpleNamespace(
-            submit=lambda path, *, load, complete: pending.append((path, load, complete))
+            submit=lambda path, *, load, complete: pending.append(
+                (path, load, complete)
+            )
         )
 
         with patch_everywhere("load_vod", return_value=loaded_vod):
@@ -1908,7 +1953,9 @@ class GuiRunControlTests(unittest.TestCase):
         app._snapshot_index = 0
         app._compare_start_index = None
         app._name_entry = FakeEntry("Old")
-        app._name_entry.setEnabled = lambda enabled: setattr(app._name_entry, "enabled", bool(enabled))
+        app._name_entry.setEnabled = lambda enabled: setattr(
+            app._name_entry, "enabled", bool(enabled)
+        )
         app._rename_btn = FakeControl()
         app._cleanup_btn = FakeControl()
         app._delete_btn = FakeControl()
@@ -1921,7 +1968,9 @@ class GuiRunControlTests(unittest.TestCase):
 
         app._clear_loaded_vod_selection.assert_called_once_with()
         self.assertIsNone(app._loaded_vod)
-        self.assertEqual(app._status_label.text(), "Could not load recording: broken file")
+        self.assertEqual(
+            app._status_label.text(), "Could not load recording: broken file"
+        )
         self.assertFalse(app._name_entry.enabled)
         self.assertFalse(app._rename_btn.isEnabled())
         self.assertFalse(app._delete_btn.isEnabled())
@@ -1957,7 +2006,9 @@ class GuiRunControlTests(unittest.TestCase):
             {"id": 1, "name": "LIGHT", "color": "GREEN"},
             {"id": 2, "name": "PERFECT", "color": "YELLOW"},
         ]
-        dialog = TemplateManagerDialog(None, templates, lambda _original, _updated: True)
+        dialog = TemplateManagerDialog(
+            None, templates, lambda _original, _updated: True
+        )
 
         first_details = dialog.card_widgets[1]["details"]
         second_details = dialog.card_widgets[2]["details"]
@@ -1971,11 +2022,17 @@ class GuiRunControlTests(unittest.TestCase):
 
         dialog.close()
 
-    def test_template_manager_dialog_save_updates_template_and_collapses_card(self) -> None:
+    def test_template_manager_dialog_save_updates_template_and_collapses_card(
+        self,
+    ) -> None:
         MegabonkApp._ensure_qt_application()
         saved: list[tuple[dict, dict]] = []
         templates = [{"id": 9, "name": "Custom", "micro": 1, "color": "MAGENTA"}]
-        dialog = TemplateManagerDialog(None, templates, lambda original, updated: saved.append((original, updated)) or True)
+        dialog = TemplateManagerDialog(
+            None,
+            templates,
+            lambda original, updated: saved.append((original, updated)) or True,
+        )
 
         form = dialog.card_widgets[9]["form"]
         form.micro_entry.setText("3")
@@ -1990,7 +2047,6 @@ class GuiRunControlTests(unittest.TestCase):
 
         dialog.close()
 
-
     # `test_format_stats_includes_bald_heads_when_active_template_requires_it`
     # stood here until step 22a. `format_stats` is `app.map_scoring`'s now, and
     # a free function needs no app double at all -- the test moved whole to
@@ -2004,9 +2060,6 @@ class GuiRunControlTests(unittest.TestCase):
     # constructor in `test_templates_panel.py` -- the migration order this
     # file's header states.
 
-
-
-
     def test_recording_run_state_split_starts_new_file_when_seed_changes(self) -> None:
         # stage_index fell (2 -> 0): a new run started, even though the timer
         # alone (4.0s, far below the old 120.0s baseline) would also have said
@@ -2017,7 +2070,9 @@ class GuiRunControlTests(unittest.TestCase):
         vod_capture(app).player_stats_recording_stage_ptr = 0x1000
         vod_capture(app).player_stats_recording_stage_index = 2
         vod_capture(app).player_stats_recording_run_time_seconds = 120.0
-        app.player_stats_client = SimpleNamespace(get_run_timer=lambda: 4.0, get_killed_mobs=lambda: 37)
+        app.player_stats_client = SimpleNamespace(
+            get_run_timer=lambda: 4.0, get_killed_mobs=lambda: 37
+        )
         app.player_stats_game_data_client = FakeSeedStateClient(
             [SimpleNamespace(map_seed=222, current_stage_ptr=0x2000, stage_index=0)]
         )
@@ -2026,13 +2081,17 @@ class GuiRunControlTests(unittest.TestCase):
 
         self.assertEqual(action, "split")
         self.assertEqual(app.player_stats_vod_recorder.stop_calls, 1)
-        self.assertEqual(app.player_stats_vod_recorder.start_calls, [{"name": None, "seed": 222}])
+        self.assertEqual(
+            app.player_stats_vod_recorder.start_calls, [{"name": None, "seed": 222}]
+        )
         self.assertEqual(vod_capture(app).player_stats_recording_seed, 222)
         self.assertEqual(vod_capture(app).player_stats_recording_stage_index, 0)
         self.assertEqual(app.player_stats_vod_snapshots, [])
         self.assertIn("auto-split", app.log_messages[0][0])
 
-    def test_recording_run_state_does_not_split_when_seed_changes_between_stages(self) -> None:
+    def test_recording_run_state_does_not_split_when_seed_changes_between_stages(
+        self,
+    ) -> None:
         # stage_index rose (0 -> 1): a map transition, not a new run, even
         # though the seed also changed. The timer (123.0s, above the 120.0s
         # baseline) would agree under the old heuristic too -- see the
@@ -2043,7 +2102,9 @@ class GuiRunControlTests(unittest.TestCase):
         vod_capture(app).player_stats_recording_stage_ptr = 0x1000
         vod_capture(app).player_stats_recording_stage_index = 0
         vod_capture(app).player_stats_recording_run_time_seconds = 120.0
-        app.player_stats_client = SimpleNamespace(get_run_timer=lambda: 123.0, get_killed_mobs=lambda: 37)
+        app.player_stats_client = SimpleNamespace(
+            get_run_timer=lambda: 123.0, get_killed_mobs=lambda: 37
+        )
         app.player_stats_game_data_client = FakeSeedStateClient(
             [SimpleNamespace(map_seed=222, current_stage_ptr=0x2000, stage_index=1)]
         )
@@ -2056,10 +2117,14 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(vod_capture(app).player_stats_recording_seed, 222)
         self.assertEqual(vod_capture(app).player_stats_recording_stage_ptr, 0x2000)
         self.assertEqual(vod_capture(app).player_stats_recording_stage_index, 1)
-        self.assertEqual(vod_capture(app).player_stats_recording_run_time_seconds, 123.0)
+        self.assertEqual(
+            vod_capture(app).player_stats_recording_run_time_seconds, 123.0
+        )
         self.assertEqual(app.log_messages, [])
 
-    def test_recording_run_state_does_not_split_when_stage_ptr_changes_inside_same_run(self) -> None:
+    def test_recording_run_state_does_not_split_when_stage_ptr_changes_inside_same_run(
+        self,
+    ) -> None:
         # Forest/Desert shape: seed constant, stage_ptr changes at 1 -> 2 -> 3,
         # stage_index increments cleanly alongside it.
         app = self.build_recording_app()
@@ -2067,7 +2132,9 @@ class GuiRunControlTests(unittest.TestCase):
         vod_capture(app).player_stats_recording_stage_ptr = 0x1000
         vod_capture(app).player_stats_recording_stage_index = 0
         vod_capture(app).player_stats_recording_run_time_seconds = 120.0
-        app.player_stats_client = SimpleNamespace(get_run_timer=lambda: 123.0, get_killed_mobs=lambda: 37)
+        app.player_stats_client = SimpleNamespace(
+            get_run_timer=lambda: 123.0, get_killed_mobs=lambda: 37
+        )
         app.player_stats_game_data_client = FakeSeedStateClient(
             [SimpleNamespace(map_seed=111, current_stage_ptr=0x2000, stage_index=1)]
         )
@@ -2080,10 +2147,14 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(vod_capture(app).player_stats_recording_seed, 111)
         self.assertEqual(vod_capture(app).player_stats_recording_stage_ptr, 0x2000)
         self.assertEqual(vod_capture(app).player_stats_recording_stage_index, 1)
-        self.assertEqual(vod_capture(app).player_stats_recording_run_time_seconds, 123.0)
+        self.assertEqual(
+            vod_capture(app).player_stats_recording_run_time_seconds, 123.0
+        )
         self.assertEqual(app.log_messages, [])
 
-    def test_recording_run_state_does_not_split_when_run_timer_read_fails_mid_transition(self) -> None:
+    def test_recording_run_state_does_not_split_when_run_timer_read_fails_mid_transition(
+        self,
+    ) -> None:
         """The bug step 8b exists to fix, in its original form.
 
         An ordinary Forest map transition (seed and stage_ptr both change) while
@@ -2113,7 +2184,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(vod_capture(app).player_stats_recording_stage_index, 1)
         self.assertEqual(app.log_messages, [])
 
-    def test_recording_run_state_does_not_split_when_stage_index_is_unreadable(self) -> None:
+    def test_recording_run_state_does_not_split_when_stage_index_is_unreadable(
+        self,
+    ) -> None:
         # The bug step 8b exists to fix: a failed read must not be read as an
         # answer. stage_ptr changed (so the decision block is reached at all),
         # but stage_index came back None -- the guard must wait for the next
@@ -2123,7 +2196,9 @@ class GuiRunControlTests(unittest.TestCase):
         vod_capture(app).player_stats_recording_stage_ptr = 0x1000
         vod_capture(app).player_stats_recording_stage_index = 1
         vod_capture(app).player_stats_recording_run_time_seconds = 120.0
-        app.player_stats_client = SimpleNamespace(get_run_timer=lambda: 4.0, get_killed_mobs=lambda: 37)
+        app.player_stats_client = SimpleNamespace(
+            get_run_timer=lambda: 4.0, get_killed_mobs=lambda: 37
+        )
         app.player_stats_game_data_client = FakeSeedStateClient(
             [SimpleNamespace(map_seed=111, current_stage_ptr=0x2000, stage_index=None)]
         )
@@ -2137,10 +2212,14 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(vod_capture(app).player_stats_recording_seed, 111)
         self.assertEqual(vod_capture(app).player_stats_recording_stage_ptr, 0x1000)
         self.assertEqual(vod_capture(app).player_stats_recording_stage_index, 1)
-        self.assertEqual(vod_capture(app).player_stats_recording_run_time_seconds, 120.0)
+        self.assertEqual(
+            vod_capture(app).player_stats_recording_run_time_seconds, 120.0
+        )
         self.assertEqual(app.log_messages, [])
 
-    def test_recording_run_state_splits_when_stage_index_unchanged_and_timer_regresses(self) -> None:
+    def test_recording_run_state_splits_when_stage_index_unchanged_and_timer_regresses(
+        self,
+    ) -> None:
         # A run that died and restarted at the same stage_index (typically 0,
         # per the Graveyard live check) -- the tie-break the four rules
         # reserve for "unchanged".
@@ -2149,7 +2228,9 @@ class GuiRunControlTests(unittest.TestCase):
         vod_capture(app).player_stats_recording_stage_ptr = 0x1000
         vod_capture(app).player_stats_recording_stage_index = 0
         vod_capture(app).player_stats_recording_run_time_seconds = 400.0
-        app.player_stats_client = SimpleNamespace(get_run_timer=lambda: 2.0, get_killed_mobs=lambda: 0)
+        app.player_stats_client = SimpleNamespace(
+            get_run_timer=lambda: 2.0, get_killed_mobs=lambda: 0
+        )
         app.player_stats_game_data_client = FakeSeedStateClient(
             [SimpleNamespace(map_seed=999, current_stage_ptr=0x9000, stage_index=0)]
         )
@@ -2160,7 +2241,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(vod_capture(app).player_stats_recording_seed, 999)
         self.assertEqual(vod_capture(app).player_stats_recording_stage_index, 0)
 
-    def test_recording_run_state_does_not_split_when_stage_index_unchanged_and_timer_unreadable(self) -> None:
+    def test_recording_run_state_does_not_split_when_stage_index_unchanged_and_timer_unreadable(
+        self,
+    ) -> None:
         # Unspecified by the four documented rules, so the conservative default
         # applies: missing timer data must not manufacture a split either.
         app = self.build_recording_app()
@@ -2168,7 +2251,9 @@ class GuiRunControlTests(unittest.TestCase):
         vod_capture(app).player_stats_recording_stage_ptr = 0x1000
         vod_capture(app).player_stats_recording_stage_index = 0
         vod_capture(app).player_stats_recording_run_time_seconds = 400.0
-        app.player_stats_client = SimpleNamespace(get_run_timer=lambda: None, get_killed_mobs=lambda: 0)
+        app.player_stats_client = SimpleNamespace(
+            get_run_timer=lambda: None, get_killed_mobs=lambda: 0
+        )
         app.player_stats_game_data_client = FakeSeedStateClient(
             [SimpleNamespace(map_seed=999, current_stage_ptr=0x9000, stage_index=0)]
         )
@@ -2222,10 +2307,12 @@ class GuiRunControlTests(unittest.TestCase):
 
     def test_recording_run_state_keeps_file_open_while_paused(self) -> None:
         app = self.build_recording_app()
-        player_stats_memory(app).read_player_stats_runtime_game_state = lambda _context=None: RuntimeGameState(
-            mode=RuntimeGameMode.PAUSED_IN_GAME,
-            is_playing=True,
-            is_paused=True,
+        player_stats_memory(app).read_player_stats_runtime_game_state = (
+            lambda _context=None: RuntimeGameState(
+                mode=RuntimeGameMode.PAUSED_IN_GAME,
+                is_playing=True,
+                is_paused=True,
+            )
         )
 
         action = vod_capture(app).sync_run_state()
@@ -2233,7 +2320,10 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(action, "paused")
         self.assertTrue(app.player_stats_vod_recorder.is_recording)
         self.assertEqual(app.player_stats_vod_recorder.stop_calls, 0)
-        self.assertEqual(vod_capture(app).player_stats_recording_waiting_mode, RuntimeGameMode.PAUSED_IN_GAME.value)
+        self.assertEqual(
+            vod_capture(app).player_stats_recording_waiting_mode,
+            RuntimeGameMode.PAUSED_IN_GAME.value,
+        )
 
     def test_pausing_writes_the_status_line_through_the_view(self) -> None:
         """Covers the branch step 14c re-routed and the suite never asserted.
@@ -2246,10 +2336,12 @@ class GuiRunControlTests(unittest.TestCase):
         """
         app = self.build_recording_app()
         app._is_live_stats_tab_active = lambda: True
-        player_stats_memory(app).read_player_stats_runtime_game_state = lambda _context=None: RuntimeGameState(
-            mode=RuntimeGameMode.PAUSED_IN_GAME,
-            is_playing=True,
-            is_paused=True,
+        player_stats_memory(app).read_player_stats_runtime_game_state = (
+            lambda _context=None: RuntimeGameState(
+                mode=RuntimeGameMode.PAUSED_IN_GAME,
+                is_playing=True,
+                is_paused=True,
+            )
         )
 
         action = vod_capture(app).sync_run_state()
@@ -2263,10 +2355,12 @@ class GuiRunControlTests(unittest.TestCase):
     def test_recording_run_state_waits_after_game_over_without_disarming(self) -> None:
         app = self.build_recording_app()
         vod_capture(app).player_stats_recording_armed = True
-        player_stats_memory(app).read_player_stats_runtime_game_state = lambda _context=None: RuntimeGameState(
-            mode=RuntimeGameMode.GAME_OVER,
-            is_playing=True,
-            is_game_over=True,
+        player_stats_memory(app).read_player_stats_runtime_game_state = (
+            lambda _context=None: RuntimeGameState(
+                mode=RuntimeGameMode.GAME_OVER,
+                is_playing=True,
+                is_game_over=True,
+            )
         )
 
         action = vod_capture(app).sync_run_state()
@@ -2275,13 +2369,20 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertFalse(app.player_stats_vod_recorder.is_recording)
         self.assertEqual(app.player_stats_vod_recorder.stop_calls, 1)
         self.assertTrue(vod_capture(app).player_stats_recording_armed)
-        self.assertEqual(vod_capture(app).player_stats_recording_waiting_mode, RuntimeGameMode.GAME_OVER.value)
+        self.assertEqual(
+            vod_capture(app).player_stats_recording_waiting_mode,
+            RuntimeGameMode.GAME_OVER.value,
+        )
 
-    def test_recording_run_state_waits_after_manual_menu_without_disarming(self) -> None:
+    def test_recording_run_state_waits_after_manual_menu_without_disarming(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         vod_capture(app).player_stats_recording_armed = True
-        player_stats_memory(app).read_player_stats_runtime_game_state = lambda _context=None: RuntimeGameState(
-            mode=RuntimeGameMode.MAIN_MENU,
+        player_stats_memory(app).read_player_stats_runtime_game_state = (
+            lambda _context=None: RuntimeGameState(
+                mode=RuntimeGameMode.MAIN_MENU,
+            )
         )
 
         action = vod_capture(app).sync_run_state()
@@ -2290,35 +2391,52 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertFalse(app.player_stats_vod_recorder.is_recording)
         self.assertEqual(app.player_stats_vod_recorder.stop_calls, 1)
         self.assertTrue(vod_capture(app).player_stats_recording_armed)
-        self.assertEqual(vod_capture(app).player_stats_recording_waiting_mode, RuntimeGameMode.MAIN_MENU.value)
+        self.assertEqual(
+            vod_capture(app).player_stats_recording_waiting_mode,
+            RuntimeGameMode.MAIN_MENU.value,
+        )
 
-    def test_recording_run_state_starts_new_file_from_waiting_when_game_resumes(self) -> None:
+    def test_recording_run_state_starts_new_file_from_waiting_when_game_resumes(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         app.player_stats_vod_recorder.is_recording = False
         vod_capture(app).player_stats_recording_armed = True
-        vod_capture(app).player_stats_recording_waiting_mode = RuntimeGameMode.MAIN_MENU.value
-        player_stats_memory(app).read_player_stats_runtime_game_state = lambda _context=None: RuntimeGameState(
-            mode=RuntimeGameMode.IN_GAME,
-            is_playing=True,
+        vod_capture(
+            app
+        ).player_stats_recording_waiting_mode = RuntimeGameMode.MAIN_MENU.value
+        player_stats_memory(app).read_player_stats_runtime_game_state = (
+            lambda _context=None: RuntimeGameState(
+                mode=RuntimeGameMode.IN_GAME,
+                is_playing=True,
+            )
         )
-        player_stats_memory(app).read_player_stats_recording_state = lambda _context=None: SimpleNamespace(
-            map_seed=333,
-            current_stage_ptr=0x3000,
+        player_stats_memory(app).read_player_stats_recording_state = (
+            lambda _context=None: SimpleNamespace(
+                map_seed=333,
+                current_stage_ptr=0x3000,
+            )
         )
 
         action = vod_capture(app).sync_run_state()
 
         self.assertEqual(action, "started")
         self.assertTrue(app.player_stats_vod_recorder.is_recording)
-        self.assertEqual(app.player_stats_vod_recorder.start_calls, [{"name": None, "seed": 333}])
+        self.assertEqual(
+            app.player_stats_vod_recorder.start_calls, [{"name": None, "seed": 333}]
+        )
         self.assertEqual(vod_capture(app).player_stats_recording_stage_ptr, 0x3000)
         self.assertIsNone(vod_capture(app).player_stats_recording_waiting_mode)
 
-    def test_toggle_recording_stops_auto_recording_waiting_mode_for_session(self) -> None:
+    def test_toggle_recording_stops_auto_recording_waiting_mode_for_session(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         app.player_stats_vod_recorder.is_recording = False
         vod_capture(app).player_stats_recording_armed = False
-        vod_capture(app).player_stats_recording_waiting_mode = RuntimeGameMode.MAIN_MENU.value
+        vod_capture(
+            app
+        ).player_stats_recording_waiting_mode = RuntimeGameMode.MAIN_MENU.value
         app.refresh_live_player_stats_now = lambda *args, **kwargs: None
 
         with patch.object(config, "AUTO_START_RECORDING", True):
@@ -2349,11 +2467,13 @@ class GuiRunControlTests(unittest.TestCase):
         )
         service, world = build_vod_capture(
             recorder=recorder,
-            recording_states=[SimpleNamespace(
-                map_seed=777,
-                current_stage_ptr=0x1234,
-                stage_index=0,
-            )],
+            recording_states=[
+                SimpleNamespace(
+                    map_seed=777,
+                    current_stage_ptr=0x1234,
+                    stage_index=0,
+                )
+            ],
             run_timers=[12.0],
             run_lifecycle=lifecycle,
         )
@@ -2427,10 +2547,10 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(service.player_stats_auto_start_detection_streak, 0)
         self.assertEqual(world.recorder.start_calls, [])
 
-    def test_every_start_path_uses_the_identity_supplied_by_the_central_service(self) -> None:
-        service, world = build_vod_capture(
-            read_character_identity=lambda: (18, "Dice")
-        )
+    def test_every_start_path_uses_the_identity_supplied_by_the_central_service(
+        self,
+    ) -> None:
+        service, world = build_vod_capture(read_character_identity=lambda: (18, "Dice"))
 
         service.start_recording(seed=777)
 
@@ -2446,7 +2566,9 @@ class GuiRunControlTests(unittest.TestCase):
             ],
         )
 
-    def test_recording_identity_prefers_live_character_over_previous_run_cache(self) -> None:
+    def test_recording_identity_prefers_live_character_over_previous_run_cache(
+        self,
+    ) -> None:
         owner = SimpleNamespace(
             live_run_tracker=SimpleNamespace(
                 character_passive_snapshot=lambda: SimpleNamespace(
@@ -2461,7 +2583,9 @@ class GuiRunControlTests(unittest.TestCase):
         )
         memory = SimpleNamespace(_get_player_stats_client=lambda: client)
 
-        with patch("tests.support.legacy_runtime.player_stats_memory", return_value=memory):
+        with patch(
+            "tests.support.legacy_runtime.player_stats_memory", return_value=memory
+        ):
             identity = _read_owner_character_identity(owner)
 
         self.assertEqual(identity, (0, "Fox"))
@@ -2497,7 +2621,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(world.refresh_calls, [])
         self.assertEqual(world.recorder.stop_calls, 1)
 
-    def test_final_recording_snapshot_bypasses_interval_and_keeps_latest_shrines(self) -> None:
+    def test_final_recording_snapshot_bypasses_interval_and_keeps_latest_shrines(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         app.player_stats_vod_recorder = FakeRecordingRecorder(
             is_recording=True,
@@ -2532,7 +2658,9 @@ class GuiRunControlTests(unittest.TestCase):
         )
         self.assertEqual(app.player_stats_vod_recorder.stop_calls, 1)
 
-    def test_build_stage_summary_tracks_stage_transitions_and_item_stack_gains(self) -> None:
+    def test_build_stage_summary_tracks_stage_transitions_and_item_stack_gains(
+        self,
+    ) -> None:
         snapshots = [
             SimpleNamespace(
                 game_time_seconds=20.0,
@@ -2620,7 +2748,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertIn("#60A5FA", rows[3]["items"])
         self.assertIn("#22C55E", rows[3]["items"])
 
-    def test_build_stage_summary_uses_early_new_stage_snapshot_as_previous_boundary(self) -> None:
+    def test_build_stage_summary_uses_early_new_stage_snapshot_as_previous_boundary(
+        self,
+    ) -> None:
         snapshots = [
             SimpleNamespace(
                 game_time_seconds=1310.0,
@@ -2746,7 +2876,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(rows[3]["kills"], "2,000")
         self.assertEqual(rows[3]["time"], "00:00")
 
-    def test_build_stage_summary_does_not_treat_early_stage_three_timer_reset_as_stage_four(self) -> None:
+    def test_build_stage_summary_does_not_treat_early_stage_three_timer_reset_as_stage_four(
+        self,
+    ) -> None:
         snapshots = [
             SimpleNamespace(
                 game_time_seconds=20.0,
@@ -2796,7 +2928,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(rows[2]["time"], "00:12")
         self.assertEqual(rows[3]["kills"], "--")
 
-    def test_build_stage_summary_detects_stage_four_when_boss_lives_past_one_minute(self) -> None:
+    def test_build_stage_summary_detects_stage_four_when_boss_lives_past_one_minute(
+        self,
+    ) -> None:
         snapshots = [
             SimpleNamespace(
                 game_time_seconds=20.0,
@@ -2847,7 +2981,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(rows[3]["kills"], "64")
         self.assertEqual(rows[3]["time"], "00:00")
 
-    def test_build_stage_summary_detects_stage_four_when_first_visible_snapshot_is_ghost_phase(self) -> None:
+    def test_build_stage_summary_detects_stage_four_when_first_visible_snapshot_is_ghost_phase(
+        self,
+    ) -> None:
         snapshots = [
             SimpleNamespace(
                 game_time_seconds=20.0,
@@ -2898,7 +3034,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(rows[3]["kills"], "577,478")
         self.assertEqual(rows[3]["time"], "00:19")
 
-    def test_build_stage_summary_reconciles_last_stage_kills_with_final_total(self) -> None:
+    def test_build_stage_summary_reconciles_last_stage_kills_with_final_total(
+        self,
+    ) -> None:
         snapshots = [
             SimpleNamespace(
                 game_time_seconds=20.0,
@@ -2989,7 +3127,9 @@ class GuiRunControlTests(unittest.TestCase):
 
         self.assertEqual(rows[0]["time"], "22:00")
 
-    def test_build_stage_summary_stage_one_kills_ignores_missing_initial_kill_reads(self) -> None:
+    def test_build_stage_summary_stage_one_kills_ignores_missing_initial_kill_reads(
+        self,
+    ) -> None:
         snapshots = [
             SimpleNamespace(
                 game_time_seconds=0.0,
@@ -3029,7 +3169,9 @@ class GuiRunControlTests(unittest.TestCase):
 
         self.assertEqual(rows[0]["kills"], "128")
 
-    def test_build_stage_summary_later_stage_kills_use_transition_baseline_when_reads_are_missing(self) -> None:
+    def test_build_stage_summary_later_stage_kills_use_transition_baseline_when_reads_are_missing(
+        self,
+    ) -> None:
         snapshots = [
             SimpleNamespace(
                 game_time_seconds=100.0,
@@ -3135,7 +3277,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(rows[0]["item_rarities"]["COMMON"], 1)
         self.assertNotIn("759271589", rows[0]["items"])
 
-    def test_build_stage_summary_ignores_single_snapshot_item_drop_recoveries(self) -> None:
+    def test_build_stage_summary_ignores_single_snapshot_item_drop_recoveries(
+        self,
+    ) -> None:
         snapshots = [
             SimpleNamespace(
                 game_time_seconds=10.0,
@@ -3179,20 +3323,40 @@ class GuiRunControlTests(unittest.TestCase):
     def test_build_stage_summary_ignores_unavailable_item_snapshots(self) -> None:
         snapshots = [
             SimpleNamespace(
-                game_time_seconds=10.0, stage_time_seconds=10.0, stage_ptr=0x1000,
-                map_seed=11, mob_kills=10, items=("Za Warudo x1",), items_available=True,
+                game_time_seconds=10.0,
+                stage_time_seconds=10.0,
+                stage_ptr=0x1000,
+                map_seed=11,
+                mob_kills=10,
+                items=("Za Warudo x1",),
+                items_available=True,
             ),
             SimpleNamespace(
-                game_time_seconds=20.0, stage_time_seconds=20.0, stage_ptr=0x1000,
-                map_seed=11, mob_kills=20, items=(), items_available=False,
+                game_time_seconds=20.0,
+                stage_time_seconds=20.0,
+                stage_ptr=0x1000,
+                map_seed=11,
+                mob_kills=20,
+                items=(),
+                items_available=False,
             ),
             SimpleNamespace(
-                game_time_seconds=30.0, stage_time_seconds=30.0, stage_ptr=0x1000,
-                map_seed=11, mob_kills=30, items=("Za Warudo x2",), items_available=True,
+                game_time_seconds=30.0,
+                stage_time_seconds=30.0,
+                stage_ptr=0x1000,
+                map_seed=11,
+                mob_kills=30,
+                items=("Za Warudo x2",),
+                items_available=True,
             ),
             SimpleNamespace(
-                game_time_seconds=40.0, stage_time_seconds=40.0, stage_ptr=0x1000,
-                map_seed=11, mob_kills=40, items=("Za Warudo x2",), items_available=True,
+                game_time_seconds=40.0,
+                stage_time_seconds=40.0,
+                stage_ptr=0x1000,
+                map_seed=11,
+                mob_kills=40,
+                items=("Za Warudo x2",),
+                items_available=True,
             ),
         ]
 
@@ -3200,7 +3364,9 @@ class GuiRunControlTests(unittest.TestCase):
 
         self.assertIn(">1</span>", rows[0]["items"])
 
-    def test_build_stage_summary_counts_reacquired_items_after_confirmed_consumption(self) -> None:
+    def test_build_stage_summary_counts_reacquired_items_after_confirmed_consumption(
+        self,
+    ) -> None:
         snapshots = [
             SimpleNamespace(
                 game_time_seconds=10.0,
@@ -3277,7 +3443,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(rows[1]["time"], "01:10")
         self.assertEqual(rows[2]["kills"], "--")
 
-    def test_build_stage_summary_late_attach_uses_raw_stage_three_row_without_auto_stage_four(self) -> None:
+    def test_build_stage_summary_late_attach_uses_raw_stage_three_row_without_auto_stage_four(
+        self,
+    ) -> None:
         snapshots = [
             SimpleNamespace(
                 game_time_seconds=240.0,
@@ -3307,7 +3475,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(rows[2]["time"], "02:20")
         self.assertEqual(rows[3]["kills"], "--")
 
-    def test_build_stage_summary_attach_on_stage_four_uses_collapsed_chest_total_marker(self) -> None:
+    def test_build_stage_summary_attach_on_stage_four_uses_collapsed_chest_total_marker(
+        self,
+    ) -> None:
         snapshots = [
             SimpleNamespace(
                 game_time_seconds=240.0,
@@ -3339,7 +3509,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(rows[3]["kills"], "600")
         self.assertEqual(rows[3]["time"], "01:00")
 
-    def test_build_stage_summary_attach_on_stage_four_uses_zero_chest_total_marker(self) -> None:
+    def test_build_stage_summary_attach_on_stage_four_uses_zero_chest_total_marker(
+        self,
+    ) -> None:
         snapshots = [
             SimpleNamespace(
                 game_time_seconds=240.0,
@@ -3394,7 +3566,9 @@ class GuiRunControlTests(unittest.TestCase):
             ("Wrench x1", "Key x1", "Beacon x1", "Spiky Shield x1", "Anvil x1"),
         )
 
-    def test_update_player_stats_timer_auto_stops_recording_when_game_is_closed(self) -> None:
+    def test_update_player_stats_timer_auto_stops_recording_when_game_is_closed(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         app._is_shutting_down = False
         app.after_calls = []
@@ -3404,7 +3578,9 @@ class GuiRunControlTests(unittest.TestCase):
         app.overlay_should_refresh_live_stats = lambda: False
         app._is_twitch_bot_active = lambda: False
 
-        def failing_read_player_stats_only(_context=None) -> tuple[dict[str, object], int]:
+        def failing_read_player_stats_only(
+            _context=None,
+        ) -> tuple[dict[str, object], int]:
             raise ProcessNotFoundError("game closed")
 
         player_stats_memory(app).read_player_stats_only = failing_read_player_stats_only
@@ -3415,18 +3591,30 @@ class GuiRunControlTests(unittest.TestCase):
         # `refresh_live_player_stats_now` each build one. Patch both, so this test
         # keeps asserting "no lazily-created client can reach the real game",
         # which is the whole point of the fallback.
-        with patch("app.player_stats_memory.GameDataClient", return_value=fallback_client), \
-             patch.object(player_stats_refresh, "GameDataClient", return_value=fallback_client):
-            with patch.object(config, "AUTO_START_RECORDING", False), \
-                 patch.object(time, "monotonic", return_value=100.0):
+        with (
+            patch(
+                "app.player_stats_memory.GameDataClient", return_value=fallback_client
+            ),
+            patch.object(
+                player_stats_refresh, "GameDataClient", return_value=fallback_client
+            ),
+        ):
+            with (
+                patch.object(config, "AUTO_START_RECORDING", False),
+                patch.object(time, "monotonic", return_value=100.0),
+            ):
                 MegabonkApp.update_player_stats_timer(app)
 
-            with patch.object(config, "AUTO_START_RECORDING", False), \
-                 patch.object(
+            with (
+                patch.object(config, "AUTO_START_RECORDING", False),
+                patch.object(
                     time,
                     "monotonic",
-                    return_value=100.0 + PLAYER_STATS_RECORDING_SEED_GRACE_SECONDS + 1.0,
-                ):
+                    return_value=100.0
+                    + PLAYER_STATS_RECORDING_SEED_GRACE_SECONDS
+                    + 1.0,
+                ),
+            ):
                 MegabonkApp.update_player_stats_timer(app)
 
         self.assertEqual(app.player_stats_vod_recorder.stop_calls, 1)
@@ -3520,7 +3708,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertIs(coordinator.refresh_loop, replacement)
         self.assertEqual(len(schedule_calls), 1)
 
-    def test_recording_lifecycle_keeps_its_own_cadence_under_the_500ms_driver(self) -> None:
+    def test_recording_lifecycle_keeps_its_own_cadence_under_the_500ms_driver(
+        self,
+    ) -> None:
         # The whole risk of collapsing the two timers: the recording lifecycle
         # used to be a 10 s timer's body, and the surviving driver runs 20x
         # faster. Its interval must come from the task, not from the timer --
@@ -3532,17 +3722,23 @@ class GuiRunControlTests(unittest.TestCase):
         app._is_live_stats_tab_active = lambda: False
         app.overlay_should_refresh_live_stats = lambda: False
         app._is_twitch_bot_active = lambda: False
-        player_stats_memory(app).read_player_stats_runtime_activity_state = lambda _context=None: RuntimeGameState(
-            mode=RuntimeGameMode.MAIN_MENU,
+        player_stats_memory(app).read_player_stats_runtime_activity_state = (
+            lambda _context=None: RuntimeGameState(
+                mode=RuntimeGameMode.MAIN_MENU,
+            )
         )
         app.after = lambda delay, callback: None
         sync_calls: list[int] = []
-        vod_capture(app).sync_run_state = lambda _context=None: sync_calls.append(1) and None
+        vod_capture(app).sync_run_state = lambda _context=None: (
+            sync_calls.append(1) and None
+        )
 
         now = [1000.0]
-        with patch.object(time, "monotonic", side_effect=lambda: now[0]), \
-             patch.object(config, "AUTO_START_RECORDING", False), \
-             patch.object(config, "IN_GAME_OVERLAY", {"enabled": False, "widgets": {}}):
+        with (
+            patch.object(time, "monotonic", side_effect=lambda: now[0]),
+            patch.object(config, "AUTO_START_RECORDING", False),
+            patch.object(config, "IN_GAME_OVERLAY", {"enabled": False, "widgets": {}}),
+        ):
             for _ in range(40):  # 40 ticks x 500 ms = 20 s of driver time
                 MegabonkApp.update_player_stats_timer(app)
                 now[0] += 0.5
@@ -3584,8 +3780,13 @@ class GuiRunControlTests(unittest.TestCase):
         app.after = lambda delay, callback: None
 
         heavy_reads: list[int] = []
-        player_stats_memory(app).read_player_stats_runtime_game_state = lambda _context=None: heavy_reads.append(1) or RuntimeGameState(
-            mode=RuntimeGameMode.MAIN_MENU,
+        player_stats_memory(app).read_player_stats_runtime_game_state = (
+            lambda _context=None: (
+                heavy_reads.append(1)
+                or RuntimeGameState(
+                    mode=RuntimeGameMode.MAIN_MENU,
+                )
+            )
         )
         cheap_reads: list[int] = []
         cheap_read_contexts: list = []
@@ -3595,19 +3796,23 @@ class GuiRunControlTests(unittest.TestCase):
             cheap_read_contexts.append(context)
             return RuntimeGameState(mode=RuntimeGameMode.MAIN_MENU)
 
-        player_stats_memory(app).read_player_stats_runtime_activity_state = (
-            read_runtime_activity_state
-        )
+        player_stats_memory(
+            app
+        ).read_player_stats_runtime_activity_state = read_runtime_activity_state
 
         now = [1000.0]
-        with patch.object(time, "monotonic", side_effect=lambda: now[0]), \
-             patch.object(config, "AUTO_START_RECORDING", False), \
-             patch.object(config, "IN_GAME_OVERLAY", {"enabled": False, "widgets": {}}):
+        with (
+            patch.object(time, "monotonic", side_effect=lambda: now[0]),
+            patch.object(config, "AUTO_START_RECORDING", False),
+            patch.object(config, "IN_GAME_OVERLAY", {"enabled": False, "widgets": {}}),
+        ):
             for _ in range(20):  # 10 s of driver time
                 MegabonkApp.update_player_stats_timer(app)
                 now[0] += 0.5
 
-        self.assertEqual(heavy_reads, [], "the sync must not issue its own uncached read")
+        self.assertEqual(
+            heavy_reads, [], "the sync must not issue its own uncached read"
+        )
         self.assertEqual(len(cheap_reads), 10)  # 10 s / the 1 s lifecycle probe
         self.assertTrue(all(context is not None for context in cheap_read_contexts))
 
@@ -3633,34 +3838,47 @@ class GuiRunControlTests(unittest.TestCase):
             # stored it -- the same accessor production reads it through.
             for entry in ensure_refresh_coordinator(app).diagnostics()
         }
-        self.assertIn("lifecycle failed", diagnostics["recording_lifecycle"].last_error or "")
+        self.assertIn(
+            "lifecycle failed", diagnostics["recording_lifecycle"].last_error or ""
+        )
 
     # `test_refresh_right_tab_after_switch_immediately_refreshes_live_stats`
     # **moved** to `test_tab_router.py` at step 26, which made the router an
     # object. It built an app double and called the unbound mixin method with
     # it as `self`; its subject has a constructor now.
 
-    def test_update_player_stats_timer_skips_hidden_live_stats_when_not_recording(self) -> None:
+    def test_update_player_stats_timer_skips_hidden_live_stats_when_not_recording(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         app._is_shutting_down = False
         app.player_stats_vod_recorder.is_recording = False
         app._is_live_stats_tab_active = lambda: False
         app.overlay_should_refresh_live_stats = lambda: False
         app._is_twitch_bot_active = lambda: False
-        player_stats_memory(app).read_player_stats_runtime_activity_state = lambda _context=None: RuntimeGameState(
-            mode=RuntimeGameMode.MAIN_MENU,
+        player_stats_memory(app).read_player_stats_runtime_activity_state = (
+            lambda _context=None: RuntimeGameState(
+                mode=RuntimeGameMode.MAIN_MENU,
+            )
         )
         app.after_calls = []
         app.after = lambda delay, callback: app.after_calls.append((delay, callback))
         read_calls: list[str] = []
-        player_stats_memory(app).read_player_stats_only = lambda _context=None: read_calls.append("stats") or ({}, 0x1234)
+        player_stats_memory(app).read_player_stats_only = lambda _context=None: (
+            read_calls.append("stats") or ({}, 0x1234)
+        )
 
-        with patch.object(config, "AUTO_START_RECORDING", False), \
-             patch.object(config, "IN_GAME_OVERLAY", {"enabled": False, "widgets": {}}):
+        with (
+            patch.object(config, "AUTO_START_RECORDING", False),
+            patch.object(config, "IN_GAME_OVERLAY", {"enabled": False, "widgets": {}}),
+        ):
             MegabonkApp.update_player_stats_timer(app)
 
         self.assertEqual(read_calls, [])
-    def test_update_player_stats_timer_refreshes_hidden_live_stats_when_auto_start_enabled(self) -> None:
+
+    def test_update_player_stats_timer_refreshes_hidden_live_stats_when_auto_start_enabled(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         app._is_shutting_down = False
         app.player_stats_vod_recorder.is_recording = False
@@ -3669,13 +3887,18 @@ class GuiRunControlTests(unittest.TestCase):
         app.after = lambda delay, callback: app.after_calls.append((delay, callback))
         vod_capture(app).sync_run_state = lambda _context=None: None
         refresh_calls: list[str] = []
-        app.refresh_live_player_stats_now = lambda *args, **kwargs: refresh_calls.append("refresh")
+        app.refresh_live_player_stats_now = lambda *args, **kwargs: (
+            refresh_calls.append("refresh")
+        )
 
         with patch.object(config, "AUTO_START_RECORDING", True):
             MegabonkApp.update_player_stats_timer(app)
 
         self.assertEqual(refresh_calls, ["refresh"])
-    def test_update_player_stats_timer_refreshes_hidden_live_stats_when_in_game_overlay_luck_rarity_enabled(self) -> None:
+
+    def test_update_player_stats_timer_refreshes_hidden_live_stats_when_in_game_overlay_luck_rarity_enabled(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         app._is_shutting_down = False
         app.player_stats_vod_recorder.is_recording = False
@@ -3686,7 +3909,9 @@ class GuiRunControlTests(unittest.TestCase):
         app.after = lambda delay, callback: app.after_calls.append((delay, callback))
         vod_capture(app).sync_run_state = lambda _context=None: None
         refresh_calls: list[str] = []
-        app.refresh_live_player_stats_now = lambda *args, **kwargs: refresh_calls.append("refresh")
+        app.refresh_live_player_stats_now = lambda *args, **kwargs: (
+            refresh_calls.append("refresh")
+        )
 
         overlay_cfg = {
             "enabled": True,
@@ -3694,12 +3919,17 @@ class GuiRunControlTests(unittest.TestCase):
                 "luck_rarity": {"enabled": True},
             },
         }
-        with patch.object(config, "AUTO_START_RECORDING", False), \
-             patch.object(config, "IN_GAME_OVERLAY", overlay_cfg):
+        with (
+            patch.object(config, "AUTO_START_RECORDING", False),
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+        ):
             MegabonkApp.update_player_stats_timer(app)
 
         self.assertEqual(refresh_calls, ["refresh"])
-    def test_update_player_stats_timer_refreshes_hidden_live_stats_when_in_game_overlay_stats_enabled(self) -> None:
+
+    def test_update_player_stats_timer_refreshes_hidden_live_stats_when_in_game_overlay_stats_enabled(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         app._is_shutting_down = False
         app.player_stats_vod_recorder.is_recording = False
@@ -3710,7 +3940,9 @@ class GuiRunControlTests(unittest.TestCase):
         app.after = lambda delay, callback: app.after_calls.append((delay, callback))
         vod_capture(app).sync_run_state = lambda _context=None: None
         refresh_calls: list[str] = []
-        app.refresh_live_player_stats_now = lambda *args, **kwargs: refresh_calls.append("refresh")
+        app.refresh_live_player_stats_now = lambda *args, **kwargs: (
+            refresh_calls.append("refresh")
+        )
 
         overlay_cfg = {
             "enabled": True,
@@ -3718,12 +3950,17 @@ class GuiRunControlTests(unittest.TestCase):
                 "stats": {"enabled": True},
             },
         }
-        with patch.object(config, "AUTO_START_RECORDING", False), \
-             patch.object(config, "IN_GAME_OVERLAY", overlay_cfg):
+        with (
+            patch.object(config, "AUTO_START_RECORDING", False),
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+        ):
             MegabonkApp.update_player_stats_timer(app)
 
         self.assertEqual(refresh_calls, ["refresh"])
-    def test_update_player_stats_timer_refreshes_hidden_live_stats_when_in_game_overlay_event_timer_enabled(self) -> None:
+
+    def test_update_player_stats_timer_refreshes_hidden_live_stats_when_in_game_overlay_event_timer_enabled(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         app._is_shutting_down = False
         app.player_stats_vod_recorder.is_recording = False
@@ -3734,7 +3971,9 @@ class GuiRunControlTests(unittest.TestCase):
         app.after = lambda delay, callback: app.after_calls.append((delay, callback))
         vod_capture(app).sync_run_state = lambda _context=None: None
         refresh_calls: list[str] = []
-        app.refresh_live_player_stats_now = lambda *args, **kwargs: refresh_calls.append("refresh")
+        app.refresh_live_player_stats_now = lambda *args, **kwargs: (
+            refresh_calls.append("refresh")
+        )
 
         overlay_cfg = {
             "enabled": True,
@@ -3742,12 +3981,17 @@ class GuiRunControlTests(unittest.TestCase):
                 "event_timer": {"enabled": True},
             },
         }
-        with patch.object(config, "AUTO_START_RECORDING", False), \
-             patch.object(config, "IN_GAME_OVERLAY", overlay_cfg):
+        with (
+            patch.object(config, "AUTO_START_RECORDING", False),
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+        ):
             MegabonkApp.update_player_stats_timer(app)
 
         self.assertEqual(refresh_calls, ["refresh"])
-    def test_powerup_demand_is_active_when_in_game_overlay_powerups_enabled(self) -> None:
+
+    def test_powerup_demand_is_active_when_in_game_overlay_powerups_enabled(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         app._is_shutting_down = False
         app.player_stats_vod_recorder.is_recording = False
@@ -3762,8 +4006,10 @@ class GuiRunControlTests(unittest.TestCase):
                 "kps": {"enabled": False},
             },
         }
-        with patch.object(config, "AUTO_START_RECORDING", False), \
-             patch.object(config, "IN_GAME_OVERLAY", overlay_cfg):
+        with (
+            patch.object(config, "AUTO_START_RECORDING", False),
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+        ):
             self.assertTrue(refresh_tasks(app)._should_refresh_powerup_tracker())
 
     def test_combat_demand_is_active_when_in_game_overlay_kps_enabled(self) -> None:
@@ -3781,11 +4027,15 @@ class GuiRunControlTests(unittest.TestCase):
                 "kps": {"enabled": True},
             },
         }
-        with patch.object(config, "AUTO_START_RECORDING", False), \
-             patch.object(config, "IN_GAME_OVERLAY", overlay_cfg):
+        with (
+            patch.object(config, "AUTO_START_RECORDING", False),
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+        ):
             self.assertTrue(refresh_tasks(app)._should_refresh_fast_kps())
 
-    def test_expected_chest_inputs_demand_is_active_when_luck_expected_frame_shown(self) -> None:
+    def test_expected_chest_inputs_demand_is_active_when_luck_expected_frame_shown(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         app._is_shutting_down = False
         app.player_stats_vod_recorder.is_recording = False
@@ -3802,13 +4052,15 @@ class GuiRunControlTests(unittest.TestCase):
                 "luck_rarity": {"enabled": True, "show_expected": True},
             },
         }
-        with patch.object(config, "AUTO_START_RECORDING", False), \
-             patch.object(config, "IN_GAME_OVERLAY", overlay_cfg):
-            self.assertTrue(
-                refresh_tasks(app)._should_refresh_expected_chest_inputs()
-            )
+        with (
+            patch.object(config, "AUTO_START_RECORDING", False),
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+        ):
+            self.assertTrue(refresh_tasks(app)._should_refresh_expected_chest_inputs())
 
-    def test_expected_chest_inputs_demand_ignores_luck_widget_with_frame_hidden(self) -> None:
+    def test_expected_chest_inputs_demand_ignores_luck_widget_with_frame_hidden(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         app._is_shutting_down = False
         app.player_stats_vod_recorder.is_recording = False
@@ -3825,13 +4077,15 @@ class GuiRunControlTests(unittest.TestCase):
                 "luck_rarity": {"enabled": True, "show_expected": False},
             },
         }
-        with patch.object(config, "AUTO_START_RECORDING", False), \
-             patch.object(config, "IN_GAME_OVERLAY", overlay_cfg):
-            self.assertFalse(
-                refresh_tasks(app)._should_refresh_expected_chest_inputs()
-            )
+        with (
+            patch.object(config, "AUTO_START_RECORDING", False),
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+        ):
+            self.assertFalse(refresh_tasks(app)._should_refresh_expected_chest_inputs())
 
-    def test_event_timer_demand_is_active_when_in_game_overlay_event_timer_enabled(self) -> None:
+    def test_event_timer_demand_is_active_when_in_game_overlay_event_timer_enabled(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         app._is_shutting_down = False
         app.player_stats_vod_recorder.is_recording = False
@@ -3847,8 +4101,10 @@ class GuiRunControlTests(unittest.TestCase):
                 "event_timer": {"enabled": True},
             },
         }
-        with patch.object(config, "AUTO_START_RECORDING", False), \
-             patch.object(config, "IN_GAME_OVERLAY", overlay_cfg):
+        with (
+            patch.object(config, "AUTO_START_RECORDING", False),
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+        ):
             self.assertTrue(refresh_tasks(app)._should_refresh_fast_stage_timer())
 
     def test_stage_summary_fast_demands_are_active_for_twitch_stages(self) -> None:
@@ -3866,9 +4122,11 @@ class GuiRunControlTests(unittest.TestCase):
                 "stages": True,
             },
         }
-        with patch.object(config, "TWITCH_BOT", twitch_cfg), \
-             patch.object(config, "IN_GAME_OVERLAY", {"enabled": False, "widgets": {}}), \
-             patch.object(config, "OVERLAY", {"widgets": []}):
+        with (
+            patch.object(config, "TWITCH_BOT", twitch_cfg),
+            patch.object(config, "IN_GAME_OVERLAY", {"enabled": False, "widgets": {}}),
+            patch.object(config, "OVERLAY", {"widgets": []}),
+        ):
             self.assertTrue(refresh_tasks(app)._should_refresh_fast_kps())
             self.assertTrue(refresh_tasks(app)._should_refresh_fast_stage_timer())
 
@@ -3877,10 +4135,11 @@ class GuiRunControlTests(unittest.TestCase):
         app._is_live_stats_tab_active = lambda: False
         app._is_twitch_bot_active = lambda: False
 
-        with patch.object(config, "IN_GAME_OVERLAY", {"enabled": False, "widgets": {}}), \
-             patch.object(config, "OVERLAY", {"widgets": []}):
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", {"enabled": False, "widgets": {}}),
+            patch.object(config, "OVERLAY", {"widgets": []}),
+        ):
             self.assertTrue(refresh_tasks(app)._should_refresh_fast_stage_timer())
-
 
     def test_should_refresh_powerup_tracker_when_event_timer_enabled(self) -> None:
         app = self.build_recording_app()
@@ -3929,14 +4188,18 @@ class GuiRunControlTests(unittest.TestCase):
             get_player_level=lambda owner_stats=None: 2,
         )
         player_stats_memory(app).close_player_stats_client = lambda: None
-        attach_player_stats_view(app).refresh_player_stats_timeline_ui = lambda *args, **kwargs: None
+        attach_player_stats_view(app).refresh_player_stats_timeline_ui = (
+            lambda *args, **kwargs: None
+        )
         app._refresh_vods_list_if_visible = lambda: None
         app._is_live_stats_tab_active = lambda: True
         player_stats_memory(app).read_player_stats_only = lambda _context=None: (
             {
                 "Damage": SimpleNamespace(display_value="123", value=1.23),
                 "Powerup Multiplier": SimpleNamespace(display_value="1.5x", value=1.5),
-                "Elite Spawn Increase": SimpleNamespace(value=15.0, display_value="15x"),
+                "Elite Spawn Increase": SimpleNamespace(
+                    value=15.0, display_value="15x"
+                ),
                 "Powerup Drop Chance": SimpleNamespace(value=2.0, display_value="2x"),
             },
             0x1234,
@@ -3961,42 +4224,59 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(app.player_stats_status_label.text(), "Live player stats")
         self.assertEqual(stat_label.text(), "123")
         self.assertEqual(app.player_stats_items_label.text(), "Items unavailable")
-        self.assertEqual(app.player_stats_chests_per_minute_label.text(), "Average chests/min: --")
-        self.assertEqual(app.player_stats_powerups_duration_label.text(), "Powerups: 22s | Clock: 18s")
-        self.assertEqual(app.player_stats_in_game_time_label.text(), "In-Game Time: 00:21")
+        self.assertEqual(
+            app.player_stats_chests_per_minute_label.text(), "Average chests/min: --"
+        )
+        self.assertEqual(
+            app.player_stats_powerups_duration_label.text(),
+            "Powerups: 22s | Clock: 18s",
+        )
+        self.assertEqual(
+            app.player_stats_in_game_time_label.text(), "In-Game Time: 00:21"
+        )
         self.assertEqual(app.player_stats_mob_kills_label.text(), "Mob Kills: 37")
         self.assertEqual(app.player_stats_level_label.text(), "Level: 2")
         self.assertEqual(app.player_stats_new_items_label.text(), "Live snapshot")
         self.assertEqual(app.player_stats_banishes_label.text(), "No banishes yet")
 
-    def test_refresh_live_player_stats_now_keeps_recording_after_primary_read_failure(self) -> None:
+    def test_refresh_live_player_stats_now_keeps_recording_after_primary_read_failure(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         app.player_stats_vod_recorder = FakeRecordingRecorder(is_recording=True)
         app.player_stats_status_label.setText("Live player stats (recording)")
-        player_stats_memory(app).read_full_sample = lambda _context=None: (_ for _ in ()).throw(
-            MemoryReadError("transient player read")
-        )
+        player_stats_memory(app).read_full_sample = lambda _context=None: (
+            _ for _ in ()
+        ).throw(MemoryReadError("transient player read"))
 
         result = MegabonkApp.refresh_live_player_stats_now(app)
 
         self.assertFalse(result)
         self.assertTrue(app.player_stats_vod_recorder.is_recording)
-        self.assertEqual(app.player_stats_status_label.text(), "Live player stats (recording)")
+        self.assertEqual(
+            app.player_stats_status_label.text(), "Live player stats (recording)"
+        )
 
-    def test_refresh_chaos_tome_tracker_updates_powerups_when_in_game_overlay_window_is_not_visible(self) -> None:
+    def test_refresh_chaos_tome_tracker_updates_powerups_when_in_game_overlay_window_is_not_visible(
+        self,
+    ) -> None:
         powerup_reads: list[int] = []
         powerup_updates: list[object] = []
         powerup_snapshot = SimpleNamespace(active=["Rage"])
         client = SimpleNamespace(
             resolve_owner_stats=lambda: 0x1234,
-            get_powerup_tracking_snapshot=lambda owner_stats: powerup_reads.append(owner_stats) or powerup_snapshot,
+            get_powerup_tracking_snapshot=lambda owner_stats: (
+                powerup_reads.append(owner_stats) or powerup_snapshot
+            ),
             get_expected_chest_inputs=lambda owner_stats: (7, 3),
             get_chaos_tracking_state=lambda owner_stats: (None, {}),
         )
         refreshed: list[str] = []
         service, world = build_refresh_tasks(stats_client=client)
         world.view.refresh_powerups_card = lambda: refreshed.append("label")
-        world.tracker.update_powerups = lambda snapshot: powerup_updates.append(snapshot)
+        world.tracker.update_powerups = lambda snapshot: powerup_updates.append(
+            snapshot
+        )
 
         overlay_cfg = {
             "enabled": True,
@@ -4005,19 +4285,29 @@ class GuiRunControlTests(unittest.TestCase):
                 "kps": {"enabled": False},
             },
         }
-        with patch.object(config, "IN_GAME_OVERLAY", overlay_cfg), \
-             patch.object(time, "monotonic", return_value=100.0):
-            self.assertTrue(service._refresh_powerups_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+            patch.object(time, "monotonic", return_value=100.0),
+        ):
+            self.assertTrue(
+                service._refresh_powerups_task(
+                    RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+                )
+            )
 
         self.assertEqual(powerup_reads, [0x1234])
         self.assertEqual(powerup_updates, [powerup_snapshot])
         self.assertEqual(refreshed, ["label"])
 
-    def test_refresh_chaos_tome_tracker_updates_fast_stage_timer_when_event_timer_enabled(self) -> None:
+    def test_refresh_chaos_tome_tracker_updates_fast_stage_timer_when_event_timer_enabled(
+        self,
+    ) -> None:
         fast_stage_updates: list[dict[str, object]] = []
         client = SimpleNamespace(
             resolve_owner_stats=lambda: 0x1234,
-            get_powerup_tracking_snapshot=lambda owner_stats: SimpleNamespace(active=["Rage"]),
+            get_powerup_tracking_snapshot=lambda owner_stats: SimpleNamespace(
+                active=["Rage"]
+            ),
             get_expected_chest_inputs=lambda owner_stats: (7, 3),
             get_stage_timer_context=lambda: (25.0, 2, 480.0),
             get_chaos_tracking_state=lambda owner_stats: (None, {}),
@@ -4032,7 +4322,9 @@ class GuiRunControlTests(unittest.TestCase):
         service, world = build_refresh_tasks(
             stats_client=client, game_data_client=game_data_client
         )
-        world.tracker.update_fast_stage_timer = lambda **kwargs: fast_stage_updates.append(kwargs)
+        world.tracker.update_fast_stage_timer = lambda **kwargs: (
+            fast_stage_updates.append(kwargs)
+        )
 
         overlay_cfg = {
             "enabled": True,
@@ -4042,9 +4334,15 @@ class GuiRunControlTests(unittest.TestCase):
                 "event_timer": {"enabled": True},
             },
         }
-        with patch.object(config, "IN_GAME_OVERLAY", overlay_cfg), \
-             patch.object(time, "monotonic", return_value=100.0):
-            self.assertTrue(service._refresh_event_timer_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+            patch.object(time, "monotonic", return_value=100.0),
+        ):
+            self.assertTrue(
+                service._refresh_event_timer_task(
+                    RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+                )
+            )
 
         # The boss-room flag rides along with the timer publish.
         self.assertEqual(
@@ -4059,7 +4357,9 @@ class GuiRunControlTests(unittest.TestCase):
             ],
         )
 
-    def test_refresh_chaos_tome_tracker_updates_kps_when_in_game_overlay_window_is_not_visible(self) -> None:
+    def test_refresh_chaos_tome_tracker_updates_kps_when_in_game_overlay_window_is_not_visible(
+        self,
+    ) -> None:
         run_timer_reads: list[int] = []
         mob_kill_reads: list[int] = []
         tracked_kills: list[tuple[float, int]] = []
@@ -4071,8 +4371,8 @@ class GuiRunControlTests(unittest.TestCase):
             get_chaos_tracking_state=lambda owner_stats: (None, {}),
         )
         service, world = build_refresh_tasks(stats_client=client)
-        world.tracker.track_kills = (
-            lambda run_timer, mob_kills: tracked_kills.append((run_timer, mob_kills))
+        world.tracker.track_kills = lambda run_timer, mob_kills: tracked_kills.append(
+            (run_timer, mob_kills)
         )
         world.tracker.current_ui_kps = lambda: 123
 
@@ -4083,9 +4383,15 @@ class GuiRunControlTests(unittest.TestCase):
                 "kps": {"enabled": True},
             },
         }
-        with patch.object(config, "IN_GAME_OVERLAY", overlay_cfg), \
-             patch.object(time, "monotonic", return_value=100.0):
-            self.assertTrue(service._refresh_combat_metrics_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+            patch.object(time, "monotonic", return_value=100.0),
+        ):
+            self.assertTrue(
+                service._refresh_combat_metrics_task(
+                    RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+                )
+            )
 
         self.assertEqual(run_timer_reads, [1])
         self.assertEqual(mob_kill_reads, [1])
@@ -4113,8 +4419,7 @@ class GuiRunControlTests(unittest.TestCase):
         updates: list[tuple[int, int, bool]] = []
         client = SimpleNamespace(
             get_chest_counters=lambda **kwargs: (
-                reads.append(f"counters:{kwargs['include_opening']}")
-                or (7, 6, True)
+                reads.append(f"counters:{kwargs['include_opening']}") or (7, 6, True)
             ),
         )
         service, world = build_refresh_tasks(stats_client=client)
@@ -4132,7 +4437,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(reads, ["counters:True"])
         self.assertEqual(updates, [(7, 6, True)])
 
-    def test_fast_map_activity_updates_chest_progress_for_counter_confirmation(self) -> None:
+    def test_fast_map_activity_updates_chest_progress_for_counter_confirmation(
+        self,
+    ) -> None:
         activity = {
             "Chests": SimpleNamespace(current=4, max=46),
         }
@@ -4140,8 +4447,8 @@ class GuiRunControlTests(unittest.TestCase):
         world.memory.read_map_activity_values = lambda _context: activity
         world.tracker.get_chests_and_keys = lambda: (3, 46, 2, 0, {}, {})
         updates: list[tuple[int, int, int]] = []
-        world.tracker.update_chests_and_keys = (
-            lambda opened, total, keys: updates.append((opened, total, keys))
+        world.tracker.update_chests_and_keys = lambda opened, total, keys: (
+            updates.append((opened, total, keys))
         )
 
         service._publish_fast_map_activity(
@@ -4165,8 +4472,8 @@ class GuiRunControlTests(unittest.TestCase):
             ),
         )
         service, world = build_refresh_tasks(stats_client=client)
-        world.tracker.update_permanent_sources = (
-            lambda reading, **kwargs: updates.append((reading, kwargs))
+        world.tracker.update_permanent_sources = lambda reading, **kwargs: (
+            updates.append((reading, kwargs))
         )
 
         self.assertTrue(
@@ -4225,7 +4532,9 @@ class GuiRunControlTests(unittest.TestCase):
             apply_permanent_source_recovery=lambda token, result, reading: (
                 applied.append((token, result, reading)) or True
             ),
-            update_permanent_sources=lambda reading, **_kwargs: sync_updates.append(reading),
+            update_permanent_sources=lambda reading, **_kwargs: sync_updates.append(
+                reading
+            ),
             chaos_tome_snapshot=lambda: None,
             character_passive_snapshot=lambda: None,
             mark_feature_available=lambda _feature: None,
@@ -4245,11 +4554,13 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(len(jobs), 1)
         self.assertEqual(sync_updates, [])
 
-        readings[0] = SimpleNamespace(**{
-            **readings[0].__dict__,
-            "level": 65,
-            "gamba_current_level": 65,
-        })
+        readings[0] = SimpleNamespace(
+            **{
+                **readings[0].__dict__,
+                "level": 65,
+                "gamba_current_level": 65,
+            }
+        )
         jobs[0].completed = True
         self.assertTrue(
             service._refresh_chaos_tome_task(
@@ -4399,7 +4710,9 @@ class GuiRunControlTests(unittest.TestCase):
             needs_permanent_source_recovery=lambda _reading: not applied,
             begin_permanent_source_recovery=lambda _reading: ("token", frozenset()),
             apply_permanent_source_recovery=apply_recovery,
-            update_permanent_sources=lambda latest, **_kwargs: sync_updates.append(latest),
+            update_permanent_sources=lambda latest, **_kwargs: sync_updates.append(
+                latest
+            ),
             chaos_tome_snapshot=lambda: None,
             character_passive_snapshot=lambda: None,
             mark_feature_available=lambda _feature: None,
@@ -4416,8 +4729,8 @@ class GuiRunControlTests(unittest.TestCase):
             vod_recorder=SimpleNamespace(is_recording=True),
             permanent_source_recovery_job_factory=ControlledJob,
         )
-        service._refresh_charge_shrines_task = (
-            lambda _context: events.append("shrines") or True
+        service._refresh_charge_shrines_task = lambda _context: (
+            events.append("shrines") or True
         )
 
         # Start recovery during the live run, then cross the terminal boundary
@@ -4473,8 +4786,8 @@ class GuiRunControlTests(unittest.TestCase):
             get_chaos_tracking_state=lambda _owner: (2, {1: ()}),
         )
         service, world = build_refresh_tasks(stats_client=client)
-        world.tracker.track_expected_key_procs = (
-            lambda bought, keys: expected_updates.append((bought, keys))
+        world.tracker.track_expected_key_procs = lambda bought, keys: (
+            expected_updates.append((bought, keys))
         )
         world.tracker.update_chaos_tome = lambda **kwargs: chaos_updates.append(kwargs)
         context = RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
@@ -4484,7 +4797,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertTrue(service._refresh_chaos_tome_task(context))
 
         self.assertEqual(expected_updates, [(7, 3)])
-        self.assertEqual(chaos_updates, [{"chaos_level": 2, "permanent_modifiers": {1: ()}}])
+        self.assertEqual(
+            chaos_updates, [{"chaos_level": 2, "permanent_modifiers": {1: ()}}]
+        )
 
     def test_repeated_memory_errors_close_cached_player_stats_client(self) -> None:
         closed: list[str] = []
@@ -4504,12 +4819,24 @@ class GuiRunControlTests(unittest.TestCase):
             RuntimeError("feature-state update failed")
         )
 
-        self.assertFalse(service._refresh_chaos_tome_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
-        self.assertFalse(service._refresh_chaos_tome_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
+        self.assertFalse(
+            service._refresh_chaos_tome_task(
+                RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+            )
+        )
+        self.assertFalse(
+            service._refresh_chaos_tome_task(
+                RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+            )
+        )
         self.assertIsNotNone(world.stats_client)
         self.assertEqual(closed, [])
 
-        self.assertFalse(service._refresh_chaos_tome_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
+        self.assertFalse(
+            service._refresh_chaos_tome_task(
+                RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+            )
+        )
         self.assertIsNone(world.stats_client)
         self.assertEqual(closed, ["closed"])
 
@@ -4521,7 +4848,11 @@ class GuiRunControlTests(unittest.TestCase):
         service, world = build_refresh_tasks(stats_client=client)
         world.memory._player_stats_memory_error_streak = 2
 
-        self.assertTrue(service._refresh_chaos_tome_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
+        self.assertTrue(
+            service._refresh_chaos_tome_task(
+                RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+            )
+        )
         self.assertEqual(world.memory._player_stats_memory_error_streak, 0)
 
     def test_chaos_refresh_throttles_expected_chest_reads_to_500ms(self) -> None:
@@ -4536,19 +4867,33 @@ class GuiRunControlTests(unittest.TestCase):
             get_chaos_tracking_state=lambda owner_stats: (None, {}),
         )
         service, world = build_refresh_tasks(stats_client=client)
-        world.tracker.track_expected_key_procs = (
-            lambda bought, keys: tracked.append((bought, keys))
+        world.tracker.track_expected_key_procs = lambda bought, keys: tracked.append(
+            (bought, keys)
         )
 
         with patch.object(time, "monotonic", side_effect=(100.0, 100.25, 100.5)):
-            self.assertTrue(service._refresh_expected_chest_inputs_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
-            self.assertTrue(service._refresh_expected_chest_inputs_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
-            self.assertTrue(service._refresh_expected_chest_inputs_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
+            self.assertTrue(
+                service._refresh_expected_chest_inputs_task(
+                    RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+                )
+            )
+            self.assertTrue(
+                service._refresh_expected_chest_inputs_task(
+                    RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+                )
+            )
+            self.assertTrue(
+                service._refresh_expected_chest_inputs_task(
+                    RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+                )
+            )
 
         self.assertEqual(expected_reads, [0x1234, 0x1234, 0x1234])
         self.assertEqual(tracked, [(7, 3), (7, 3), (7, 3)])
 
-    def test_combat_refresh_reads_the_complete_pair_on_every_demanded_tick(self) -> None:
+    def test_combat_refresh_reads_the_complete_pair_on_every_demanded_tick(
+        self,
+    ) -> None:
         run_timer_reads: list[int] = []
         mob_kill_reads: list[int] = []
         tracked_kills: list[tuple[float, int]] = []
@@ -4556,7 +4901,9 @@ class GuiRunControlTests(unittest.TestCase):
         client = SimpleNamespace(
             resolve_owner_stats=lambda: 0x1234,
             get_expected_chest_inputs=lambda owner_stats: (7, 3),
-            get_run_timer=MagicMock(side_effect=lambda: run_timer_reads.append(1) or next(run_timer_values)),
+            get_run_timer=MagicMock(
+                side_effect=lambda: run_timer_reads.append(1) or next(run_timer_values)
+            ),
             get_killed_mobs=lambda: mob_kill_reads.append(1) or 37,
             get_chaos_tracking_state=lambda owner_stats: (None, {}),
         )
@@ -4564,16 +4911,30 @@ class GuiRunControlTests(unittest.TestCase):
         # The web-overlay KPS widget is the demand here, so the port is injected
         # active rather than assembled from `config.OVERLAY` plus a running
         # server: what this test asserts is the throttle, not the config parse.
-        service, world = build_refresh_tasks(stats_client=client, widget_refresh_active=True)
-        world.tracker.track_kills = (
-            lambda run_timer, mob_kills: tracked_kills.append((run_timer, mob_kills))
+        service, world = build_refresh_tasks(
+            stats_client=client, widget_refresh_active=True
+        )
+        world.tracker.track_kills = lambda run_timer, mob_kills: tracked_kills.append(
+            (run_timer, mob_kills)
         )
         world.tracker.current_ui_kps = lambda: 123
 
         with patch.object(time, "monotonic", side_effect=(100.0, 100.25, 101.0)):
-            self.assertTrue(service._refresh_combat_metrics_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
-            self.assertTrue(service._refresh_combat_metrics_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
-            self.assertTrue(service._refresh_combat_metrics_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
+            self.assertTrue(
+                service._refresh_combat_metrics_task(
+                    RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+                )
+            )
+            self.assertTrue(
+                service._refresh_combat_metrics_task(
+                    RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+                )
+            )
+            self.assertTrue(
+                service._refresh_combat_metrics_task(
+                    RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+                )
+            )
 
         self.assertEqual(run_timer_reads, [1, 1, 1])
         self.assertEqual(mob_kill_reads, [1, 1, 1])
@@ -4616,14 +4977,21 @@ class GuiRunControlTests(unittest.TestCase):
         )
         return app
 
-    def test_fast_kps_writes_the_mob_kills_line_when_live_stats_is_showing(self) -> None:
+    def test_fast_kps_writes_the_mob_kills_line_when_live_stats_is_showing(
+        self,
+    ) -> None:
         label = FakeLabel()
         app = self._fast_kps_app_with_live_stats_tab_showing(label)
 
-        with patch.object(config, "OVERLAY", {"widgets": []}), patch.object(
-            time, "monotonic", side_effect=(100.0, 101.0)
+        with (
+            patch.object(config, "OVERLAY", {"widgets": []}),
+            patch.object(time, "monotonic", side_effect=(100.0, 101.0)),
         ):
-            self.assertTrue(refresh_tasks(app)._refresh_combat_metrics_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
+            self.assertTrue(
+                refresh_tasks(app)._refresh_combat_metrics_task(
+                    RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+                )
+            )
 
         # The real formatter, through the real MRO: player_stats_view(app)
         # returns app, whose set_mob_kills_text comes from LiveStatsTabMixin.
@@ -4651,16 +5019,23 @@ class GuiRunControlTests(unittest.TestCase):
             set_kps_averages_text=lambda text: None,
         )
 
-        with patch.object(config, "OVERLAY", {"widgets": []}), patch.object(
-            time, "monotonic", side_effect=(100.0, 101.0)
+        with (
+            patch.object(config, "OVERLAY", {"widgets": []}),
+            patch.object(time, "monotonic", side_effect=(100.0, 101.0)),
         ):
-            self.assertTrue(refresh_tasks(app)._refresh_combat_metrics_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
+            self.assertTrue(
+                refresh_tasks(app)._refresh_combat_metrics_task(
+                    RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+                )
+            )
 
         self.assertEqual(received, ["Mob Kills: 37 (123/s)"])
         self.assertEqual(label.text(), "")
         self.assertEqual(len(stage_rows), 1)
 
-    def test_chaos_refresh_skips_fast_kps_reads_when_overlay_kps_widget_is_disabled(self) -> None:
+    def test_chaos_refresh_skips_fast_kps_reads_when_overlay_kps_widget_is_disabled(
+        self,
+    ) -> None:
         run_timer_reads: list[int] = []
         mob_kill_reads: list[int] = []
         tracked_kills: list[tuple[float, int]] = []
@@ -4676,8 +5051,8 @@ class GuiRunControlTests(unittest.TestCase):
         # the web-overlay port injected inactive. The in-game overlay stays a
         # real `config` read, because that is the branch this test names.
         service, world = build_refresh_tasks(stats_client=client)
-        world.tracker.track_kills = (
-            lambda run_timer, mob_kills: tracked_kills.append((run_timer, mob_kills))
+        world.tracker.track_kills = lambda run_timer, mob_kills: tracked_kills.append(
+            (run_timer, mob_kills)
         )
 
         with patch.object(
@@ -4692,7 +5067,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(tracked_kills, [])
         self.assertEqual(world.overlay_syncs, [])
 
-    def test_combat_refresh_keeps_kills_current_while_game_timer_is_frozen(self) -> None:
+    def test_combat_refresh_keeps_kills_current_while_game_timer_is_frozen(
+        self,
+    ) -> None:
         run_timer_reads: list[int] = []
         mob_kill_reads: list[int] = []
         tracked_kills: list[tuple[float, int]] = []
@@ -4701,29 +5078,49 @@ class GuiRunControlTests(unittest.TestCase):
         client = SimpleNamespace(
             resolve_owner_stats=lambda: 0x1234,
             get_expected_chest_inputs=lambda owner_stats: (7, 3),
-            get_run_timer=MagicMock(side_effect=lambda: run_timer_reads.append(1) or next(run_timer_values)),
+            get_run_timer=MagicMock(
+                side_effect=lambda: run_timer_reads.append(1) or next(run_timer_values)
+            ),
             get_killed_mobs=lambda: mob_kill_reads.append(1) or 37,
             get_chaos_tracking_state=lambda owner_stats: (None, {}),
         )
-        service, world = build_refresh_tasks(stats_client=client, widget_refresh_active=True)
-        world.tracker.track_kills = (
-            lambda run_timer, mob_kills: tracked_kills.append((run_timer, mob_kills))
+        service, world = build_refresh_tasks(
+            stats_client=client, widget_refresh_active=True
+        )
+        world.tracker.track_kills = lambda run_timer, mob_kills: tracked_kills.append(
+            (run_timer, mob_kills)
         )
         world.tracker.current_ui_kps = lambda: 123
 
         with patch.object(time, "monotonic", side_effect=(100.0, 100.25, 101.0)):
-            self.assertTrue(service._refresh_combat_metrics_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
-            self.assertTrue(service._refresh_combat_metrics_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
-            self.assertTrue(service._refresh_combat_metrics_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)))
+            self.assertTrue(
+                service._refresh_combat_metrics_task(
+                    RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+                )
+            )
+            self.assertTrue(
+                service._refresh_combat_metrics_task(
+                    RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+                )
+            )
+            self.assertTrue(
+                service._refresh_combat_metrics_task(
+                    RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+                )
+            )
 
         self.assertEqual(run_timer_reads, [1, 1, 1])
         self.assertEqual(mob_kill_reads, [1, 1, 1])
         self.assertEqual(tracked_kills, [(21.5, 37), (21.5, 37), (21.5, 37)])
         self.assertEqual(len(world.overlay_syncs), 3)
 
-    def test_refresh_live_player_stats_now_captures_while_hidden_recording(self) -> None:
+    def test_refresh_live_player_stats_now_captures_while_hidden_recording(
+        self,
+    ) -> None:
         app = self.build_recording_app()
-        app.player_stats_vod_recorder = FakeRecordingRecorder(is_recording=True, should_capture=True)
+        app.player_stats_vod_recorder = FakeRecordingRecorder(
+            is_recording=True, should_capture=True
+        )
         app.player_stats_vod_snapshots = []
         app.player_stats_selected_snapshot_index = None
         app._is_live_stats_tab_active = lambda: False
@@ -4753,28 +5150,56 @@ class GuiRunControlTests(unittest.TestCase):
             get_map_activity_values=lambda: {
                 "Chests": SimpleNamespace(current=4, max=15),
                 "Pots": SimpleNamespace(current=0, max=5),
-            }
+            },
         )
         timeline_calls: list[str] = []
         snapshot_calls: list[str] = []
-        attach_player_stats_view(app).refresh_player_stats_timeline_ui = lambda *args, **kwargs: timeline_calls.append("timeline")
-        attach_player_stats_view(app).display_player_stats_snapshot = lambda *args, **kwargs: snapshot_calls.append("snapshot")
-        player_stats_memory(app).read_player_stats_only = lambda _context=None: ({"Damage": SimpleNamespace(display_value="123", value=1.23)}, 0x1234)
-        player_stats_memory(app).read_passive_items_only = lambda owner_stats=None, _context=None: ("Wrench x2",)
+        attach_player_stats_view(app).refresh_player_stats_timeline_ui = (
+            lambda *args, **kwargs: timeline_calls.append("timeline")
+        )
+        attach_player_stats_view(app).display_player_stats_snapshot = (
+            lambda *args, **kwargs: snapshot_calls.append("snapshot")
+        )
+        player_stats_memory(app).read_player_stats_only = lambda _context=None: (
+            {"Damage": SimpleNamespace(display_value="123", value=1.23)},
+            0x1234,
+        )
+        player_stats_memory(app).read_passive_items_only = (
+            lambda owner_stats=None, _context=None: ("Wrench x2",)
+        )
 
         result = MegabonkApp.refresh_live_player_stats_now(app)
 
         self.assertTrue(result)
         self.assertEqual(len(app.player_stats_vod_recorder.capture_calls), 1)
-        self.assertEqual(app.player_stats_vod_recorder.capture_calls[0]["items"], ("Wrench x2",))
-        self.assertEqual(app.player_stats_vod_recorder.capture_calls[0]["tomes"], (tome,))
-        self.assertEqual(app.player_stats_vod_recorder.capture_calls[0]["banishes"], ("Clover", "Golden Tome"))
-        self.assertEqual(app.player_stats_vod_recorder.capture_calls[0]["game_time_seconds"], 21.5)
-        self.assertEqual(app.player_stats_vod_recorder.capture_calls[0]["mob_kills"], 37)
-        self.assertEqual(app.player_stats_vod_recorder.capture_calls[0]["player_level"], 2)
-        self.assertEqual(app.player_stats_vod_recorder.capture_calls[0]["stage_index"], 2)
-        self.assertIsNotNone(app.player_stats_vod_recorder.capture_calls[0]["chests_total"])
-        self.assertIsNotNone(app.player_stats_vod_recorder.capture_calls[0]["pots_total"])
+        self.assertEqual(
+            app.player_stats_vod_recorder.capture_calls[0]["items"], ("Wrench x2",)
+        )
+        self.assertEqual(
+            app.player_stats_vod_recorder.capture_calls[0]["tomes"], (tome,)
+        )
+        self.assertEqual(
+            app.player_stats_vod_recorder.capture_calls[0]["banishes"],
+            ("Clover", "Golden Tome"),
+        )
+        self.assertEqual(
+            app.player_stats_vod_recorder.capture_calls[0]["game_time_seconds"], 21.5
+        )
+        self.assertEqual(
+            app.player_stats_vod_recorder.capture_calls[0]["mob_kills"], 37
+        )
+        self.assertEqual(
+            app.player_stats_vod_recorder.capture_calls[0]["player_level"], 2
+        )
+        self.assertEqual(
+            app.player_stats_vod_recorder.capture_calls[0]["stage_index"], 2
+        )
+        self.assertIsNotNone(
+            app.player_stats_vod_recorder.capture_calls[0]["chests_total"]
+        )
+        self.assertIsNotNone(
+            app.player_stats_vod_recorder.capture_calls[0]["pots_total"]
+        )
         self.assertEqual(snapshot_calls, [])
         self.assertEqual(timeline_calls, ["timeline"])
 
@@ -4904,7 +5329,9 @@ class GuiRunControlTests(unittest.TestCase):
             player_stats_memory(app)._player_stats_game_data_memory_error_streak, 0
         )
 
-    def test_a_populated_map_activity_read_publishes_the_powerup_map_context(self) -> None:
+    def test_a_populated_map_activity_read_publishes_the_powerup_map_context(
+        self,
+    ) -> None:
         """The other side of the same branch: a good read must still reach the
         publish, which is what powerups need to show start and end times."""
         app, closes = self._map_activity_app(
@@ -4925,14 +5352,18 @@ class GuiRunControlTests(unittest.TestCase):
 
     def test_refresh_live_player_stats_now_does_not_capture_while_paused(self) -> None:
         app = self.build_recording_app()
-        app.player_stats_vod_recorder = FakeRecordingRecorder(is_recording=True, should_capture=True)
+        app.player_stats_vod_recorder = FakeRecordingRecorder(
+            is_recording=True, should_capture=True
+        )
         app.player_stats_vod_snapshots = []
         app.player_stats_selected_snapshot_index = None
         app._is_live_stats_tab_active = lambda: False
-        player_stats_memory(app).read_player_stats_runtime_game_state = lambda _context=None: RuntimeGameState(
-            mode=RuntimeGameMode.PAUSED_IN_GAME,
-            is_playing=True,
-            is_paused=True,
+        player_stats_memory(app).read_player_stats_runtime_game_state = (
+            lambda _context=None: RuntimeGameState(
+                mode=RuntimeGameMode.PAUSED_IN_GAME,
+                is_playing=True,
+                is_paused=True,
+            )
         )
         player_stats_memory(app)._get_player_stats_client = lambda: SimpleNamespace(
             get_live_weapons=lambda owner_stats=None: (),
@@ -4947,7 +5378,9 @@ class GuiRunControlTests(unittest.TestCase):
             {"Damage": SimpleNamespace(display_value="123", value=1.23)},
             0x1234,
         )
-        player_stats_memory(app).read_passive_items_only = lambda owner_stats=None, _context=None: ("Wrench x2",)
+        player_stats_memory(app).read_passive_items_only = (
+            lambda owner_stats=None, _context=None: ("Wrench x2",)
+        )
 
         result = MegabonkApp.refresh_live_player_stats_now(app)
 
@@ -4955,14 +5388,20 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(app.player_stats_vod_recorder.capture_calls, [])
         self.assertEqual(app.player_stats_vod_snapshots, [])
 
-    def test_refresh_live_player_stats_now_does_not_capture_when_runtime_state_is_unknown(self) -> None:
+    def test_refresh_live_player_stats_now_does_not_capture_when_runtime_state_is_unknown(
+        self,
+    ) -> None:
         app = self.build_recording_app()
-        app.player_stats_vod_recorder = FakeRecordingRecorder(is_recording=True, should_capture=True)
+        app.player_stats_vod_recorder = FakeRecordingRecorder(
+            is_recording=True, should_capture=True
+        )
         app.player_stats_vod_snapshots = []
         app.player_stats_selected_snapshot_index = None
         app._is_live_stats_tab_active = lambda: False
-        player_stats_memory(app).read_player_stats_runtime_game_state = lambda _context=None: (_ for _ in ()).throw(
-            MemoryReadError("runtime state unavailable")
+        player_stats_memory(app).read_player_stats_runtime_game_state = (
+            lambda _context=None: (_ for _ in ()).throw(
+                MemoryReadError("runtime state unavailable")
+            )
         )
         player_stats_memory(app)._get_player_stats_client = lambda: SimpleNamespace(
             get_live_weapons=lambda owner_stats=None: (),
@@ -4977,7 +5416,9 @@ class GuiRunControlTests(unittest.TestCase):
             {"Damage": SimpleNamespace(display_value="123", value=1.23)},
             0x1234,
         )
-        player_stats_memory(app).read_passive_items_only = lambda owner_stats=None, _context=None: ("Wrench x2",)
+        player_stats_memory(app).read_passive_items_only = (
+            lambda owner_stats=None, _context=None: ("Wrench x2",)
+        )
 
         result = MegabonkApp.refresh_live_player_stats_now(app)
 
@@ -4985,9 +5426,13 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(app.player_stats_vod_recorder.capture_calls, [])
         self.assertEqual(app.player_stats_vod_snapshots, [])
 
-    def test_refresh_live_player_stats_now_updates_live_view_while_recording(self) -> None:
+    def test_refresh_live_player_stats_now_updates_live_view_while_recording(
+        self,
+    ) -> None:
         app = self.build_recording_app()
-        app.player_stats_vod_recorder = FakeRecordingRecorder(is_recording=True, should_capture=False)
+        app.player_stats_vod_recorder = FakeRecordingRecorder(
+            is_recording=True, should_capture=False
+        )
         app.player_stats_vod_snapshots = []
         app.player_stats_selected_snapshot_index = None
         app._is_live_stats_tab_active = lambda: True
@@ -5024,14 +5469,18 @@ class GuiRunControlTests(unittest.TestCase):
         app.live_run_tracker.track_kills(1.0, 100)
         app.live_run_tracker.track_kills(21.0, 2_100)
         display_calls: list[dict[str, object]] = []
-        attach_player_stats_view(app).display_player_stats = lambda stats, items=(), **kwargs: display_calls.append(
-            {"stats": stats, "items": tuple(items), "kwargs": kwargs}
+        attach_player_stats_view(app).display_player_stats = (
+            lambda stats, items=(), **kwargs: display_calls.append(
+                {"stats": stats, "items": tuple(items), "kwargs": kwargs}
+            )
         )
         player_stats_memory(app).read_player_stats_only = lambda _context=None: (
             stats,
             0x1234,
         )
-        player_stats_memory(app).read_passive_items_only = lambda owner_stats=None, _context=None: ("Wrench x2",)
+        player_stats_memory(app).read_passive_items_only = (
+            lambda owner_stats=None, _context=None: ("Wrench x2",)
+        )
 
         result = MegabonkApp.refresh_live_player_stats_now(app)
 
@@ -5039,8 +5488,12 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(len(display_calls), 1)
         self.assertEqual(display_calls[0]["items"], ("Wrench x2",))
         self.assertEqual(display_calls[0]["kwargs"]["tomes"], (tome,))
-        self.assertEqual(display_calls[0]["kwargs"]["banishes"], ("Clover", "Golden Tome"))
-        self.assertEqual(display_calls[0]["kwargs"]["status_text"], "Live player stats (recording)")
+        self.assertEqual(
+            display_calls[0]["kwargs"]["banishes"], ("Clover", "Golden Tome")
+        )
+        self.assertEqual(
+            display_calls[0]["kwargs"]["status_text"], "Live player stats (recording)"
+        )
         self.assertAlmostEqual(
             display_calls[0]["kwargs"]["chests_per_minute"],
             formatting.calculate_player_chests_per_minute(
@@ -5049,15 +5502,26 @@ class GuiRunControlTests(unittest.TestCase):
             ),
         )
 
-    def test_refresh_live_player_stats_now_auto_starts_recording_after_stable_run_detection(self) -> None:
+    def test_refresh_live_player_stats_now_auto_starts_recording_after_stable_run_detection(
+        self,
+    ) -> None:
         app = self.build_recording_app()
-        app.player_stats_vod_recorder = FakeRecordingRecorder(is_recording=False, should_capture=False)
+        app.player_stats_vod_recorder = FakeRecordingRecorder(
+            is_recording=False, should_capture=False
+        )
         app.player_stats_vod_snapshots = []
         app.player_stats_selected_snapshot_index = None
         app._is_live_stats_tab_active = lambda: False
-        player_stats_memory(app).read_player_stats_only = lambda _context=None: ({"Damage": SimpleNamespace(display_value="123", value=1.23)}, 0x1234)
-        player_stats_memory(app).read_passive_items_only = lambda owner_stats=None, _context=None: ()
-        player_stats_memory(app).read_player_stats_recording_state = lambda _context=None: SimpleNamespace(map_seed=777, current_stage_ptr=2)
+        player_stats_memory(app).read_player_stats_only = lambda _context=None: (
+            {"Damage": SimpleNamespace(display_value="123", value=1.23)},
+            0x1234,
+        )
+        player_stats_memory(app).read_passive_items_only = (
+            lambda owner_stats=None, _context=None: ()
+        )
+        player_stats_memory(app).read_player_stats_recording_state = (
+            lambda _context=None: SimpleNamespace(map_seed=777, current_stage_ptr=2)
+        )
         player_stats_memory(app)._get_player_stats_client = lambda: SimpleNamespace(
             get_run_timer=lambda: 21.5,
             get_stage_timer=lambda: 9.0,
@@ -5071,21 +5535,37 @@ class GuiRunControlTests(unittest.TestCase):
 
         self.assertTrue(first)
         self.assertTrue(second)
-        self.assertEqual(app.player_stats_vod_recorder.start_calls, [{"name": None, "seed": 777}])
+        self.assertEqual(
+            app.player_stats_vod_recorder.start_calls, [{"name": None, "seed": 777}]
+        )
         self.assertTrue(app.player_stats_vod_recorder.is_recording)
         self.assertEqual(vod_capture(app).player_stats_recording_stage_ptr, 2)
         self.assertEqual(vod_capture(app).player_stats_recording_run_time_seconds, 21.5)
-        self.assertIn(("[*] Player stats recording auto-started: recording-1.jsonl", "success"), app.log_messages)
+        self.assertIn(
+            ("[*] Player stats recording auto-started: recording-1.jsonl", "success"),
+            app.log_messages,
+        )
 
-    def test_refresh_live_player_stats_now_does_not_auto_start_without_active_run_signal(self) -> None:
+    def test_refresh_live_player_stats_now_does_not_auto_start_without_active_run_signal(
+        self,
+    ) -> None:
         app = self.build_recording_app()
-        app.player_stats_vod_recorder = FakeRecordingRecorder(is_recording=False, should_capture=False)
+        app.player_stats_vod_recorder = FakeRecordingRecorder(
+            is_recording=False, should_capture=False
+        )
         app.player_stats_vod_snapshots = []
         app.player_stats_selected_snapshot_index = None
         app._is_live_stats_tab_active = lambda: False
-        player_stats_memory(app).read_player_stats_only = lambda _context=None: ({}, 0x1234)
-        player_stats_memory(app).read_passive_items_only = lambda owner_stats=None, _context=None: ()
-        player_stats_memory(app).read_player_stats_recording_state = lambda _context=None: SimpleNamespace(map_seed=None, current_stage_ptr=0)
+        player_stats_memory(app).read_player_stats_only = lambda _context=None: (
+            {},
+            0x1234,
+        )
+        player_stats_memory(app).read_passive_items_only = (
+            lambda owner_stats=None, _context=None: ()
+        )
+        player_stats_memory(app).read_player_stats_recording_state = (
+            lambda _context=None: SimpleNamespace(map_seed=None, current_stage_ptr=0)
+        )
         player_stats_memory(app)._get_player_stats_client = lambda: SimpleNamespace(
             get_run_timer=lambda: 0.0,
             get_stage_timer=lambda: None,
@@ -5100,21 +5580,31 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(app.player_stats_vod_recorder.start_calls, [])
         self.assertFalse(app.player_stats_vod_recorder.is_recording)
 
-    def test_refresh_live_player_stats_now_does_not_auto_start_when_runtime_state_is_unknown(self) -> None:
+    def test_refresh_live_player_stats_now_does_not_auto_start_when_runtime_state_is_unknown(
+        self,
+    ) -> None:
         app = self.build_recording_app()
-        app.player_stats_vod_recorder = FakeRecordingRecorder(is_recording=False, should_capture=False)
+        app.player_stats_vod_recorder = FakeRecordingRecorder(
+            is_recording=False, should_capture=False
+        )
         app.player_stats_vod_snapshots = []
         app.player_stats_selected_snapshot_index = None
         app._is_live_stats_tab_active = lambda: False
-        player_stats_memory(app).read_player_stats_runtime_game_state = lambda _context=None: (_ for _ in ()).throw(
-            MemoryReadError("runtime state unavailable")
+        player_stats_memory(app).read_player_stats_runtime_game_state = (
+            lambda _context=None: (_ for _ in ()).throw(
+                MemoryReadError("runtime state unavailable")
+            )
         )
         player_stats_memory(app).read_player_stats_only = lambda _context=None: (
             {"Damage": SimpleNamespace(display_value="123", value=1.23)},
             0x1234,
         )
-        player_stats_memory(app).read_passive_items_only = lambda owner_stats=None, _context=None: ()
-        player_stats_memory(app).read_player_stats_recording_state = lambda _context=None: SimpleNamespace(map_seed=777, current_stage_ptr=2)
+        player_stats_memory(app).read_passive_items_only = (
+            lambda owner_stats=None, _context=None: ()
+        )
+        player_stats_memory(app).read_player_stats_recording_state = (
+            lambda _context=None: SimpleNamespace(map_seed=777, current_stage_ptr=2)
+        )
         player_stats_memory(app)._get_player_stats_client = lambda: SimpleNamespace(
             get_run_timer=lambda: 21.5,
             get_stage_timer=lambda: 9.0,
@@ -5130,13 +5620,20 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(app.player_stats_vod_recorder.start_calls, [])
         self.assertFalse(app.player_stats_vod_recorder.is_recording)
 
-    def test_toggle_player_stats_recording_captures_snapshot_without_items(self) -> None:
+    def test_toggle_player_stats_recording_captures_snapshot_without_items(
+        self,
+    ) -> None:
         app = self.build_recording_app()
-        app.player_stats_vod_recorder = FakeRecordingRecorder(is_recording=False, should_capture=True)
+        app.player_stats_vod_recorder = FakeRecordingRecorder(
+            is_recording=False, should_capture=True
+        )
         app.player_stats_vod_snapshots = []
         app.player_stats_selected_snapshot_index = None
         player_stats_memory(app)._read_player_stats_recording_seed_safe = lambda: 321
-        player_stats_memory(app).read_player_stats_only = lambda _context=None: ({"Damage": SimpleNamespace(display_value="123", value=1.23)}, 0x1234)
+        player_stats_memory(app).read_player_stats_only = lambda _context=None: (
+            {"Damage": SimpleNamespace(display_value="123", value=1.23)},
+            0x1234,
+        )
 
         def fail_items(owner_stats=None, _context=None):
             raise MemoryReadError("items missing")
@@ -5149,9 +5646,13 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(len(app.player_stats_vod_recorder.capture_calls), 1)
         self.assertEqual(app.player_stats_vod_recorder.capture_calls[0]["items"], ())
 
-    def test_refresh_live_player_stats_now_preserves_last_known_items_when_read_fails(self) -> None:
+    def test_refresh_live_player_stats_now_preserves_last_known_items_when_read_fails(
+        self,
+    ) -> None:
         app = self.build_recording_app()
-        app.player_stats_vod_recorder = FakeRecordingRecorder(is_recording=True, should_capture=True)
+        app.player_stats_vod_recorder = FakeRecordingRecorder(
+            is_recording=True, should_capture=True
+        )
         app.player_stats_vod_snapshots = []
         app.player_stats_selected_snapshot_index = None
         live_snapshot_store(app).last_known_items = ("Wrench x2", "Clover x1")
@@ -5172,7 +5673,9 @@ class GuiRunControlTests(unittest.TestCase):
             raise MemoryReadError("items missing")
 
         player_stats_memory(app).read_passive_items_only = fail_items
-        player_stats_memory(app).read_player_stats_recording_state = lambda _context=None: SimpleNamespace(map_seed=777, current_stage_ptr=2)
+        player_stats_memory(app).read_player_stats_recording_state = (
+            lambda _context=None: SimpleNamespace(map_seed=777, current_stage_ptr=2)
+        )
 
         player_stats_memory(app)._get_player_stats_client = lambda: SimpleNamespace(
             get_run_timer=lambda: 21.5,
@@ -5193,21 +5696,37 @@ class GuiRunControlTests(unittest.TestCase):
             app.player_stats_vod_recorder.capture_calls[0]["items"],
             ("Wrench x2", "Clover x1"),
         )
-        self.assertEqual(app.player_stats_vod_recorder.capture_calls[0]["weapons"], (weapon,))
-        self.assertEqual(app.player_stats_vod_recorder.capture_calls[0]["tomes"], (tome,))
-        self.assertEqual(app.player_stats_vod_recorder.capture_calls[0]["damage_sources"], (damage,))
-        self.assertEqual(app.player_stats_vod_recorder.capture_calls[0]["banishes"], ("Clover",))
+        self.assertEqual(
+            app.player_stats_vod_recorder.capture_calls[0]["weapons"], (weapon,)
+        )
+        self.assertEqual(
+            app.player_stats_vod_recorder.capture_calls[0]["tomes"], (tome,)
+        )
+        self.assertEqual(
+            app.player_stats_vod_recorder.capture_calls[0]["damage_sources"], (damage,)
+        )
+        self.assertEqual(
+            app.player_stats_vod_recorder.capture_calls[0]["banishes"], ("Clover",)
+        )
         latest_snapshot = app.live_run_tracker.latest_snapshot()
         self.assertEqual(latest_snapshot.weapons, (weapon,))
         self.assertTrue(latest_snapshot.weapons_available)
 
-    def test_refresh_live_player_stats_now_preserves_last_known_items_when_read_is_empty(self) -> None:
+    def test_refresh_live_player_stats_now_preserves_last_known_items_when_read_is_empty(
+        self,
+    ) -> None:
         app = self.build_recording_app()
-        app.player_stats_vod_recorder = FakeRecordingRecorder(is_recording=True, should_capture=True)
+        app.player_stats_vod_recorder = FakeRecordingRecorder(
+            is_recording=True, should_capture=True
+        )
         app.player_stats_vod_snapshots = []
         live_snapshot_store(app).last_known_items = ("Wrench x2", "Clover x1")
-        player_stats_memory(app).read_player_stats_recording_state = lambda _context=None: SimpleNamespace(map_seed=777, current_stage_ptr=2)
-        player_stats_memory(app).read_passive_items_only = lambda owner_stats=None, _context=None: ()
+        player_stats_memory(app).read_player_stats_recording_state = (
+            lambda _context=None: SimpleNamespace(map_seed=777, current_stage_ptr=2)
+        )
+        player_stats_memory(app).read_passive_items_only = (
+            lambda owner_stats=None, _context=None: ()
+        )
 
         result = MegabonkApp.refresh_live_player_stats_now(app)
 
@@ -5216,9 +5735,13 @@ class GuiRunControlTests(unittest.TestCase):
             app.player_stats_vod_recorder.capture_calls[0]["items"],
             ("Wrench x2", "Clover x1"),
         )
-        self.assertEqual(live_snapshot_store(app).last_known_items, ("Wrench x2", "Clover x1"))
+        self.assertEqual(
+            live_snapshot_store(app).last_known_items, ("Wrench x2", "Clover x1")
+        )
 
-    def test_read_live_player_stats_data_accepts_empty_inventory_at_new_match_start(self) -> None:
+    def test_read_live_player_stats_data_accepts_empty_inventory_at_new_match_start(
+        self,
+    ) -> None:
         app = self.build_recording_app()
         live_snapshot_store(app).last_known_items = ("Wrench x2",)
         live_snapshot_store(app).last_known_weapons = (
@@ -5226,8 +5749,12 @@ class GuiRunControlTests(unittest.TestCase):
         )
         live_snapshot_store(app).last_seed = 123
         live_snapshot_store(app).last_run_timer = 45.0
-        player_stats_memory(app).read_passive_items_only = lambda owner_stats=None, _context=None: ()
-        player_stats_memory(app).read_player_stats_recording_state = lambda _context=None: SimpleNamespace(map_seed=777, current_stage_ptr=2)
+        player_stats_memory(app).read_passive_items_only = (
+            lambda owner_stats=None, _context=None: ()
+        )
+        player_stats_memory(app).read_player_stats_recording_state = (
+            lambda _context=None: SimpleNamespace(map_seed=777, current_stage_ptr=2)
+        )
         player_stats_memory(app)._get_player_stats_client = lambda: SimpleNamespace(
             get_run_timer=lambda: 2.0,
             get_stage_timer_context=lambda: (2.0, 0, 600.0),
@@ -5242,7 +5769,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(live_snapshot_store(app).last_known_items, None)
         self.assertEqual(live_snapshot_store(app).last_known_weapons, None)
 
-    def test_stop_player_stats_recording_refreshes_live_stats_without_items(self) -> None:
+    def test_stop_player_stats_recording_refreshes_live_stats_without_items(
+        self,
+    ) -> None:
         app = object.__new__(MegabonkApp)
         app.player_stats_vod_recorder = FakeRecordingRecorder(is_recording=True)
         app.player_stats_vod_snapshots = ["snapshot"]
@@ -5272,11 +5801,16 @@ class GuiRunControlTests(unittest.TestCase):
         )
         player_stats_memory(app).close_player_stats_client = lambda: None
         player_stats_memory(app).close_player_stats_game_data_client = lambda: None
-        attach_player_stats_view(app).refresh_player_stats_timeline_ui = lambda *args, **kwargs: None
+        attach_player_stats_view(app).refresh_player_stats_timeline_ui = (
+            lambda *args, **kwargs: None
+        )
         app._refresh_vods_list_if_visible = lambda: None
         app._is_live_stats_tab_active = lambda: True
         app.log = lambda *args, **kwargs: None
-        player_stats_memory(app).read_player_stats_only = lambda _context=None: ({"Damage": SimpleNamespace(display_value="123", value=1.23)}, 0x1234)
+        player_stats_memory(app).read_player_stats_only = lambda _context=None: (
+            {"Damage": SimpleNamespace(display_value="123", value=1.23)},
+            0x1234,
+        )
 
         def fail_items(owner_stats=None, _context=None):
             raise MemoryReadError("items missing")
@@ -5297,19 +5831,32 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(app.player_stats_status_label.text(), "Live player stats")
         self.assertEqual(stat_label.text(), "123")
         self.assertEqual(app.player_stats_items_label.text(), "Items unavailable")
-        self.assertEqual(app.player_stats_in_game_time_label.text(), "In-Game Time: 00:21")
+        self.assertEqual(
+            app.player_stats_in_game_time_label.text(), "In-Game Time: 00:21"
+        )
         self.assertEqual(app.player_stats_mob_kills_label.text(), "Mob Kills: 37")
         self.assertEqual(app.player_stats_level_label.text(), "Level: 2")
         self.assertEqual(app.player_stats_new_items_label.text(), "Live snapshot")
 
-    def test_display_player_stats_snapshot_shows_in_game_time_in_status_and_summary(self) -> None:
+    def test_display_player_stats_snapshot_shows_in_game_time_in_status_and_summary(
+        self,
+    ) -> None:
         app = object.__new__(MegabonkApp)
         app.player_stats_vod_snapshots = []
         calls: list[dict[str, object]] = []
         snapshot = SimpleNamespace(
             stats={"Damage": SimpleNamespace(display_value="123", value=1.23)},
             items=("Wrench x2",),
-            tomes=(SimpleNamespace(name="Damage", level=3, stat_id=12, stat_label="Damage", display_value="1.25x", tome_id=0),),
+            tomes=(
+                SimpleNamespace(
+                    name="Damage",
+                    level=3,
+                    stat_id=12,
+                    stat_label="Damage",
+                    display_value="1.25x",
+                    tome_id=0,
+                ),
+            ),
             banishes=("Clover", "Golden Tome"),
             chests_per_minute=1.5,
             game_time_seconds=81.75,
@@ -5329,7 +5876,10 @@ class GuiRunControlTests(unittest.TestCase):
         )
 
         self.assertEqual(len(calls), 1)
-        self.assertEqual(calls[0]["kwargs"]["status_text"], "Recorded snapshot 1/1 at 01:00 | In-Game Time: 01:21")
+        self.assertEqual(
+            calls[0]["kwargs"]["status_text"],
+            "Recorded snapshot 1/1 at 01:00 | In-Game Time: 01:21",
+        )
         self.assertEqual(calls[0]["kwargs"]["game_time_seconds"], 81.75)
         self.assertEqual(calls[0]["kwargs"]["mob_kills"], 42)
         self.assertEqual(calls[0]["kwargs"]["player_level"], 4)
@@ -5340,7 +5890,9 @@ class GuiRunControlTests(unittest.TestCase):
         view.display_player_stats_snapshot(snapshot, live_capture=True)
         self.assertTrue(calls[1]["kwargs"]["include_weapon_globals"])
 
-    def test_display_player_stats_snapshot_uses_compact_segment_compare_text(self) -> None:
+    def test_display_player_stats_snapshot_uses_compact_segment_compare_text(
+        self,
+    ) -> None:
         calls: list[dict[str, object]] = []
         previous = SimpleNamespace(
             stats={},
@@ -5373,7 +5925,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertIn("Kills:</span> +33", calls[0]["kwargs"]["new_items_text"])
         self.assertNotIn("Za Warudo +1", calls[0]["kwargs"]["new_items_text"])
 
-    def test_display_player_stats_snapshot_ignores_detached_recording_frame(self) -> None:
+    def test_display_player_stats_snapshot_ignores_detached_recording_frame(
+        self,
+    ) -> None:
         current = SimpleNamespace(
             stats={},
             items=(),
@@ -5452,7 +6006,9 @@ class GuiRunControlTests(unittest.TestCase):
         app._rows = {}
         app._stat_cards = RecordingStatCardsView()
         app._items_section = RecordingItemsSectionView()
-        app.resolve_snapshot_chests_per_minute = lambda snapshot: getattr(snapshot, "chests_per_minute", None)
+        app.resolve_snapshot_chests_per_minute = lambda snapshot: getattr(
+            snapshot, "chests_per_minute", None
+        )
         attach_player_stats_view(app).set_stage_summary_rows = lambda rows: None
         app._resolve_vod_compare_base_snapshot = lambda index: None
         app._vod_compare_segment_snapshots = lambda index: ()
@@ -5466,7 +6022,11 @@ class GuiRunControlTests(unittest.TestCase):
             weapons=(),
             tomes=(),
             banishes=(),
-            damage_sources=(SimpleNamespace(source_key="Katana", source_name="Katana", damage=1234.0),),
+            damage_sources=(
+                SimpleNamespace(
+                    source_key="Katana", source_name="Katana", damage=1234.0
+                ),
+            ),
             chests_per_minute=1.23,
             game_time_seconds=60.0,
             mob_kills=10,
@@ -5492,8 +6052,12 @@ class GuiRunControlTests(unittest.TestCase):
 
     def test_format_in_game_time_truncates_fractional_seconds(self) -> None:
         self.assertEqual(formatting.format_in_game_time(None), "In-Game Time: --")
-        self.assertEqual(formatting.format_in_game_time(21.52338219), "In-Game Time: 00:21")
-        self.assertEqual(formatting.format_in_game_time(3661.9), "In-Game Time: 01:01:01")
+        self.assertEqual(
+            formatting.format_in_game_time(21.52338219), "In-Game Time: 00:21"
+        )
+        self.assertEqual(
+            formatting.format_in_game_time(3661.9), "In-Game Time: 01:01:01"
+        )
 
     def test_format_mob_kills_formats_missing_and_positive_values(self) -> None:
         self.assertEqual(formatting.format_mob_kills(None), "Mob Kills: --")
@@ -5584,7 +6148,9 @@ class GuiRunControlTests(unittest.TestCase):
         # the projection directly and that is where the seam is now.
         with patch.multiple(
             formatting,
-            format_compare_runs_overview_compact_diff=MagicMock(return_value="overview"),
+            format_compare_runs_overview_compact_diff=MagicMock(
+                return_value="overview"
+            ),
             format_compare_runs_stats_diff=MagicMock(return_value="stats"),
             build_compare_runs_items_summary=MagicMock(return_value="items"),
             build_compare_runs_items_table=MagicMock(return_value="items table"),
@@ -5646,7 +6212,9 @@ class GuiRunControlTests(unittest.TestCase):
         vod_a = SimpleNamespace(metadata=SimpleNamespace(name="Run A"))
         vod_b = SimpleNamespace(metadata=SimpleNamespace(name="Run B"))
 
-        result = formatting.format_compare_runs_diff(vod_a, snapshot_a, vod_b, snapshot_b)
+        result = formatting.format_compare_runs_diff(
+            vod_a, snapshot_a, vod_b, snapshot_b
+        )
 
         self.assertIn("Mode:</span> Run A compared to Run B", result)
         # Every delta is A - B, so run A being the smaller side reads negative.
@@ -5692,7 +6260,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertIn("Damage:</span>", result)
         self.assertNotIn("Luck:</span>", result)
 
-    def test_format_compare_runs_diff_formats_percent_stat_delta_from_display(self) -> None:
+    def test_format_compare_runs_diff_formats_percent_stat_delta_from_display(
+        self,
+    ) -> None:
         snapshot_a = SimpleNamespace(
             game_time_seconds=120.0,
             elapsed_seconds=100,
@@ -5798,7 +6368,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertIn("+3</span>", result)
         self.assertGreaterEqual(result.count("&#9679;"), 3)
 
-    def test_format_compare_runs_diff_can_include_weapon_and_tome_sections(self) -> None:
+    def test_format_compare_runs_diff_can_include_weapon_and_tome_sections(
+        self,
+    ) -> None:
         weapon_stat_a = SimpleNamespace(label="Damage", display_value="10")
         weapon_stat_b = SimpleNamespace(label="Damage", display_value="20")
         weapon_a = SimpleNamespace(
@@ -5813,8 +6385,12 @@ class GuiRunControlTests(unittest.TestCase):
             upgrade_stat_ids=(12,),
             upgraded_stats={12: weapon_stat_b},
         )
-        tome_a = SimpleNamespace(name="Damage", level=1, stat_label="Damage", display_value="1.10x")
-        tome_b = SimpleNamespace(name="Damage", level=3, stat_label="Damage", display_value="1.30x")
+        tome_a = SimpleNamespace(
+            name="Damage", level=1, stat_label="Damage", display_value="1.10x"
+        )
+        tome_b = SimpleNamespace(
+            name="Damage", level=3, stat_label="Damage", display_value="1.30x"
+        )
         snapshot_a = SimpleNamespace(
             game_time_seconds=120.0,
             elapsed_seconds=100,
@@ -5864,7 +6440,11 @@ class GuiRunControlTests(unittest.TestCase):
         original_config = deepcopy(config.user_config)
         try:
             config.user_config.clear()
-            config.user_config["COMPARE_RUN_STAT_LABELS"] = ["Luck", "Not Real", "Damage"]
+            config.user_config["COMPARE_RUN_STAT_LABELS"] = [
+                "Luck",
+                "Not Real",
+                "Damage",
+            ]
 
             result = compare_runs_tab.configured_compare_run_stat_labels()
 
@@ -5903,7 +6483,9 @@ class GuiRunControlTests(unittest.TestCase):
             config.user_config.clear()
             config.user_config.update(original_config)
 
-    def test_format_compare_runs_stage_summary_diff_uses_selected_snapshot_progress(self) -> None:
+    def test_format_compare_runs_stage_summary_diff_uses_selected_snapshot_progress(
+        self,
+    ) -> None:
         snapshot_a_1 = SimpleNamespace(
             game_time_seconds=30.0,
             mob_kills=10,
@@ -5961,25 +6543,31 @@ class GuiRunControlTests(unittest.TestCase):
         with patch.object(config, "save_config") as save_config:
             app._save_compare_run_stat_selection()
 
-        self.assertEqual(config.user_config["COMPARE_RUN_STAT_LABELS"], ["Damage", "Difficulty"])
+        self.assertEqual(
+            config.user_config["COMPARE_RUN_STAT_LABELS"], ["Damage", "Difficulty"]
+        )
         save_config.assert_called_once_with(config.user_config)
 
-    def test_auto_close_compare_runs_chooser_if_ready_closes_after_both_runs_selected(self) -> None:
+    def test_auto_close_compare_runs_chooser_if_ready_closes_after_both_runs_selected(
+        self,
+    ) -> None:
         refreshed = []
         app = build_compare_runs_tab()
         app._chooser_expanded = True
         app._guided_selection_active = True
         app._vod_a = object()
         app._vod_b = object()
-        app.set_compare_runs_chooser_expanded = (
-            lambda expanded, guided=False: refreshed.append((expanded, guided))
+        app.set_compare_runs_chooser_expanded = lambda expanded, guided=False: (
+            refreshed.append((expanded, guided))
         )
 
         app._auto_close_compare_runs_chooser_if_ready()
 
         self.assertEqual(refreshed, [(False, False)])
 
-    def test_auto_close_compare_runs_chooser_if_ready_keeps_open_when_selection_incomplete(self) -> None:
+    def test_auto_close_compare_runs_chooser_if_ready_keeps_open_when_selection_incomplete(
+        self,
+    ) -> None:
         refreshed = []
         app = build_compare_runs_tab()
         app._chooser_expanded = True
@@ -5993,22 +6581,26 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertTrue(app._chooser_expanded)
         self.assertEqual(refreshed, [])
 
-    def test_auto_close_compare_runs_chooser_if_ready_keeps_manual_chooser_open(self) -> None:
+    def test_auto_close_compare_runs_chooser_if_ready_keeps_manual_chooser_open(
+        self,
+    ) -> None:
         refreshed = []
         app = build_compare_runs_tab()
         app._chooser_expanded = True
         app._guided_selection_active = False
         app._vod_a = object()
         app._vod_b = object()
-        app.set_compare_runs_chooser_expanded = (
-            lambda expanded, guided=False: refreshed.append((expanded, guided))
+        app.set_compare_runs_chooser_expanded = lambda expanded, guided=False: (
+            refreshed.append((expanded, guided))
         )
 
         app._auto_close_compare_runs_chooser_if_ready()
 
         self.assertEqual(refreshed, [])
 
-    def test_ensure_compare_runs_chooser_for_empty_selection_opens_guided_mode(self) -> None:
+    def test_ensure_compare_runs_chooser_for_empty_selection_opens_guided_mode(
+        self,
+    ) -> None:
         calls = []
         # `is_active` is the tab-bar question, injected rather than reached for:
         # the router that answers it stays `gui_layout`'s until step 26.
@@ -6016,22 +6608,24 @@ class GuiRunControlTests(unittest.TestCase):
         app._vod_a = None
         app._vod_b = None
         app._chooser_expanded = False
-        app.set_compare_runs_chooser_expanded = (
-            lambda expanded, guided=False: calls.append((expanded, guided))
+        app.set_compare_runs_chooser_expanded = lambda expanded, guided=False: (
+            calls.append((expanded, guided))
         )
 
         app.ensure_compare_runs_chooser_for_empty_selection()
 
         self.assertEqual(calls, [(True, True)])
 
-    def test_ensure_compare_runs_chooser_for_empty_selection_skips_when_runs_already_selected(self) -> None:
+    def test_ensure_compare_runs_chooser_for_empty_selection_skips_when_runs_already_selected(
+        self,
+    ) -> None:
         calls = []
         app = build_compare_runs_tab(is_active=lambda: True)
         app._vod_a = object()
         app._vod_b = object()
         app._chooser_expanded = False
-        app.set_compare_runs_chooser_expanded = (
-            lambda expanded, guided=False: calls.append((expanded, guided))
+        app.set_compare_runs_chooser_expanded = lambda expanded, guided=False: (
+            calls.append((expanded, guided))
         )
 
         app.ensure_compare_runs_chooser_for_empty_selection()
@@ -6049,7 +6643,13 @@ class GuiRunControlTests(unittest.TestCase):
     def test_diff_item_gains_sorts_by_rarity_and_gain(self) -> None:
         result = formatting.diff_item_gains(
             ("Wrench x1", "Key x1", "Beefy Ring x1"),
-            ("Wrench x3", "Key x7", "Beefy Ring x6", "Za Warudo x4", "Golden Shield x1"),
+            (
+                "Wrench x3",
+                "Key x7",
+                "Beefy Ring x6",
+                "Za Warudo x4",
+                "Golden Shield x1",
+            ),
         )
 
         self.assertEqual(
@@ -6115,7 +6715,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(result["broken"], (("Za Warudo", 1),))
         self.assertEqual(result["lost"], (("Key", 2),))
 
-    def test_format_snapshot_item_gains_preview_counts_broken_items_as_gained(self) -> None:
+    def test_format_snapshot_item_gains_preview_counts_broken_items_as_gained(
+        self,
+    ) -> None:
         base = SimpleNamespace(
             game_time_seconds=120.0,
             mob_kills=100,
@@ -6161,10 +6763,12 @@ class GuiRunControlTests(unittest.TestCase):
 
         result = formatting.format_snapshot_item_gains_preview(base, current)
 
-        self.assertIn("Items:</span> <span style=\"color:#98A7BA;\">--</span>", result)
+        self.assertIn('Items:</span> <span style="color:#98A7BA;">--</span>', result)
         self.assertNotIn("+0", result)
 
-    def test_format_snapshot_item_changes_details_separates_gained_broken_and_lost(self) -> None:
+    def test_format_snapshot_item_changes_details_separates_gained_broken_and_lost(
+        self,
+    ) -> None:
         base = SimpleNamespace(items=("Wrench x1",))
         middle = SimpleNamespace(items=("Wrench x1", "Za Warudo x1", "Key x3"))
         current = SimpleNamespace(items=("Wrench x1", "Key x1"))
@@ -6187,16 +6791,24 @@ class GuiRunControlTests(unittest.TestCase):
     # label above it already carried. `format_segment_headline` replaces it,
     # and is covered in `test_compare_detail_rows.py`.
 
-    def test_format_snapshot_new_items_handles_first_snapshot_and_no_changes(self) -> None:
+    def test_format_snapshot_new_items_handles_first_snapshot_and_no_changes(
+        self,
+    ) -> None:
         snapshot = SimpleNamespace(items=("Wrench x1",))
 
-        self.assertEqual(formatting.format_snapshot_new_items(None, snapshot), "No previous snapshot")
         self.assertEqual(
-            formatting.format_snapshot_new_items(snapshot, SimpleNamespace(items=("Wrench x1",))),
+            formatting.format_snapshot_new_items(None, snapshot), "No previous snapshot"
+        )
+        self.assertEqual(
+            formatting.format_snapshot_new_items(
+                snapshot, SimpleNamespace(items=("Wrench x1",))
+            ),
             "No new items since previous snapshot",
         )
 
-    def test_merge_banish_appearance_order_preserves_existing_sequence_and_appends_new(self) -> None:
+    def test_merge_banish_appearance_order_preserves_existing_sequence_and_appends_new(
+        self,
+    ) -> None:
         result = formatting.merge_banish_appearance_order(
             ("Clover", "Golden Tome"),
             ("Golden Tome", "Clover", "Battery"),
@@ -6205,28 +6817,32 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(result, ("Clover", "Golden Tome", "Battery"))
 
     def test_format_items_rich_text_colors_name_only(self) -> None:
-        result = formatting.format_items_rich_text(("Wrench x2", "Bonker x1", "Crypt Key x1"))
+        result = formatting.format_items_rich_text(
+            ("Wrench x2", "Bonker x1", "Crypt Key x1")
+        )
 
-        self.assertIn('color: #22C55E', result)
-        self.assertIn('>Wrench</span> x2', result)
-        self.assertIn('color: #FACC15', result)
-        self.assertIn('>Big Bonk</span> x1', result)
-        self.assertIn('Crypt key x1', result)
+        self.assertIn("color: #22C55E", result)
+        self.assertIn(">Wrench</span> x2", result)
+        self.assertIn("color: #FACC15", result)
+        self.assertIn(">Big Bonk</span> x1", result)
+        self.assertIn("Crypt key x1", result)
         self.assertNotIn('color: #22C55E;">Wrench x2</span>', result)
 
     def test_format_items_rich_text_supports_gloves_aliases(self) -> None:
-        result = formatting.format_items_rich_text(("Gloves Blood x1", "Gloves Power x1"))
+        result = formatting.format_items_rich_text(
+            ("Gloves Blood x1", "Gloves Power x1")
+        )
 
-        self.assertIn('>Slurp Gloves</span> x1', result)
-        self.assertIn('color: #E879F9', result)
-        self.assertIn('>Power Gloves</span> x1', result)
-        self.assertIn('color: #FACC15', result)
+        self.assertIn(">Slurp Gloves</span> x1", result)
+        self.assertIn("color: #E879F9", result)
+        self.assertIn(">Power Gloves</span> x1", result)
+        self.assertIn("color: #FACC15", result)
 
     def test_format_items_rich_text_supports_flappy_feathers_alias(self) -> None:
         result = formatting.format_items_rich_text(("Flappy Feathers x1",))
 
-        self.assertIn('>Feathers</span> x1', result)
-        self.assertIn('color: #60A5FA', result)
+        self.assertIn(">Feathers</span> x1", result)
+        self.assertIn("color: #60A5FA", result)
 
     def test_format_items_rich_text_handles_display_name_variants(self) -> None:
         result = formatting.format_items_rich_text(
@@ -6242,29 +6858,48 @@ class GuiRunControlTests(unittest.TestCase):
             )
         )
 
-        self.assertIn('>Borgar</span> x1', result)
-        self.assertIn('color: #22C55E', result)
+        self.assertIn(">Borgar</span> x1", result)
+        self.assertIn("color: #22C55E", result)
         self.assertIn(">Bob&#x27;s Light</span> x1", result)
         self.assertIn(">Grandma&#x27;s Secret Tonic</span> x1", result)
         self.assertIn(">Cursed Grabbies</span> x1", result)
-        self.assertIn('color: #E879F9', result)
+        self.assertIn("color: #E879F9", result)
         self.assertIn(">The One Ring</span> x1", result)
         self.assertIn("color: #F97316", result)
-        self.assertIn('>Pot (stainless steel)</span> x1', result)
+        self.assertIn(">Pot (stainless steel)</span> x1", result)
         self.assertIn(">Sucky Magnet</span> x1", result)
-        self.assertIn('color: #FACC15', result)
+        self.assertIn("color: #FACC15", result)
 
-    def test_normalize_item_name_for_rarity_handles_aliases_and_gloves_rule(self) -> None:
-        self.assertEqual(formatting._normalize_item_name_for_rarity("Flappy Feathers"), "Feathers")
-        self.assertEqual(formatting._normalize_item_name_for_rarity("Gloves Power"), "Glove Power")
+    def test_normalize_item_name_for_rarity_handles_aliases_and_gloves_rule(
+        self,
+    ) -> None:
+        self.assertEqual(
+            formatting._normalize_item_name_for_rarity("Flappy Feathers"), "Feathers"
+        )
+        self.assertEqual(
+            formatting._normalize_item_name_for_rarity("Gloves Power"), "Glove Power"
+        )
         self.assertEqual(formatting._normalize_item_name_for_rarity("Borgor"), "Borgar")
-        self.assertEqual(formatting._normalize_item_name_for_rarity("Bob Lantern"), "Bobs Lantern")
-        self.assertEqual(formatting._normalize_item_name_for_rarity("Bob's Lantern"), "Bobs Lantern")
-        self.assertEqual(formatting._normalize_item_name_for_rarity("Gloves Cursed"), "Glove Curse")
-        self.assertEqual(formatting._normalize_item_name_for_rarity("No Implementation"), "Golden Ring")
-        self.assertEqual(formatting._normalize_item_name_for_rarity("The One Ring"), "Golden Ring")
+        self.assertEqual(
+            formatting._normalize_item_name_for_rarity("Bob Lantern"), "Bobs Lantern"
+        )
+        self.assertEqual(
+            formatting._normalize_item_name_for_rarity("Bob's Lantern"), "Bobs Lantern"
+        )
+        self.assertEqual(
+            formatting._normalize_item_name_for_rarity("Gloves Cursed"), "Glove Curse"
+        )
+        self.assertEqual(
+            formatting._normalize_item_name_for_rarity("No Implementation"),
+            "Golden Ring",
+        )
+        self.assertEqual(
+            formatting._normalize_item_name_for_rarity("The One Ring"), "Golden Ring"
+        )
         self.assertEqual(formatting._normalize_item_name_for_rarity("Pot Steel"), "Pot")
-        self.assertEqual(formatting._normalize_item_name_for_rarity("Sucky Hoof"), "Sucky Magnet")
+        self.assertEqual(
+            formatting._normalize_item_name_for_rarity("Sucky Hoof"), "Sucky Magnet"
+        )
         self.assertEqual(formatting._normalize_item_name_for_rarity("Wrench"), "Wrench")
 
     def test_overlay_settings_persist_auto_start_checkbox(self) -> None:
@@ -6280,9 +6915,11 @@ class GuiRunControlTests(unittest.TestCase):
         component.refresh_overlay_ui = MagicMock()
         overlay_cfg = deepcopy(config.DEFAULT_OVERLAY)
 
-        with patch.object(config, "OVERLAY", overlay_cfg), \
-             patch.object(config, "user_config", {}), \
-             patch.object(config, "save_config") as save_config:
+        with (
+            patch.object(config, "OVERLAY", overlay_cfg),
+            patch.object(config, "user_config", {}),
+            patch.object(config, "save_config") as save_config,
+        ):
             component.save_overlay_settings_from_ui()
 
             self.assertTrue(config.OVERLAY["auto_start"])
@@ -6309,7 +6946,9 @@ class GuiRunControlTests(unittest.TestCase):
         component._overlay_tab_active.assert_called_once_with()
         component.refresh_overlay_ui.assert_called_once_with()
 
-    def test_overlay_ui_refresh_pending_clears_when_shutdown_rejects_callback(self) -> None:
+    def test_overlay_ui_refresh_pending_clears_when_shutdown_rejects_callback(
+        self,
+    ) -> None:
         component = build_overlay_test_component()
         component.tab_overlay = object()
         component._marshal_to_ui = lambda _callback: False
@@ -6343,9 +6982,11 @@ class GuiRunControlTests(unittest.TestCase):
         overlay_cfg = deepcopy(config.DEFAULT_OVERLAY)
         overlay_cfg["enabled"] = False
 
-        with patch.object(config, "OVERLAY", overlay_cfg), \
-             patch.object(config, "user_config", {}), \
-             patch.object(config, "save_config") as save_config:
+        with (
+            patch.object(config, "OVERLAY", overlay_cfg),
+            patch.object(config, "user_config", {}),
+            patch.object(config, "save_config") as save_config,
+        ):
             component.toggle_overlay_server()
 
             self.assertFalse(config.OVERLAY["enabled"])
@@ -6396,9 +7037,11 @@ class GuiRunControlTests(unittest.TestCase):
         component.refresh_overlay_ui = MagicMock()
         overlay_cfg = deepcopy(config.DEFAULT_OVERLAY)
 
-        with patch.object(config, "OVERLAY", overlay_cfg), \
-             patch.object(config, "user_config", {}), \
-             patch.object(config, "save_config"):
+        with (
+            patch.object(config, "OVERLAY", overlay_cfg),
+            patch.object(config, "user_config", {}),
+            patch.object(config, "save_config"),
+        ):
             component.save_overlay_settings_from_ui()
             saved = next(
                 widget
@@ -6425,19 +7068,25 @@ class GuiRunControlTests(unittest.TestCase):
         component.refresh_overlay_ui = MagicMock()
         overlay_cfg = deepcopy(config.DEFAULT_OVERLAY)
 
-        with patch.object(config, "OVERLAY", overlay_cfg), \
-             patch.object(config, "user_config", {}), \
-             patch.object(config, "save_config"):
+        with (
+            patch.object(config, "OVERLAY", overlay_cfg),
+            patch.object(config, "user_config", {}),
+            patch.object(config, "save_config"),
+        ):
             component.save_overlay_settings_from_ui()
             saved = next(
-                widget for widget in config.OVERLAY["widgets"] if widget["id"] == "stats"
+                widget
+                for widget in config.OVERLAY["widgets"]
+                if widget["id"] == "stats"
             )
             self.assertFalse(saved["short_stat_labels"])
 
             component.overlay_stats_short_labels_checkbox.setChecked(True)
             component.save_overlay_settings_from_ui()
             saved = next(
-                widget for widget in config.OVERLAY["widgets"] if widget["id"] == "stats"
+                widget
+                for widget in config.OVERLAY["widgets"]
+                if widget["id"] == "stats"
             )
             self.assertTrue(saved["short_stat_labels"])
 
@@ -6456,12 +7105,21 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(component.update_overlay_state_from_tracker.call_count, 2)
 
     def test_normalize_item_name_for_display_replaces_no_implementation(self) -> None:
-        self.assertEqual(formatting._normalize_item_name_for_display("No Implementation"), "The One Ring")
-        self.assertEqual(formatting._normalize_item_name_for_display("Golden Ring"), "The One Ring")
-        self.assertEqual(formatting._normalize_item_name_for_display("Sucky Hoof"), "Sucky Magnet")
+        self.assertEqual(
+            formatting._normalize_item_name_for_display("No Implementation"),
+            "The One Ring",
+        )
+        self.assertEqual(
+            formatting._normalize_item_name_for_display("Golden Ring"), "The One Ring"
+        )
+        self.assertEqual(
+            formatting._normalize_item_name_for_display("Sucky Hoof"), "Sucky Magnet"
+        )
 
     def test_split_item_stack_suffix_handles_plain_names(self) -> None:
-        self.assertEqual(formatting._split_item_stack_suffix("Wrench x2"), ("Wrench", " x2"))
+        self.assertEqual(
+            formatting._split_item_stack_suffix("Wrench x2"), ("Wrench", " x2")
+        )
         self.assertEqual(formatting._split_item_stack_suffix("Ghost"), ("Ghost", ""))
 
     def test_on_closing_stops_supported_runtime_resources(self) -> None:
@@ -6485,8 +7143,12 @@ class GuiRunControlTests(unittest.TestCase):
         # been anything else, so this recorder was pinning the position of a
         # no-op. The other six steps keep their order, which is what the test
         # is for.
-        player_stats_memory(app).close_player_stats_client = lambda: closed.append("player_stats")
-        player_stats_memory(app).close_player_stats_game_data_client = lambda: closed.append("player_stats_game_data")
+        player_stats_memory(app).close_player_stats_client = lambda: closed.append(
+            "player_stats"
+        )
+        player_stats_memory(app).close_player_stats_game_data_client = lambda: (
+            closed.append("player_stats_game_data")
+        )
         app.shutdown_in_game_overlay = lambda: closed.append("in_game_overlay")
         app.close_overlay_server = lambda: closed.append("overlay")
         app.stop_twitch_bot = lambda: closed.append("twitch")
@@ -6500,7 +7162,14 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(destroyed, [True])
         self.assertEqual(
             closed,
-            ["in_game_overlay", "twitch", "client", "player_stats", "player_stats_game_data", "overlay"],
+            [
+                "in_game_overlay",
+                "twitch",
+                "client",
+                "player_stats",
+                "player_stats_game_data",
+                "overlay",
+            ],
         )
 
     def test_app_coordinator_shutdown_closes_the_memory_clients(self) -> None:
@@ -6537,8 +7206,12 @@ class GuiRunControlTests(unittest.TestCase):
         app._is_shutting_down = False
         app.shutdown_in_game_overlay = lambda: None
         scanner.close_client = lambda: closed.append("component_client")
-        player_stats_memory(app).close_player_stats_client = lambda: closed.append("mixin_player_stats")
-        player_stats_memory(app).close_player_stats_game_data_client = lambda: closed.append("mixin_game_data")
+        player_stats_memory(app).close_player_stats_client = lambda: closed.append(
+            "mixin_player_stats"
+        )
+        player_stats_memory(app).close_player_stats_game_data_client = lambda: (
+            closed.append("mixin_game_data")
+        )
         app.close_overlay_server = lambda: None
         app.stop_twitch_bot = lambda: None
         app.player_stats_vod_recorder = None
@@ -6591,7 +7264,9 @@ class GuiRunControlTests(unittest.TestCase):
         )
         self.assertEqual(app._shutdown_report.errors[0][0], "scanner")
 
-    def test_shutdown_timeout_forces_exit_without_destroying_live_qt_objects(self) -> None:
+    def test_shutdown_timeout_forces_exit_without_destroying_live_qt_objects(
+        self,
+    ) -> None:
         terminated: list[int] = []
         destroyed: list[bool] = []
 
@@ -6624,9 +7299,10 @@ class GuiRunControlTests(unittest.TestCase):
         app.destroy = lambda: destroyed.append(True)
         _runtime(app)
 
-        with patch.object(gui_app.ShutdownDeadline, "after", return_value=Deadline()), patch.object(
-            gui_app, "log_runtime_event"
-        ) as log_runtime_event:
+        with (
+            patch.object(gui_app.ShutdownDeadline, "after", return_value=Deadline()),
+            patch.object(gui_app, "log_runtime_event") as log_runtime_event,
+        ):
             clean = MegabonkApp.on_closing(app)
 
         self.assertFalse(clean)
@@ -6660,14 +7336,18 @@ class GuiRunControlTests(unittest.TestCase):
             app._recordings_list_view = SimpleNamespace()
             app._left_rail = SimpleNamespace(collapse=lambda **_kwargs: None)
 
-        with patch.object(gui_app, "build_layout", side_effect=build_minimal_layout), patch.object(
-            gui_app,
-            "build_twitch_session",
-            return_value=session,
-        ), patch.object(
-            MegabonkApp,
-            "apply_overlay_autostart",
-            side_effect=RuntimeError("late startup failure"),
+        with (
+            patch.object(gui_app, "build_layout", side_effect=build_minimal_layout),
+            patch.object(
+                gui_app,
+                "build_twitch_session",
+                return_value=session,
+            ),
+            patch.object(
+                MegabonkApp,
+                "apply_overlay_autostart",
+                side_effect=RuntimeError("late startup failure"),
+            ),
         ):
             app = MegabonkApp(terminate_process=lambda _code: None)
             with self.assertRaisesRegex(RuntimeError, "late startup failure"):
@@ -6713,18 +7393,29 @@ class GuiRunControlTests(unittest.TestCase):
         )
         player_stats_memory(app).close_player_stats_client = lambda: None
         player_stats_memory(app).close_player_stats_game_data_client = lambda: None
-        attach_player_stats_view(app).refresh_player_stats_timeline_ui = lambda *args, **kwargs: None
+        attach_player_stats_view(app).refresh_player_stats_timeline_ui = (
+            lambda *args, **kwargs: None
+        )
         app._refresh_vods_list_if_visible = lambda: None
         app._is_live_stats_tab_active = lambda: False
         app.overlay_should_refresh_live_stats = lambda: False
         app._is_twitch_bot_active = lambda: False
-        player_stats_memory(app).read_player_stats_only = lambda _context=None: ({}, 0x1234)
-        player_stats_memory(app).read_passive_items_only = lambda owner_stats=None, _context=None: ("Key",)
-        player_stats_memory(app).read_player_stats_recording_state = lambda _context=None: SimpleNamespace(
-            map_seed=None,
-            current_stage_ptr=0,
+        player_stats_memory(app).read_player_stats_only = lambda _context=None: (
+            {},
+            0x1234,
         )
-        player_stats_memory(app)._read_player_stats_runtime_game_state_safe = lambda _context=None: None
+        player_stats_memory(app).read_passive_items_only = (
+            lambda owner_stats=None, _context=None: ("Key",)
+        )
+        player_stats_memory(app).read_player_stats_recording_state = (
+            lambda _context=None: SimpleNamespace(
+                map_seed=None,
+                current_stage_ptr=0,
+            )
+        )
+        player_stats_memory(app)._read_player_stats_runtime_game_state_safe = (
+            lambda _context=None: None
+        )
         vod_capture(app).maybe_auto_start = lambda **kwargs: None
         app.mark_overlay_read_failed = lambda *args, **kwargs: None
         app.update_overlay_state_from_tracker = lambda: None
@@ -6734,7 +7425,9 @@ class GuiRunControlTests(unittest.TestCase):
         app.live_run_tracker = SimpleNamespace(
             update=lambda *args, **kwargs: None,
             get_chests_and_keys=lambda: (12, 50, 3, 1, {1: 12}, {1: 50}),
-            update_chests_and_keys=lambda chests, total, keys: chests_and_keys_args.append((chests, total, keys)),
+            update_chests_and_keys=lambda chests, total, keys: (
+                chests_and_keys_args.append((chests, total, keys))
+            ),
             mark_read_failed=lambda *args, **kwargs: None,
             stage_summary_rows=lambda: [],
             current_ui_kps=lambda: None,
@@ -6752,7 +7445,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertTrue(result)
         self.assertEqual(chests_and_keys_args, [(12, 50, 1)])
 
-    def test_session_tracked_items_reach_the_stats_tab_with_their_seed_percent(self) -> None:
+    def test_session_tracked_items_reach_the_stats_tab_with_their_seed_percent(
+        self,
+    ) -> None:
         """The rows go to the tab whole, rather than pre-joined into a string.
 
         This used to assert `format_tracked_item_rows_for_stats_tab`'s output,
@@ -6834,7 +7529,9 @@ class GuiRunControlTests(unittest.TestCase):
 
         self.assertFalse(saved)
 
-    def test_apply_in_game_overlay_settings_stops_without_restarting_overlay(self) -> None:
+    def test_apply_in_game_overlay_settings_stops_without_restarting_overlay(
+        self,
+    ) -> None:
         overlay = build_in_game_overlay_test_component()
         overlay.in_game_overlay_window = FakeInGameOverlayWindow(visible=True)
         status_updates: list[str] = []
@@ -6849,9 +7546,13 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(overlay.overlay_fast_timer.stop_calls, 1)
         self.assertEqual(status_updates, ["status"])
 
-    def test_apply_in_game_overlay_settings_restarts_runtime_when_edit_mode_left_window_visible(self) -> None:
+    def test_apply_in_game_overlay_settings_restarts_runtime_when_edit_mode_left_window_visible(
+        self,
+    ) -> None:
         overlay = build_in_game_overlay_test_component()
-        overlay.in_game_overlay_window = FakeInGameOverlayWindow(visible=True, edit_mode=True)
+        overlay.in_game_overlay_window = FakeInGameOverlayWindow(
+            visible=True, edit_mode=True
+        )
         overlay.in_game_overlay_window.widgets = {}
         status_updates: list[str] = []
         overlay._update_igo_status_ui = lambda: status_updates.append("status")
@@ -6864,15 +7565,20 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(overlay.overlay_fast_timer.start_calls, 1)
         self.assertEqual(status_updates, ["fast", "status"])
 
-    def test_in_game_overlay_autostart_enables_a_previously_stopped_runtime(self) -> None:
+    def test_in_game_overlay_autostart_enables_a_previously_stopped_runtime(
+        self,
+    ) -> None:
         overlay = build_in_game_overlay_test_component()
         overlay._update_igo_status_ui = MagicMock()
         overlay_cfg = {"enabled": False, "auto_start": True, "widgets": {}}
 
-        with patch.object(config, "IN_GAME_OVERLAY", overlay_cfg), patch.object(
-            gui_in_game_overlay,
-            "InGameOverlayWindow",
-            side_effect=lambda _owner: FakeInGameOverlayWindow(),
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+            patch.object(
+                gui_in_game_overlay,
+                "InGameOverlayWindow",
+                side_effect=lambda _owner: FakeInGameOverlayWindow(),
+            ),
         ):
             overlay._init_in_game_overlay()
 
@@ -6885,10 +7591,13 @@ class GuiRunControlTests(unittest.TestCase):
         overlay._update_igo_status_ui = MagicMock()
         overlay_cfg = {"enabled": True, "auto_start": False, "widgets": {}}
 
-        with patch.object(config, "IN_GAME_OVERLAY", overlay_cfg), patch.object(
-            gui_in_game_overlay,
-            "InGameOverlayWindow",
-            side_effect=lambda _owner: FakeInGameOverlayWindow(),
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+            patch.object(
+                gui_in_game_overlay,
+                "InGameOverlayWindow",
+                side_effect=lambda _owner: FakeInGameOverlayWindow(),
+            ),
         ):
             overlay._init_in_game_overlay()
 
@@ -6896,7 +7605,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(overlay.overlay_fast_timer.start_calls, 0)
         overlay._update_igo_status_ui.assert_called_once_with()
 
-    def test_in_game_overlay_shutdown_is_terminal_and_disposes_the_tool_window(self) -> None:
+    def test_in_game_overlay_shutdown_is_terminal_and_disposes_the_tool_window(
+        self,
+    ) -> None:
         overlay = build_in_game_overlay_test_component()
         window = FakeInGameOverlayWindow(visible=True)
         overlay.in_game_overlay_window = window
@@ -6922,18 +7633,24 @@ class GuiRunControlTests(unittest.TestCase):
         window_factory.assert_not_called()
         self.assertIsNone(overlay.in_game_overlay_window)
 
-    def test_overlay_initialization_failure_is_contained_and_disables_runtime(self) -> None:
+    def test_overlay_initialization_failure_is_contained_and_disables_runtime(
+        self,
+    ) -> None:
         logs = []
         overlay = build_in_game_overlay_test_component(
             log=lambda message, **kwargs: logs.append((message, kwargs.get("tag")))
         )
         overlay_cfg = {"enabled": True, "auto_start": True, "widgets": {}}
 
-        with patch.object(config, "IN_GAME_OVERLAY", overlay_cfg), patch.object(
-            gui_in_game_overlay,
-            "InGameOverlayWindow",
-            side_effect=RuntimeError("window construction failed"),
-        ), patch.object(gui_in_game_overlay, "log_runtime_event") as runtime_log:
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+            patch.object(
+                gui_in_game_overlay,
+                "InGameOverlayWindow",
+                side_effect=RuntimeError("window construction failed"),
+            ),
+            patch.object(gui_in_game_overlay, "log_runtime_event") as runtime_log,
+        ):
             overlay._init_in_game_overlay()
 
         self.assertIsNone(overlay.in_game_overlay_window)
@@ -6950,8 +7667,11 @@ class GuiRunControlTests(unittest.TestCase):
         overlay._update_igo_status_ui = MagicMock()
         overlay_cfg = {"enabled": False, "auto_start": False, "widgets": {}}
 
-        with patch.object(config, "IN_GAME_OVERLAY", overlay_cfg), patch.object(
-            gui_in_game_overlay, "InGameOverlayWindow", return_value=old_window
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+            patch.object(
+                gui_in_game_overlay, "InGameOverlayWindow", return_value=old_window
+            ),
         ):
             overlay._init_in_game_overlay()
 
@@ -7005,7 +7725,9 @@ class GuiRunControlTests(unittest.TestCase):
         )
         overlay._map_marker_input = SimpleNamespace(cursor_position=lambda: (0, 0))
         overlay._map_marker_hotkeys = SimpleNamespace(
-            poll=lambda *_args, **_kwargs: SimpleNamespace(placement=None, palette=None),
+            poll=lambda *_args, **_kwargs: SimpleNamespace(
+                placement=None, palette=None
+            ),
             reset=MagicMock(),
         )
         overlay_cfg = {
@@ -7039,9 +7761,10 @@ class GuiRunControlTests(unittest.TestCase):
             "map_markers": {"enabled": True, "scale": 1.0},
         }
 
-        with patch.object(config, "IN_GAME_OVERLAY", overlay_cfg), patch.object(
-            gui_in_game_overlay, "log_runtime_event"
-        ) as runtime_log:
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+            patch.object(gui_in_game_overlay, "log_runtime_event") as runtime_log,
+        ):
             self.assertFalse(overlay._map_marker_tick())
 
         self.assertEqual(overlay.map_marker_timer.stop_calls, 1)
@@ -7056,7 +7779,9 @@ class GuiRunControlTests(unittest.TestCase):
         tracker = MagicMock()
         overlay._map_marker_tracker = tracker
 
-        with patch.object(gui_in_game_overlay.QApplication, "activeModalWidget", return_value=object()):
+        with patch.object(
+            gui_in_game_overlay.QApplication, "activeModalWidget", return_value=object()
+        ):
             self.assertFalse(overlay._map_marker_tick())
 
         tracker.tick.assert_not_called()
@@ -7144,7 +7869,9 @@ class GuiRunControlTests(unittest.TestCase):
         calls = []
         old_snapshot = gui_in_game_overlay.MapMarkerSnapshot(map_id=1, map_open=True)
         tracker = SimpleNamespace(snapshot=old_snapshot)
-        tracker.tick = lambda **kwargs: calls.append(("poll", kwargs["client_height"])) or old_snapshot
+        tracker.tick = lambda **kwargs: (
+            calls.append(("poll", kwargs["client_height"])) or old_snapshot
+        )
         tracker.close = lambda: calls.append(("close", None))
         tracker.place_manual_marker = MagicMock(return_value=False)
         overlay = build_in_game_overlay_test_component(
@@ -7171,7 +7898,9 @@ class GuiRunControlTests(unittest.TestCase):
         executor = ManualMapMarkerExecutor()
         calls = []
         tracker = SimpleNamespace(
-            tick=lambda **kwargs: calls.append(kwargs) or gui_in_game_overlay.MapMarkerSnapshot(),
+            tick=lambda **kwargs: (
+                calls.append(kwargs) or gui_in_game_overlay.MapMarkerSnapshot()
+            ),
             close=MagicMock(),
             snapshot=gui_in_game_overlay.MapMarkerSnapshot(),
             place_manual_marker=MagicMock(return_value=False),
@@ -7223,7 +7952,9 @@ class GuiRunControlTests(unittest.TestCase):
 
         self.assertEqual(calls, ["poll", "place"])
 
-    def test_overlay_fast_tick_hides_disabled_overlay_even_if_game_is_active(self) -> None:
+    def test_overlay_fast_tick_hides_disabled_overlay_even_if_game_is_active(
+        self,
+    ) -> None:
         tracker = SimpleNamespace(
             runtime_snapshot=lambda: SimpleNamespace(
                 latest_snapshot=None,
@@ -7270,9 +8001,7 @@ class GuiRunControlTests(unittest.TestCase):
                 fast_stage_timer=None,
                 graveyard_main_map_events_active=False,
                 lifecycle=(
-                    RunLifecycle.COMPLETED
-                    if run_completed
-                    else RunLifecycle.ACTIVE
+                    RunLifecycle.COMPLETED if run_completed else RunLifecycle.ACTIVE
                 ),
             )
         )
@@ -7330,9 +8059,7 @@ class GuiRunControlTests(unittest.TestCase):
             ),
             weapons_available=True,
         )
-        overlay, widget = self._weapon_tracker_fast_tick_overlay(
-            latest_snapshot=latest
-        )
+        overlay, widget = self._weapon_tracker_fast_tick_overlay(latest_snapshot=latest)
 
         with patch.object(
             config, "IN_GAME_OVERLAY", self._weapon_tracker_overlay_cfg()
@@ -7370,9 +8097,7 @@ class GuiRunControlTests(unittest.TestCase):
                     latest_snapshot=latest,
                     edit_mode=True,
                 )
-                cfg = self._weapon_tracker_overlay_cfg(
-                    selected_stats=selected
-                )
+                cfg = self._weapon_tracker_overlay_cfg(selected_stats=selected)
                 with patch.object(config, "IN_GAME_OVERLAY", cfg):
                     overlay._overlay_fast_tick()
 
@@ -7383,9 +8108,7 @@ class GuiRunControlTests(unittest.TestCase):
 
     def test_weapon_tracker_fast_tick_hides_empty_normal_state(self) -> None:
         latest = SimpleNamespace(stats={}, weapons=(), weapons_available=True)
-        overlay, widget = self._weapon_tracker_fast_tick_overlay(
-            latest_snapshot=latest
-        )
+        overlay, widget = self._weapon_tracker_fast_tick_overlay(latest_snapshot=latest)
 
         with patch.object(
             config, "IN_GAME_OVERLAY", self._weapon_tracker_overlay_cfg()
@@ -7411,9 +8134,7 @@ class GuiRunControlTests(unittest.TestCase):
             ),
             weapons_available=True,
         )
-        overlay, widget = self._weapon_tracker_fast_tick_overlay(
-            latest_snapshot=latest
-        )
+        overlay, widget = self._weapon_tracker_fast_tick_overlay(latest_snapshot=latest)
         cfg = self._weapon_tracker_overlay_cfg(selected_stats=["damage"])
         with patch.object(config, "IN_GAME_OVERLAY", cfg):
             overlay._overlay_fast_tick()
@@ -7462,9 +8183,7 @@ class GuiRunControlTests(unittest.TestCase):
             weapons=(),
             weapons_available=True,
         )
-        overlay, widget = self._weapon_tracker_fast_tick_overlay(
-            latest_snapshot=latest
-        )
+        overlay, widget = self._weapon_tracker_fast_tick_overlay(latest_snapshot=latest)
         overlay._is_game_window_active = lambda _process_name: False
 
         with patch.object(
@@ -7496,9 +8215,10 @@ class GuiRunControlTests(unittest.TestCase):
         overlay._update_igo_status_ui = MagicMock()
         overlay_cfg = {"enabled": True, "widgets": {}}
 
-        with patch.object(config, "IN_GAME_OVERLAY", overlay_cfg), patch.object(
-            gui_in_game_overlay, "log_runtime_event"
-        ) as runtime_log:
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+            patch.object(gui_in_game_overlay, "log_runtime_event") as runtime_log,
+        ):
             self.assertFalse(overlay._overlay_fast_tick())
 
         self.assertFalse(overlay_cfg["enabled"])
@@ -7539,14 +8259,18 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertEqual(overlay.in_game_overlay_window.sync_calls, 1)
         self.assertEqual(overlay.in_game_overlay_window.show_calls, 1)
 
-    def test_overlay_fast_tick_refreshes_slow_widgets_when_overlay_becomes_visible(self) -> None:
+    def test_overlay_fast_tick_refreshes_slow_widgets_when_overlay_becomes_visible(
+        self,
+    ) -> None:
         # Asserted on `luck_rarity`, not on `scanner`. The scanner plaque moved
         # to the fast tick -- it reads app state, not the snapshot -- so it is
         # painted on every tick and would satisfy this test whether the
         # become-visible refresh happened or not. `luck_rarity` is the only
         # widget left on the slow path, which makes it the only one that can
         # prove this branch runs.
-        luck_widget = SimpleNamespace(set_text=MagicMock(), set_probabilities=MagicMock())
+        luck_widget = SimpleNamespace(
+            set_text=MagicMock(), set_probabilities=MagicMock()
+        )
         tracker = SimpleNamespace(
             runtime_snapshot=lambda: SimpleNamespace(
                 latest_snapshot=None,
@@ -7806,8 +8530,9 @@ class GuiRunControlTests(unittest.TestCase):
             },
         }
         builder = MagicMock(return_value="<div></div>")
-        with patch.object(config, "IN_GAME_OVERLAY", overlay_cfg), patch.object(
-            gui_in_game_overlay, "build_stats_overlay_html", builder
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", overlay_cfg),
+            patch.object(gui_in_game_overlay, "build_stats_overlay_html", builder),
         ):
             overlay._overlay_fast_tick()
 
@@ -7824,9 +8549,12 @@ class GuiRunControlTests(unittest.TestCase):
         )
         overlay.in_game_overlay_window = FakeInGameOverlayWindow()
 
-        fake_win32gui = SimpleNamespace(GetWindowRect=lambda _window: (100, 200, 740, 680))
-        with patch.object(gui_in_game_overlay, "win32gui", fake_win32gui), patch.object(
-            gui_in_game_overlay.QApplication, "screens", return_value=[]
+        fake_win32gui = SimpleNamespace(
+            GetWindowRect=lambda _window: (100, 200, 740, 680)
+        )
+        with (
+            patch.object(gui_in_game_overlay, "win32gui", fake_win32gui),
+            patch.object(gui_in_game_overlay.QApplication, "screens", return_value=[]),
         ):
             rect = overlay._in_game_overlay_target_geometry()
 
@@ -7844,14 +8572,17 @@ class GuiRunControlTests(unittest.TestCase):
             GetClientRect=lambda _window: (0, 0, 640, 480),
             ClientToScreen=lambda _window, point: (100 + point[0], 200 + point[1]),
         )
-        with patch.object(gui_in_game_overlay, "win32gui", fake_win32gui), patch.object(
-            gui_in_game_overlay.QApplication, "screens", return_value=[]
+        with (
+            patch.object(gui_in_game_overlay, "win32gui", fake_win32gui),
+            patch.object(gui_in_game_overlay.QApplication, "screens", return_value=[]),
         ):
             rect = overlay._in_game_overlay_target_geometry()
 
         self.assertEqual(rect, QRect(100, 200, 640, 480))
 
-    def test_in_game_overlay_target_geometry_converts_native_pixels_at_125_percent(self) -> None:
+    def test_in_game_overlay_target_geometry_converts_native_pixels_at_125_percent(
+        self,
+    ) -> None:
         overlay = build_in_game_overlay_test_component(
             find_game_window=lambda _process_name: 321,
         )
@@ -7866,14 +8597,19 @@ class GuiRunControlTests(unittest.TestCase):
             GetClientRect=lambda _window: (0, 0, 2560, 1440),
             ClientToScreen=lambda _window, point: point,
         )
-        with patch.object(gui_in_game_overlay, "win32gui", fake_win32gui), patch.object(
-            gui_in_game_overlay.QApplication, "screens", return_value=[screen]
+        with (
+            patch.object(gui_in_game_overlay, "win32gui", fake_win32gui),
+            patch.object(
+                gui_in_game_overlay.QApplication, "screens", return_value=[screen]
+            ),
         ):
             rect = overlay._in_game_overlay_target_geometry()
 
         self.assertEqual(rect, QRect(0, 0, 2048, 1152))
 
-    def test_in_game_overlay_target_geometry_returns_none_without_game_window_outside_edit_mode(self) -> None:
+    def test_in_game_overlay_target_geometry_returns_none_without_game_window_outside_edit_mode(
+        self,
+    ) -> None:
         overlay = build_in_game_overlay_test_component(
             find_game_window=lambda _process_name: None,
         )
@@ -7906,7 +8642,6 @@ class GuiRunControlTests(unittest.TestCase):
 
         self.assertIn("01:45 -&gt; 01:25", html.replace("→", "-&gt;"))
         self.assertIn("Shield:", html)
-
 
     def test_in_game_overlay_luck_rarity_html_formats_game_rarity_order(self) -> None:
         probabilities = gui_in_game_overlay.calculate_luck_rarity_probabilities(0.5)
@@ -7988,7 +8723,9 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertIn("20.39%", rendered_html)
         self.assertIn("62.43%", rendered_html)
 
-    def test_luck_rarity_falls_back_to_the_snapshot_before_the_first_fast_read(self) -> None:
+    def test_luck_rarity_falls_back_to_the_snapshot_before_the_first_fast_read(
+        self,
+    ) -> None:
         """`None` is "no fresh read", never "Luck is zero". A stale Luck beats
         no Luck, and the widget renders base probabilities without one."""
         widget = SimpleNamespace(set_text=MagicMock())
@@ -8002,24 +8739,26 @@ class GuiRunControlTests(unittest.TestCase):
         self.assertIn("4.74%", rendered_html)
         self.assertIn("62.43%", rendered_html)
 
-    def test_overlay_fast_tick_uses_fast_stage_timer_context_for_event_timer(self) -> None:
+    def test_overlay_fast_tick_uses_fast_stage_timer_context_for_event_timer(
+        self,
+    ) -> None:
         widget = SimpleNamespace(set_text=MagicMock())
         tracker = SimpleNamespace(
             runtime_snapshot=lambda: SimpleNamespace(
                 latest_snapshot=SimpleNamespace(
-                stage_index=0,
-                stage_duration_seconds=480.0,
-                stage_timer_seconds=85.0,
-            ),
-            kps={},
-            powerups=SimpleNamespace(),
-            powerup_map_context=SimpleNamespace(is_graveyard=False),
-            fast_stage_timer=SimpleNamespace(
-                stage_index=2,
-                stage_duration_seconds=480.0,
-                stage_timer_seconds=85.0,
-            ),
-            graveyard_main_map_events_active=False,
+                    stage_index=0,
+                    stage_duration_seconds=480.0,
+                    stage_timer_seconds=85.0,
+                ),
+                kps={},
+                powerups=SimpleNamespace(),
+                powerup_map_context=SimpleNamespace(is_graveyard=False),
+                fast_stage_timer=SimpleNamespace(
+                    stage_index=2,
+                    stage_duration_seconds=480.0,
+                    stage_timer_seconds=85.0,
+                ),
+                graveyard_main_map_events_active=False,
             )
         )
         overlay = build_in_game_overlay_test_component(
@@ -8046,7 +8785,9 @@ class GuiRunControlTests(unittest.TestCase):
         rendered_html = widget.set_text.call_args.args[0]
         self.assertIn("Boss at 6:30", rendered_html)
 
-    def test_overlay_fast_tick_preserves_graveyard_stage_duration_for_event_timer(self) -> None:
+    def test_overlay_fast_tick_preserves_graveyard_stage_duration_for_event_timer(
+        self,
+    ) -> None:
         widget = SimpleNamespace(set_text=MagicMock())
         tracker = SimpleNamespace(
             runtime_snapshot=lambda: SimpleNamespace(
@@ -8102,7 +8843,9 @@ class GuiRunControlTests(unittest.TestCase):
             )
         )
         overlay = build_in_game_overlay_test_component(tracker=tracker)
-        overlay.in_game_overlay_window = FakeInGameOverlayWindow(visible=True, edit_mode=True)
+        overlay.in_game_overlay_window = FakeInGameOverlayWindow(
+            visible=True, edit_mode=True
+        )
         overlay.in_game_overlay_window.widgets = {"event_timer": widget}
         overlay._refresh_in_game_overlay_luck_widget = lambda *_args: None
 
@@ -8153,7 +8896,10 @@ class GuiRunControlTests(unittest.TestCase):
                     # A decorator's inner wrapper legitimately takes self and
                     # forwards it -- `@wraps(...)` is what marks one.
                     if any(
-                        (isinstance(d, ast.Call) and getattr(d.func, "id", "") == "wraps")
+                        (
+                            isinstance(d, ast.Call)
+                            and getattr(d.func, "id", "") == "wraps"
+                        )
                         or getattr(d, "id", "") == "wraps"
                         for d in inner.decorator_list
                     ):
@@ -8249,7 +8995,9 @@ class GuiRunControlTests(unittest.TestCase):
         # itself satisfied the port, so this had to install a method to prove
         # the *injected* view won. Now the app has no such method at all, which
         # is a stronger statement of the same thing.
-        player_stats_view(app).set_recording_status_text("Live player stats (recording)")
+        player_stats_view(app).set_recording_status_text(
+            "Live player stats (recording)"
+        )
         player_stats_view(app).refresh_player_stats_timeline_ui()
 
         self.assertEqual(view.status_texts, ["Live player stats (recording)"])
@@ -8300,7 +9048,9 @@ class GuiRunControlTests(unittest.TestCase):
         against a helper that does not sort at all.
         """
         stats = tuple(
-            SimpleNamespace(stat_id=stat_id, label=f"Stat {stat_id}", display_delta="+1", rolls=0)
+            SimpleNamespace(
+                stat_id=stat_id, label=f"Stat {stat_id}", display_delta="+1", rolls=0
+            )
             for stat_id in (9, 2, 14, 1)
         )
         chaos_tome = SimpleNamespace(level=1, ambiguous_rolls=0, stats=stats)

@@ -129,7 +129,9 @@ class StatCardReuseTests(unittest.TestCase):
         self.assertIs(second[0], first[1])
         self.assertIs(second[1], first[0])
 
-    def test_passives_follow_snapshot_order_without_recreating_effect_cards(self) -> None:
+    def test_passives_follow_snapshot_order_without_recreating_effect_cards(
+        self,
+    ) -> None:
         view = self._view()
         evasion = _effect("stat:8", "Evasion", "+5%", 2)
         luck = _effect("stat:30", "Luck", "+10%", 1)
@@ -210,9 +212,7 @@ class StatCardReuseTests(unittest.TestCase):
             name="Sword",
             level=1,
             upgrade_stat_ids=(12,),
-            upgraded_stats={
-                12: SimpleNamespace(label="Damage", display_value="12")
-            },
+            upgraded_stats={12: SimpleNamespace(label="Damage", display_value="12")},
         )
         tome = SimpleNamespace(
             tome_id=2,

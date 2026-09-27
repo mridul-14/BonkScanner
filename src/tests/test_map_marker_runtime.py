@@ -161,13 +161,9 @@ class MapMarkerProjectionTests(unittest.TestCase):
 
     def test_projection_round_trip_and_bounds(self) -> None:
         viewport = MapViewport(100.0, 200.0, 900.0, 900.0)
-        point = project_world_to_map(
-            123.5, -87.25, world_size=600.0, viewport=viewport
-        )
+        point = project_world_to_map(123.5, -87.25, world_size=600.0, viewport=viewport)
         self.assertIsNotNone(point)
-        world = unproject_map_to_world(
-            *point, world_size=600.0, viewport=viewport
-        )
+        world = unproject_map_to_world(*point, world_size=600.0, viewport=viewport)
         self.assertAlmostEqual(world[0], 123.5)
         self.assertAlmostEqual(world[1], -87.25)
         self.assertIsNone(
@@ -345,9 +341,7 @@ class MapMarkerTrackerTests(unittest.TestCase):
         second = tracker.tick(client_height=600, automatic_discovery=True)
         self.assertEqual(second.markers, ())
 
-        tracker.place_manual_marker(
-            "boss_curse", screen_x=300, screen_y=300
-        )
+        tracker.place_manual_marker("boss_curse", screen_x=300, screen_y=300)
         self.assertEqual(len(tracker.snapshot.markers), 1)
         third = tracker.tick(client_height=600, automatic_discovery=True)
         self.assertEqual(third.map_id, 2)
@@ -359,21 +353,15 @@ class MapMarkerTrackerTests(unittest.TestCase):
         tracker.tick(client_height=600)
 
         self.assertTrue(
-            tracker.place_manual_marker(
-                "microwave_white", screen_x=300, screen_y=300
-            )
+            tracker.place_manual_marker("microwave_white", screen_x=300, screen_y=300)
         )
         self.assertEqual(len(tracker.snapshot.markers), 1)
         self.assertTrue(
-            tracker.place_manual_marker(
-                "microwave_white", screen_x=319, screen_y=300
-            )
+            tracker.place_manual_marker("microwave_white", screen_x=319, screen_y=300)
         )
         self.assertEqual(tracker.snapshot.markers, ())
 
-        tracker.place_manual_marker(
-            "microwave_blue", screen_x=300, screen_y=300
-        )
+        tracker.place_manual_marker("microwave_blue", screen_x=300, screen_y=300)
         client.frames[0] = self.frame(
             activity=DetectedMapActivity(
                 object_ptr=0xDEF,
@@ -393,17 +381,13 @@ class MapMarkerTrackerTests(unittest.TestCase):
         tracker = MapMarkerTracker("game", client_factory=lambda _name: client)
         tracker.tick(client_height=600)
 
-        tracker.place_manual_marker(
-            "boss_curse", screen_x=300, screen_y=300
-        )
+        tracker.place_manual_marker("boss_curse", screen_x=300, screen_y=300)
         self.assertEqual(
             [marker.action_id for marker in tracker.snapshot.markers],
             ["boss_curse"],
         )
 
-        tracker.place_manual_marker(
-            "microwave_white", screen_x=300, screen_y=300
-        )
+        tracker.place_manual_marker("microwave_white", screen_x=300, screen_y=300)
 
         self.assertEqual(tracker.snapshot.markers, ())
 
@@ -443,9 +427,7 @@ class MapMarkerTrackerTests(unittest.TestCase):
 
         enabled = tracker.tick(client_height=600, automatic_discovery=True)
         self.assertEqual(len(enabled.markers), 1)
-        tracker.place_manual_marker(
-            "boss_curse", screen_x=300, screen_y=300
-        )
+        tracker.place_manual_marker("boss_curse", screen_x=300, screen_y=300)
 
         disabled_again = tracker.tick(client_height=600)
         self.assertEqual(
@@ -468,9 +450,7 @@ class MapMarkerTrackerTests(unittest.TestCase):
             world_x=20.0,
             world_z=-30.0,
         )
-        client = FakeMarkerClient(
-            [self.frame(activity=activity), self.frame()]
-        )
+        client = FakeMarkerClient([self.frame(activity=activity), self.frame()])
         tracker = MapMarkerTracker(
             "game",
             client_factory=lambda _name: client,
@@ -605,8 +585,9 @@ class MapMarkerTrackerTests(unittest.TestCase):
         factory_calls = []
         tracker = MapMarkerTracker(
             "game",
-            client_factory=lambda process_name: factory_calls.append(process_name)
-            or client,
+            client_factory=lambda process_name: (
+                factory_calls.append(process_name) or client
+            ),
         )
 
         waiting = tracker.tick(client_height=600)
@@ -638,9 +619,7 @@ class MapMarkerGestureTests(unittest.TestCase):
 
     def test_quick_tap_places_assigned_marker_at_press_position(self) -> None:
         self.input.pressed.add("f8")
-        self.controller.poll(
-            self.bindings, self.snapshot, cursor_x=200, cursor_y=300
-        )
+        self.controller.poll(self.bindings, self.snapshot, cursor_x=200, cursor_y=300)
         self.now += 0.1
         self.input.pressed.clear()
         update = self.controller.poll(
@@ -651,9 +630,7 @@ class MapMarkerGestureTests(unittest.TestCase):
 
     def test_hold_opens_palette_and_release_uses_hovered_action(self) -> None:
         self.input.pressed.add("f8")
-        self.controller.poll(
-            self.bindings, self.snapshot, cursor_x=250, cursor_y=400
-        )
+        self.controller.poll(self.bindings, self.snapshot, cursor_x=250, cursor_y=400)
         self.now += 0.4
         opened = self.controller.poll(
             self.bindings, self.snapshot, cursor_x=250, cursor_y=400
@@ -677,9 +654,7 @@ class MapMarkerGestureTests(unittest.TestCase):
 
     def test_hold_release_outside_palette_cancels(self) -> None:
         self.input.pressed.add("f8")
-        self.controller.poll(
-            self.bindings, self.snapshot, cursor_x=250, cursor_y=400
-        )
+        self.controller.poll(self.bindings, self.snapshot, cursor_x=250, cursor_y=400)
         self.now += 0.4
         opened = self.controller.poll(
             self.bindings, self.snapshot, cursor_x=250, cursor_y=400
@@ -753,9 +728,9 @@ class MapMarkerLifecycleTests(unittest.TestCase):
         class_ptr = 0x2000
         character_data = 0x3000
         memory.ptrs[object_ptr] = class_ptr
-        memory.ptrs[
-            object_ptr + client.CHARACTER_FIGHT_CHARACTER_OFFSET
-        ] = character_data
+        memory.ptrs[object_ptr + client.CHARACTER_FIGHT_CHARACTER_OFFSET] = (
+            character_data
+        )
         memory.i32s[character_data + client.CHARACTER_DATA_CHARACTER_OFFSET] = 9
         client._class_name_from_ptr = lambda candidate: (
             "InteractableCharacterFight" if candidate == class_ptr else None
@@ -911,9 +886,7 @@ class MapMarkerLifecycleTests(unittest.TestCase):
         first_slot = delegates + client.ARRAY_DATA_OFFSET
         end_slot = first_slot + count * 8
         array_reads = [
-            address
-            for address in memory.ptr_reads
-            if first_slot <= address < end_slot
+            address for address in memory.ptr_reads if first_slot <= address < end_slot
         ]
         self.assertEqual(len(array_reads), client.MAX_DELEGATES_TO_SCAN)
         self.assertEqual(
@@ -1042,7 +1015,9 @@ class MapMarkerLifecycleTests(unittest.TestCase):
         self.assertAlmostEqual(upscaled_1080p.width, native_1440p.width, places=3)
         self.assertAlmostEqual(upscaled_1080p.height, native_1440p.height, places=3)
 
-    def test_full_map_viewport_tracks_layout_changes_for_same_map_and_window(self) -> None:
+    def test_full_map_viewport_tracks_layout_changes_for_same_map_and_window(
+        self,
+    ) -> None:
         memory = FakeLifecycleMemory()
         client = MapMarkerMemoryClient(memory=memory)
         full_map = 0x700000
@@ -1116,9 +1091,9 @@ class MapMarkerLifecycleTests(unittest.TestCase):
         memory.i32s[native + client.NATIVE_TRANSFORM_INDEX_OFFSET] = 2
         memory.ptrs[access + client.TRANSFORM_ACCESS_COUNTS_OFFSET] = (3 << 32) | 3
         memory.ptrs[access + client.TRANSFORM_ACCESS_PARENTS_OFFSET] = parents
-        memory.ptrs[
-            access + client.TRANSFORM_ACCESS_NATIVE_TRANSFORMS_OFFSET
-        ] = native_transforms
+        memory.ptrs[access + client.TRANSFORM_ACCESS_NATIVE_TRANSFORMS_OFFSET] = (
+            native_transforms
+        )
         memory.i32s[parents] = -1
         memory.i32s[parents + 4] = 0
         memory.i32s[parents + 8] = 1
@@ -1148,18 +1123,16 @@ class MapMarkerLifecycleTests(unittest.TestCase):
         map_object = 0x240000
         root_native = 0x250000
         render_native = 0x260000
-        memory.ptrs[
-            client._module_base + client.UI_MANAGER_TYPE_INFO_OFFSET
-        ] = type_info
+        memory.ptrs[client._module_base + client.UI_MANAGER_TYPE_INFO_OFFSET] = (
+            type_info
+        )
         memory.ptrs[type_info + client.CLASS_STATIC_FIELDS_OFFSET] = static_fields
         memory.ptrs[static_fields + client.UI_MANAGER_INSTANCE_OFFSET] = ui_manager
         memory.ptrs[ui_manager + client.UI_MANAGER_PAUSE_OFFSET] = pause_ui
         memory.ptrs[pause_ui + client.PAUSE_UI_MAP_OFFSET] = map_object
         memory.ptrs[pause_ui + client.PAUSE_UI_CURRENT_OFFSET] = map_object
         client._game_object_transform_native = lambda _object: root_native
-        client._find_descendant_native_transform = (
-            lambda _root, _name: render_native
-        )
+        client._find_descendant_native_transform = lambda _root, _name: render_native
 
         self.assertEqual(
             client._resolve_pause_map_render_native_transform(),
@@ -1209,9 +1182,7 @@ class MapMarkerLifecycleTests(unittest.TestCase):
         memory = FakeLifecycleMemory()
         client = MapMarkerMemoryClient(memory=memory)
         full_map = 0x700000
-        memory.floats[
-            full_map + client.FULL_MAP_WORLD_SIZE_OFFSET
-        ] = 600.0
+        memory.floats[full_map + client.FULL_MAP_WORLD_SIZE_OFFSET] = 600.0
         memory.i32s[full_map + client.FULL_MAP_OPEN_COUNT_OFFSET] = 0
         client._resolve_full_map = lambda: full_map
         client._resolve_player = lambda: 0x400000
@@ -1231,20 +1202,20 @@ class MapMarkerLifecycleTests(unittest.TestCase):
         client = MapMarkerMemoryClient(memory=memory)
         type_info = 0x600000
         static_fields = 0x610000
-        memory.ptrs[
-            client._module_base + client.MAP_CONTROLLER_TYPE_INFO_OFFSET
-        ] = type_info
+        memory.ptrs[client._module_base + client.MAP_CONTROLLER_TYPE_INFO_OFFSET] = (
+            type_info
+        )
         memory.ptrs[type_info + client.CLASS_STATIC_FIELDS_OFFSET] = static_fields
-        memory.ptrs[
-            static_fields + client.MAP_CONTROLLER_CURRENT_STAGE_OFFSET
-        ] = 0x620000
+        memory.ptrs[static_fields + client.MAP_CONTROLLER_CURRENT_STAGE_OFFSET] = (
+            0x620000
+        )
         memory.i32s[static_fields + client.MAP_CONTROLLER_INDEX_OFFSET] = 1
 
         self.assertEqual(client._resolve_stage_scope(), (0x620000, 1))
 
-        memory.ptrs[
-            static_fields + client.MAP_CONTROLLER_CURRENT_STAGE_OFFSET
-        ] = 0x630000
+        memory.ptrs[static_fields + client.MAP_CONTROLLER_CURRENT_STAGE_OFFSET] = (
+            0x630000
+        )
         memory.i32s[static_fields + client.MAP_CONTROLLER_INDEX_OFFSET] = 2
         self.assertEqual(client._resolve_stage_scope(), (0x630000, 2))
 

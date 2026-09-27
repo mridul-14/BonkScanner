@@ -88,7 +88,9 @@ class UpdatePromptTests(unittest.TestCase):
             thread.join(timeout=3)
 
         self.assertTrue(
-            any("previous version was restored" in message for message, _tag in app.logs)
+            any(
+                "previous version was restored" in message for message, _tag in app.logs
+            )
         )
 
     def test_only_one_update_session_can_run_at_a_time(self) -> None:
@@ -127,9 +129,7 @@ class UpdatePromptTests(unittest.TestCase):
             thread.join(timeout=3)
 
         self.assertFalse(app.__dict__["_update_session_active"])
-        self.assertTrue(
-            any("probe exploded" in message for message, _tag in app.logs)
-        )
+        self.assertTrue(any("probe exploded" in message for message, _tag in app.logs))
         self.assertIn(("unknown", ""), app.footer.states)
 
     def test_thread_start_failure_releases_the_update_session(self) -> None:
@@ -151,7 +151,9 @@ class UpdatePromptTests(unittest.TestCase):
         app = FakeApp()
         failure = config.SettingsSaveResult(False, "config is read-only")
         with (
-            patch.object(update_prompt, "check_for_update", return_value=available_result()),
+            patch.object(
+                update_prompt, "check_for_update", return_value=available_result()
+            ),
             patch.object(update_prompt, "show_update_dialog", return_value="skip"),
             patch.object(update_prompt, "skip_update_version", return_value=failure),
         ):
@@ -186,8 +188,12 @@ class UpdatePromptTests(unittest.TestCase):
                 return "update"
 
             with (
-                patch.object(update_prompt, "check_for_update", return_value=available_result()),
-                patch.object(update_prompt, "show_update_dialog", side_effect=show_dialog),
+                patch.object(
+                    update_prompt, "check_for_update", return_value=available_result()
+                ),
+                patch.object(
+                    update_prompt, "show_update_dialog", side_effect=show_dialog
+                ),
                 patch.object(update_prompt, "launch_prepared_update") as launch,
             ):
                 thread = update_prompt.start_update_check(app, force_check=True)
@@ -200,7 +206,9 @@ class UpdatePromptTests(unittest.TestCase):
     def test_skip_button_persists_only_the_named_release(self) -> None:
         app = FakeApp()
         with (
-            patch.object(update_prompt, "check_for_update", return_value=available_result()),
+            patch.object(
+                update_prompt, "check_for_update", return_value=available_result()
+            ),
             patch.object(update_prompt, "show_update_dialog", return_value="skip"),
             patch.object(update_prompt, "skip_update_version") as skip,
         ):

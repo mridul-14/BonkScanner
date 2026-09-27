@@ -130,6 +130,7 @@ class UiInvokerLifecycleTests(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+
 class ResourcePathAnchorTests(unittest.TestCase):
     """resource_path derives its anchor from ui/shared.py's own __file__.
 

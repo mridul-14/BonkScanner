@@ -57,10 +57,15 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(len(filter_recordings(VODS, "   ")), 3)
 
     def test_a_query_matches_a_substring_of_the_name(self) -> None:
-        self.assertEqual([vod.name for vod in filter_recordings(VODS, "k")], ["950k", "970k"])
+        self.assertEqual(
+            [vod.name for vod in filter_recordings(VODS, "k")], ["950k", "970k"]
+        )
 
     def test_matching_ignores_case(self) -> None:
-        self.assertEqual([vod.name for vod in filter_recordings(VODS, "RUN")], ["Run 2026-07-29 00:18"])
+        self.assertEqual(
+            [vod.name for vod in filter_recordings(VODS, "RUN")],
+            ["Run 2026-07-29 00:18"],
+        )
 
     def test_no_match_is_an_empty_list_not_everything(self) -> None:
         self.assertEqual(filter_recordings(VODS, "nothing matches"), [])
@@ -96,7 +101,9 @@ class _FakeTextWidget:
 
 
 class CleanupButtonStateTests(unittest.TestCase):
-    def test_cleanup_stays_available_when_the_current_threshold_matches_nothing(self) -> None:
+    def test_cleanup_stays_available_when_the_current_threshold_matches_nothing(
+        self,
+    ) -> None:
         button = _FakeTextWidget()
         tab = SimpleNamespace(
             _library_summary_label=_FakeTextWidget(),
@@ -137,7 +144,10 @@ class LibrarySizeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "a.jsonl").write_text("x" * 100, encoding="utf-8")
-            vods = (_vod("a", path=root / "a.jsonl"), _vod("gone", path=root / "gone.jsonl"))
+            vods = (
+                _vod("a", path=root / "a.jsonl"),
+                _vod("gone", path=root / "gone.jsonl"),
+            )
 
             self.assertEqual(library_size_bytes(vods), 100)
 

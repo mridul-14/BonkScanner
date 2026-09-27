@@ -101,7 +101,9 @@ def test_difficulty_caps_carry_percent_labels_without_over_cap_geometry() -> Non
     widget.set_model(
         ScrubberModel(
             count=4,
-            _series={"Difficulty": _series("Difficulty", (1.0, 4.0, 6.0, 7.0), scale=7.0)},
+            _series={
+                "Difficulty": _series("Difficulty", (1.0, 4.0, 6.0, 7.0), scale=7.0)
+            },
             _caps={"Difficulty": (CapStep(0, 3, 5.71),)},
         )
     )
@@ -127,9 +129,7 @@ def test_visible_cap_expands_scale_instead_of_collapsing_onto_curve() -> None:
     widget.set_model(
         ScrubberModel(
             count=2,
-            _series={
-                "Difficulty": _series("Difficulty", (1.0, 1.396), scale=1.396)
-            },
+            _series={"Difficulty": _series("Difficulty", (1.0, 1.396), scale=1.396)},
             _caps={"Difficulty": (CapStep(0, 1, 5.71),)},
         )
     )
@@ -276,7 +276,9 @@ def test_a_ceiling_is_drawn_without_plotting_its_curve() -> None:
     widget.set_model(
         ScrubberModel(
             count=4,
-            _series={"Difficulty": _series("Difficulty", (1.0, 4.0, 6.0, 7.0), scale=7.0)},
+            _series={
+                "Difficulty": _series("Difficulty", (1.0, 4.0, 6.0, 7.0), scale=7.0)
+            },
             _caps={"Difficulty": (CapStep(0, 3, 5.71),)},
         )
     )
@@ -299,7 +301,9 @@ def test_an_unchecked_ceiling_is_not_drawn_even_when_its_curve_is() -> None:
     widget.set_model(
         ScrubberModel(
             count=4,
-            _series={"Difficulty": _series("Difficulty", (1.0, 4.0, 6.0, 7.0), scale=7.0)},
+            _series={
+                "Difficulty": _series("Difficulty", (1.0, 4.0, 6.0, 7.0), scale=7.0)
+            },
             _caps={"Difficulty": (CapStep(0, 3, 5.71),)},
         )
     )

@@ -17,9 +17,30 @@ from core.character_passives import (
     CharacterPassiveStatus,
 )
 from core.stats.formats import PlayerStatFormat, WeaponStatFormat
-from core.stats.types import ChaosTomeSnapshot, ChaosTomeStatSnapshot, DamageSourceSnapshot, TomeSnapshot, WeaponSnapshot, WeaponStatValue
+from core.stats.types import (
+    ChaosTomeSnapshot,
+    ChaosTomeStatSnapshot,
+    DamageSourceSnapshot,
+    TomeSnapshot,
+    WeaponSnapshot,
+    WeaponStatValue,
+)
 from core.vod_capture import VodCapturePayload
-from infra.vod_storage import LEGACY_VODS_DIR, RECORDINGS_DIR, UnsupportedVodVersionError, VodFormatError, VodRecorder, delete_vod, delete_vods_below_snapshot_count, list_vods, load_cached_vods, load_vod, load_vod_metadata, rename_vod, refresh_vod_metadata_index
+from infra.vod_storage import (
+    LEGACY_VODS_DIR,
+    RECORDINGS_DIR,
+    UnsupportedVodVersionError,
+    VodFormatError,
+    VodRecorder,
+    delete_vod,
+    delete_vods_below_snapshot_count,
+    list_vods,
+    load_cached_vods,
+    load_vod,
+    load_vod_metadata,
+    rename_vod,
+    refresh_vod_metadata_index,
+)
 from projections import formatting
 
 
@@ -46,7 +67,9 @@ def capture(recorder, stats, *values, **fields):
 
 
 class VodStorageTests(unittest.TestCase):
-    def test_vod_versions_one_through_ten_and_missing_version_are_supported(self) -> None:
+    def test_vod_versions_one_through_ten_and_missing_version_are_supported(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             for version in (None, *range(1, 11)):
                 suffix = "" if version is None else f',"version":{version}'
@@ -60,7 +83,9 @@ class VodStorageTests(unittest.TestCase):
     def test_future_and_malformed_vod_versions_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             future = Path(temp_dir) / "future.jsonl"
-            future.write_text('{"type":"metadata","version":11,"name":"Run"}\n', encoding="utf-8")
+            future.write_text(
+                '{"type":"metadata","version":11,"name":"Run"}\n', encoding="utf-8"
+            )
             with self.assertRaises(UnsupportedVodVersionError):
                 load_vod(future)
 
@@ -121,7 +146,8 @@ class VodStorageTests(unittest.TestCase):
                 character_id=18,
                 character_name="Dice",
             )
-            capture(recorder,
+            capture(
+                recorder,
                 {},
                 character_passive=passive,
                 mob_kills=970_000,
@@ -192,7 +218,9 @@ class VodStorageTests(unittest.TestCase):
                 vod_storage.LEGACY_VODS_DIR = Path(temp_dir) / "missing-legacy"
                 refreshed = refresh_vod_metadata_index(settings)
                 self.assertEqual([vod.name for vod in refreshed], ["Indexed run"])
-                self.assertEqual([vod.name for vod in load_cached_vods(settings)], ["Indexed run"])
+                self.assertEqual(
+                    [vod.name for vod in load_cached_vods(settings)], ["Indexed run"]
+                )
                 self.assertEqual(settings.index.get("version"), 1)
                 self.assertEqual(len(settings.index.get("records", [])), 1)
 
@@ -205,7 +233,9 @@ class VodStorageTests(unittest.TestCase):
                 vod_storage.RECORDINGS_DIR = old_recordings
                 vod_storage.LEGACY_VODS_DIR = old_legacy
 
-    def test_recorder_batches_snapshot_flushes_but_flushes_metadata_and_summary(self) -> None:
+    def test_recorder_batches_snapshot_flushes_but_flushes_metadata_and_summary(
+        self,
+    ) -> None:
         class FakeFile:
             def __init__(self) -> None:
                 self.flush_calls = 0
@@ -222,7 +252,9 @@ class VodStorageTests(unittest.TestCase):
                 self.closed = True
 
         fake_file = FakeFile()
-        recorder = VodRecorder(vods_dir=Path("."), interval_seconds=30, clock=lambda: 1000.0)
+        recorder = VodRecorder(
+            vods_dir=Path("."), interval_seconds=30, clock=lambda: 1000.0
+        )
         recorder.path = Path("fake.jsonl")
         recorder.name = "Fake"
         recorder.start_time = 1000.0
@@ -232,7 +264,9 @@ class VodStorageTests(unittest.TestCase):
         recorder._write_record({"type": "metadata"}, flush=True)
         for index in range(1, 4):
             recorder.snapshot_count = index
-            recorder._write_record({"type": "snapshot", "index": index}, flush=(index % 3 == 0))
+            recorder._write_record(
+                {"type": "snapshot", "index": index}, flush=(index % 3 == 0)
+            )
         recorder._write_record({"type": "summary"}, flush=True)
 
         self.assertEqual(fake_file.flush_calls, 3)
@@ -324,7 +358,8 @@ class VodStorageTests(unittest.TestCase):
             )
 
             path = recorder.start(name="Test run", seed=12345)
-            capture(recorder,
+            capture(
+                recorder,
                 {
                     "Damage": SimpleNamespace(value=1.25, display_value="1.25x"),
                     "Armor": SimpleNamespace(value=0.15, display_value="15%"),
@@ -337,17 +372,35 @@ class VodStorageTests(unittest.TestCase):
                         level=3,
                         upgrade_stat_ids=(12, 16, 9, 11),
                         upgraded_stats={
-                            12: WeaponStatValue(12, "Damage", 10.0, WeaponStatFormat.FLAT),
-                            16: WeaponStatValue(16, "Projectiles", 2.0, WeaponStatFormat.FLAT),
-                            9: WeaponStatValue(9, "Size", 1.16, WeaponStatFormat.MULTIPLIER),
-                            11: WeaponStatValue(11, "Speed", 0.6, WeaponStatFormat.MULTIPLIER),
+                            12: WeaponStatValue(
+                                12, "Damage", 10.0, WeaponStatFormat.FLAT
+                            ),
+                            16: WeaponStatValue(
+                                16, "Projectiles", 2.0, WeaponStatFormat.FLAT
+                            ),
+                            9: WeaponStatValue(
+                                9, "Size", 1.16, WeaponStatFormat.MULTIPLIER
+                            ),
+                            11: WeaponStatValue(
+                                11, "Speed", 0.6, WeaponStatFormat.MULTIPLIER
+                            ),
                         },
                         full_stats={
-                            12: WeaponStatValue(12, "Damage", 10.0, WeaponStatFormat.FLAT),
-                            16: WeaponStatValue(16, "Projectiles", 2.0, WeaponStatFormat.FLAT),
-                            9: WeaponStatValue(9, "Size", 1.16, WeaponStatFormat.MULTIPLIER),
-                            11: WeaponStatValue(11, "Speed", 0.6, WeaponStatFormat.MULTIPLIER),
-                            24: WeaponStatValue(24, "Knockback", 1.0, WeaponStatFormat.MULTIPLIER),
+                            12: WeaponStatValue(
+                                12, "Damage", 10.0, WeaponStatFormat.FLAT
+                            ),
+                            16: WeaponStatValue(
+                                16, "Projectiles", 2.0, WeaponStatFormat.FLAT
+                            ),
+                            9: WeaponStatValue(
+                                9, "Size", 1.16, WeaponStatFormat.MULTIPLIER
+                            ),
+                            11: WeaponStatValue(
+                                11, "Speed", 0.6, WeaponStatFormat.MULTIPLIER
+                            ),
+                            24: WeaponStatValue(
+                                24, "Knockback", 1.0, WeaponStatFormat.MULTIPLIER
+                            ),
                         },
                         max_duration=5.0,
                         max_size_multiplier=-1.0,
@@ -421,7 +474,8 @@ class VodStorageTests(unittest.TestCase):
                 chests_total_by_stage={1: 46},
             )
             now += 60
-            capture(recorder,
+            capture(
+                recorder,
                 {
                     "Damage": SimpleNamespace(value=1.5, display_value="1.5x"),
                     "Armor": SimpleNamespace(value=0.2, display_value="20%"),
@@ -450,8 +504,12 @@ class VodStorageTests(unittest.TestCase):
             self.assertEqual(loaded.snapshots[0].stats["Damage"].display_value, "1.25x")
             self.assertEqual(loaded.snapshots[0].items, ("Wrench x1",))
             self.assertEqual(loaded.snapshots[0].weapons[0].name, "Fire Staff")
-            self.assertEqual(loaded.snapshots[0].weapons[0].upgraded_stats[12].display_value, "10")
-            self.assertEqual(loaded.snapshots[0].weapons[0].upgraded_stats[11].display_value, "0.6x")
+            self.assertEqual(
+                loaded.snapshots[0].weapons[0].upgraded_stats[12].display_value, "10"
+            )
+            self.assertEqual(
+                loaded.snapshots[0].weapons[0].upgraded_stats[11].display_value, "0.6x"
+            )
             self.assertEqual(loaded.snapshots[0].weapons[0].max_duration, 5.0)
             self.assertEqual(loaded.snapshots[0].weapons[0].max_size_multiplier, -1.0)
             self.assertEqual(loaded.snapshots[0].tomes[0].name, "Damage")
@@ -460,13 +518,22 @@ class VodStorageTests(unittest.TestCase):
             self.assertIsNotNone(loaded.snapshots[0].chaos_tome)
             self.assertEqual(loaded.snapshots[0].chaos_tome.level, 7)
             self.assertEqual(
-                [(stat.stat_id, stat.label, stat.display_delta) for stat in loaded.snapshots[0].chaos_tome.stats],
+                [
+                    (stat.stat_id, stat.label, stat.display_delta)
+                    for stat in loaded.snapshots[0].chaos_tome.stats
+                ],
                 [(12, "Damage", "+16.8%"), (30, "Luck", "+7%")],
             )
             self.assertEqual(loaded.snapshots[0].banishes, ("Clover", "Golden Tome"))
-            self.assertEqual(loaded.snapshots[0].damage_sources[0].source_key, "FireStaff")
-            self.assertEqual(loaded.snapshots[0].damage_sources[0].source_name, "FireStaff")
-            self.assertAlmostEqual(loaded.snapshots[0].damage_sources[0].damage, 10662.599609375)
+            self.assertEqual(
+                loaded.snapshots[0].damage_sources[0].source_key, "FireStaff"
+            )
+            self.assertEqual(
+                loaded.snapshots[0].damage_sources[0].source_name, "FireStaff"
+            )
+            self.assertAlmostEqual(
+                loaded.snapshots[0].damage_sources[0].damage, 10662.599609375
+            )
             self.assertEqual(loaded.snapshots[0].chests_per_minute, 1.23)
             self.assertAlmostEqual(loaded.snapshots[0].game_time_seconds, 21.52338219)
             self.assertEqual(loaded.snapshots[0].mob_kills, 37)
@@ -541,12 +608,9 @@ class VodStorageTests(unittest.TestCase):
                 vods_dir=Path(temp_dir), interval_seconds=60, clock=lambda: 1000.0
             )
             path = recorder.start(name="Overflow run")
-            capture(recorder,
-                {
-                    "Damage": SimpleNamespace(
-                        value=float("nan"), display_value="--"
-                    )
-                },
+            capture(
+                recorder,
+                {"Damage": SimpleNamespace(value=float("nan"), display_value="--")},
                 damage_sources=(
                     DamageSourceSnapshot(
                         source_key="Dragonfire",
@@ -573,18 +637,20 @@ class VodStorageTests(unittest.TestCase):
             self.assertIsNone(snapshot.chests_per_minute)
             self.assertEqual(snapshot.loot_expected, {})
 
-    def test_legacy_non_finite_measurements_load_as_unknown_and_rename_cleanly(self) -> None:
+    def test_legacy_non_finite_measurements_load_as_unknown_and_rename_cleanly(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "legacy-overflow.jsonl"
             path.write_text(
-                '\n'.join(
+                "\n".join(
                     [
                         '{"type":"metadata","version":7,"name":"Legacy overflow","created_at":"2026-08-21T11:17:10","snapshot_interval_seconds":60}',
                         '{"type":"snapshot","elapsed_seconds":60,"captured_at":1000.0,"stats":{"Damage":{"value":NaN,"display":"--"}},"damage_sources":[{"source_key":"Dragonfire","source_name":"Dragonfire","damage":Infinity}],"chests_per_minute":-Infinity,"game_time_seconds":1e400}',
                         '{"type":"summary","duration_seconds":60,"snapshot_count":1}',
                     ]
                 )
-                + '\n',
+                + "\n",
                 encoding="utf-8",
             )
 
@@ -679,7 +745,7 @@ class VodStorageTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            renamed = rename_vod(first_path, 'Target:Name')
+            renamed = rename_vod(first_path, "Target:Name")
 
             self.assertEqual(renamed.path.name, "Target_Name-1.jsonl")
             self.assertTrue(renamed.path.exists())
@@ -737,7 +803,9 @@ class VodStorageTests(unittest.TestCase):
 
             self.assertEqual([vod.name for vod in vods], ["Legacy run"])
 
-    def test_load_vod_keeps_backward_compatibility_when_in_game_time_is_missing(self) -> None:
+    def test_load_vod_keeps_backward_compatibility_when_in_game_time_is_missing(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "old-format.jsonl"
             path.write_text(
@@ -766,7 +834,8 @@ class VodStorageTests(unittest.TestCase):
                 vods_dir=Path(temp_dir), interval_seconds=60, clock=lambda: 1000.0
             )
             path = recorder.start(name="Unknown chest rate")
-            capture(recorder,
+            capture(
+                recorder,
                 {
                     "Elite Spawn Increase": SimpleNamespace(
                         value=15.0,
@@ -816,10 +885,21 @@ class VodStorageTests(unittest.TestCase):
                 vods_dir=Path(temp_dir), interval_seconds=60, clock=lambda: 1000.0
             )
             path = recorder.start(name="Loot run")
-            capture(recorder,
+            capture(
+                recorder,
                 {},
-                loot_actual={"LEGENDARY": 116, "RARE": 78, "UNCOMMON": 38, "COMMON": 45},
-                loot_expected={"LEGENDARY": 118.4, "RARE": 78.0, "UNCOMMON": 36.2, "COMMON": 45.0},
+                loot_actual={
+                    "LEGENDARY": 116,
+                    "RARE": 78,
+                    "UNCOMMON": 38,
+                    "COMMON": 45,
+                },
+                loot_expected={
+                    "LEGENDARY": 118.4,
+                    "RARE": 78.0,
+                    "UNCOMMON": 36.2,
+                    "COMMON": 45.0,
+                },
             )
             recorder.stop()
 
@@ -855,9 +935,13 @@ class VodStorageTests(unittest.TestCase):
 
             self.assertIsNone(snapshot.loot_actual)
             self.assertIsNone(snapshot.loot_expected)
-            self.assertEqual(3, snapshot.key_procs, "the rest of the record still loads")
+            self.assertEqual(
+                3, snapshot.key_procs, "the rest of the record still loads"
+            )
 
-    def test_delete_vods_below_snapshot_count_removes_only_short_recordings(self) -> None:
+    def test_delete_vods_below_snapshot_count_removes_only_short_recordings(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             short_path = root / "short.jsonl"
@@ -891,7 +975,9 @@ class VodStorageTests(unittest.TestCase):
             self.assertFalse(short_path.exists())
             self.assertTrue(keep_path.exists())
 
-    def test_delete_vods_below_snapshot_count_skips_active_and_locked_files(self) -> None:
+    def test_delete_vods_below_snapshot_count_skips_active_and_locked_files(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             active_path = root / "active.jsonl"
@@ -920,7 +1006,9 @@ class VodStorageTests(unittest.TestCase):
                     raise PermissionError("file is in use")
                 original_delete_vod(path)
 
-            with patch.object(vod_storage, "delete_vod", side_effect=delete_with_locked_file):
+            with patch.object(
+                vod_storage, "delete_vod", side_effect=delete_with_locked_file
+            ):
                 result = delete_vods_below_snapshot_count(
                     2,
                     root,
@@ -936,7 +1024,9 @@ class VodStorageTests(unittest.TestCase):
 
     def test_recorder_stop_deletes_empty_recordings(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            recorder = VodRecorder(vods_dir=Path(temp_dir), interval_seconds=30, clock=lambda: 1000.0)
+            recorder = VodRecorder(
+                vods_dir=Path(temp_dir), interval_seconds=30, clock=lambda: 1000.0
+            )
 
             path = recorder.start(name="Empty run", seed=123)
             status = recorder.stop()

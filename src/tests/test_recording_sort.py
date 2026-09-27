@@ -79,9 +79,15 @@ class SortOrderTests(unittest.TestCase):
             vod("alpha", "2026-07-14T20:58:58", 100, 10),
         )
 
-        for mode in (RECORDING_SORT_OLDEST, RECORDING_SORT_LONGEST, RECORDING_SORT_SNAPSHOTS):
+        for mode in (
+            RECORDING_SORT_OLDEST,
+            RECORDING_SORT_LONGEST,
+            RECORDING_SORT_SNAPSHOTS,
+        ):
             with self.subTest(mode=mode):
-                self.assertEqual(["alpha", "zulu"], names(sort_recordings(same_second, mode)))
+                self.assertEqual(
+                    ["alpha", "zulu"], names(sort_recordings(same_second, mode))
+                )
 
     def test_the_source_sequence_is_not_mutated(self) -> None:
         library = list(LIBRARY)
@@ -97,7 +103,9 @@ class ModeFallbackTests(unittest.TestCase):
         stop the library from painting."""
         for value in ("nonsense", "", None, 7):
             with self.subTest(value=value):
-                self.assertEqual(RECORDING_SORT_DEFAULT, normalize_recording_sort_mode(value))
+                self.assertEqual(
+                    RECORDING_SORT_DEFAULT, normalize_recording_sort_mode(value)
+                )
                 self.assertEqual(
                     names(sort_recordings(LIBRARY, RECORDING_SORT_DEFAULT)),
                     names(sort_recordings(LIBRARY, value)),

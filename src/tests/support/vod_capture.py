@@ -74,11 +74,15 @@ def build_vod_capture(
             refresh_player_stats_timeline_ui=lambda **k: world.view_calls.append(
                 ("timeline", dict(sorted(k.items())))
             ),
-            set_recording_status_text=lambda text: world.view_calls.append(("status", text)),
+            set_recording_status_text=lambda text: world.view_calls.append(
+                ("status", text)
+            ),
         )
     if recordings_list_view is None:
         recordings_list_view = SimpleNamespace(
-            _refresh_vods_list_if_visible=lambda: world.view_calls.append(("vods_list", None))
+            _refresh_vods_list_if_visible=lambda: world.view_calls.append(
+                ("vods_list", None)
+            )
         )
     if run_lifecycle is None:
         run_lifecycle = SimpleNamespace(
@@ -99,7 +103,9 @@ def build_vod_capture(
         read_recording_state=_reader(recording_states),
         read_run_timer=_reader(run_timers),
         close_game_data_client=lambda: world.closed_clients.append(True),
-        run_lifecycle=(run_lifecycle if callable(run_lifecycle) else (lambda: run_lifecycle)),
+        run_lifecycle=(
+            run_lifecycle if callable(run_lifecycle) else (lambda: run_lifecycle)
+        ),
         refresh_now=_refresh,
         player_stats_view=lambda: player_stats_view,
         recordings_list_view=lambda: recordings_list_view,

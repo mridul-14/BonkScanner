@@ -78,7 +78,9 @@ class FirstLaunchGuideDialogTests(unittest.TestCase):
         )
         return owner
 
-    def test_the_guide_contains_the_required_setup_and_acknowledges_only_got_it(self) -> None:
+    def test_the_guide_contains_the_required_setup_and_acknowledges_only_got_it(
+        self,
+    ) -> None:
         dialog = AutoRerollSetupGuideDialog(None)
         self.addCleanup(dialog.close)
         text = " ".join(label.text() for label in dialog.findChildren(QLabel))

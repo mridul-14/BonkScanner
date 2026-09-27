@@ -45,7 +45,9 @@ class ReadCensusRatchetTests(unittest.TestCase):
         # `test_current_on_tick_source_set_is_exact_and_has_no_bypasses` is what
         # proves it went in through the pass rather than around it.
         self.assertEqual(
-            census.boundary_site_count([census.SRC / rel for rel in census.ON_TICK_FILES]),
+            census.boundary_site_count(
+                [census.SRC / rel for rel in census.ON_TICK_FILES]
+            ),
             30,
         )
         # 4 since `reroll_map` stopped reading the map state and stats itself:
@@ -53,7 +55,9 @@ class ReadCensusRatchetTests(unittest.TestCase):
         # the pair that used to bracket the restart is gone. See
         # `OFF_TICK_SITE_LIMIT`, which came down with it.
         self.assertEqual(
-            census.boundary_site_count([census.SRC / rel for rel in census.OFF_TICK_FILES]),
+            census.boundary_site_count(
+                [census.SRC / rel for rel in census.OFF_TICK_FILES]
+            ),
             4,
         )
 

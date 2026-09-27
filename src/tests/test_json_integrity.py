@@ -93,11 +93,14 @@ class ConfigJsonIntegrityTests(unittest.TestCase):
                 self.assertEqual(config.load_config(), {})
 
     def test_game_reset_update_rejects_non_finite_before_writing(self) -> None:
-        with patch.object(config, "get_game_config_path", return_value="config.json"), patch.object(
-            config.os.path, "exists", return_value=True
-        ), patch.object(config, "load_game_config", return_value={"cfGameSettings": {}}), patch.object(
-            config, "save_game_config"
-        ) as save_game_config:
+        with (
+            patch.object(config, "get_game_config_path", return_value="config.json"),
+            patch.object(config.os.path, "exists", return_value=True),
+            patch.object(
+                config, "load_game_config", return_value={"cfGameSettings": {}}
+            ),
+            patch.object(config, "save_game_config") as save_game_config,
+        ):
             result = config.update_game_reset_time(float("inf"))
 
         self.assertFalse(result.success)

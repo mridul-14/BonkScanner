@@ -8,6 +8,7 @@ The `SupportersLoadTests` half covers the other end: `supporters.json` is a file
 maintained by hand in a browser, so a half-saved edit or a dead network is a
 normal Tuesday, not an exceptional case, and none of them may reach the screen.
 """
+
 import src  # noqa: F401  -- puts src/ on the path, as the other tests do
 
 import json
@@ -145,9 +146,7 @@ class SupportPopupTests(unittest.TestCase):
         self.assertIsNone(view._popup)
 
     def test_blank_and_malformed_entries_do_not_become_rows(self):
-        self.popup.set_supporters(
-            ["", "  ", {"name": ""}, {"source": "patreon"}, None]
-        )
+        self.popup.set_supporters(["", "  ", {"name": ""}, {"source": "patreon"}, None])
         self.assertEqual(_names(self.popup), [])
         self.assertEqual(self.popup._card.width(), SupportPopup.NARROW_WIDTH)
 
@@ -223,21 +222,14 @@ class SupportPopupTests(unittest.TestCase):
             ["founder", "extrasupport", "activesub"],
         )
         self.assertEqual(SUPPORT_BADGE_ICON_SIZE, 15)
-        self.assertTrue(
-            all(icon.size() == QSize(15, 15) for icon in legend_icons)
-        )
+        self.assertTrue(all(icon.size() == QSize(15, 15) for icon in legend_icons))
         self.popup.show()
         _app.processEvents()
         self.popup.grab()
-        self.assertTrue(
-            all(not icon._tinted_pixmap.isNull() for icon in legend_icons)
-        )
+        self.assertTrue(all(not icon._tinted_pixmap.isNull() for icon in legend_icons))
         self.assertTrue(
             all(
-                abs(
-                    icon._tinted_pixmap.devicePixelRatioF()
-                    - icon.devicePixelRatioF()
-                )
+                abs(icon._tinted_pixmap.devicePixelRatioF() - icon.devicePixelRatioF())
                 < 0.001
                 for icon in legend_icons
             )
@@ -514,9 +506,7 @@ class SupportPopupPlacementTests(unittest.TestCase):
     def _open_fresh(self, anchor):
         popup = SupportPopup(anchor.window())
         self.addCleanup(popup.deleteLater)
-        popup.set_supporters(
-            ["Grimwald", {"name": "Nyxaria", "source": "patreon"}]
-        )
+        popup.set_supporters(["Grimwald", {"name": "Nyxaria", "source": "patreon"}])
         popup.show_above(anchor)
         self.addCleanup(popup.close)
         return popup
@@ -546,9 +536,7 @@ class SupportPopupPlacementTests(unittest.TestCase):
         _app.processEvents()
         self.assertEqual(popup._card.width(), SupportPopup.NARROW_WIDTH)
 
-        popup.set_supporters(
-            ["Grimwald", {"name": "Nyxaria", "source": "patreon"}]
-        )
+        popup.set_supporters(["Grimwald", {"name": "Nyxaria", "source": "patreon"}])
         _app.processEvents()
 
         self.assertEqual(popup._card.width(), SupportPopup.WIDE_WIDTH)

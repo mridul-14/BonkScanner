@@ -18,9 +18,7 @@ def test_graph_menu_uses_the_requested_stat_groups() -> None:
     assert "Movement Speed" in groups["Run"]
     assert "Max HP" in groups["Run"]
     assert "Movement Speed" not in groups["Effects"]
-    assert {"Luck", "Difficulty", "Pickup Range"} <= set(
-        groups["Rewards & spawns"]
-    )
+    assert {"Luck", "Difficulty", "Pickup Range"} <= set(groups["Rewards & spawns"])
 
 
 def test_graph_menu_contains_every_player_stat_once() -> None:

@@ -15,9 +15,10 @@ from ui.timeline_controls import (
 
 def test_series_change_in_either_tab_updates_the_other_and_persists() -> None:
     user_config = {}
-    with patch.object(config, "user_config", user_config), patch.object(
-        config, "save_config"
-    ) as save_config:
+    with (
+        patch.object(config, "user_config", user_config),
+        patch.object(config, "save_config") as save_config,
+    ):
         shared = TimelineSeriesSlots()
         recordings = build_recordings_tab(timeline_series_slots=shared)
         compare = build_compare_runs_tab(timeline_series_slots=shared)
@@ -56,10 +57,13 @@ def test_failed_slot_persistence_rolls_back_the_shared_value() -> None:
     observed = []
     shared.subscribe(observed.append)
 
-    with patch(
-        "ui.timeline_controls.save_timeline_series_slots",
-        side_effect=OSError("config unavailable"),
-    ), pytest.raises(OSError, match="config unavailable"):
+    with (
+        patch(
+            "ui.timeline_controls.save_timeline_series_slots",
+            side_effect=OSError("config unavailable"),
+        ),
+        pytest.raises(OSError, match="config unavailable"),
+    ):
         shared.set_slot(0, ("Luck",))
 
     assert shared.slots[0] == ("Damage",)
@@ -69,10 +73,13 @@ def test_failed_slot_persistence_rolls_back_the_shared_value() -> None:
 def test_unsuccessful_slot_save_result_rolls_back_the_shared_value() -> None:
     shared = TimelineSeriesSlots(slots=(("Damage",), (), (), ()))
 
-    with patch(
-        "ui.timeline_controls.save_timeline_series_slots",
-        return_value=config.ConfigSaveResult(False, "verification failed"),
-    ), pytest.raises(OSError, match="verification failed"):
+    with (
+        patch(
+            "ui.timeline_controls.save_timeline_series_slots",
+            return_value=config.ConfigSaveResult(False, "verification failed"),
+        ),
+        pytest.raises(OSError, match="verification failed"),
+    ):
         shared.set_slot(0, ("Luck",))
 
     assert shared.slots[0] == ("Damage",)
@@ -81,9 +88,7 @@ def test_unsuccessful_slot_save_result_rolls_back_the_shared_value() -> None:
 def test_broken_slot_subscriber_does_not_starve_the_next_tab() -> None:
     shared = TimelineSeriesSlots(slots=(("Damage",), (), (), ()))
     observed = []
-    shared.subscribe(
-        lambda _slots: (_ for _ in ()).throw(RuntimeError("tab deleted"))
-    )
+    shared.subscribe(lambda _slots: (_ for _ in ()).throw(RuntimeError("tab deleted")))
     shared.subscribe(observed.append)
 
     with patch("ui.timeline_controls.save_timeline_series_slots"):

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import io
-from pathlib import Path
 import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 # Ensure tools/inspect_live is on sys.path
@@ -17,7 +17,7 @@ DEPS_DIR = INSPECT_LIVE_DIR / "dependencies"
 if str(DEPS_DIR) not in sys.path:
     sys.path.insert(0, str(DEPS_DIR))
 
-import inspect_live as il
+import inspect_live as il  # noqa: E402
 
 
 class TestStage1Evaluation(unittest.TestCase):
@@ -233,8 +233,13 @@ class TestStage1Evaluation(unittest.TestCase):
 
         # Case 1: Missing one from ALL list (only 45 and 41 present) -> Fail
         (_, _, _, all_m1, r1) = il.evaluate_stage1_criteria(
-            sm_pass=True, micro_pass=True, boss_pass=True, magnet_pass=True, shady_pass=True,
-            required_all_item_ids=req_all, required_any_item_ids=req_any,
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_all_item_ids=req_all,
+            required_any_item_ids=req_any,
             offered_item_ids=[45, 41],
         )
         self.assertFalse(all_m1)
@@ -242,8 +247,13 @@ class TestStage1Evaluation(unittest.TestCase):
 
         # Case 2: ALL list satisfied (45, 57), but missing ANY list -> Fail
         (_, _, _, all_m2, r2) = il.evaluate_stage1_criteria(
-            sm_pass=True, micro_pass=True, boss_pass=True, magnet_pass=True, shady_pass=True,
-            required_all_item_ids=req_all, required_any_item_ids=req_any,
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_all_item_ids=req_all,
+            required_any_item_ids=req_any,
             offered_item_ids=[45, 57],
         )
         self.assertFalse(all_m2)
@@ -251,8 +261,13 @@ class TestStage1Evaluation(unittest.TestCase):
 
         # Case 3: ALL list satisfied (45, 57) + one from ANY list (47) -> Pass
         (t_pass3, _, _, all_m3, r3) = il.evaluate_stage1_criteria(
-            sm_pass=True, micro_pass=True, boss_pass=True, magnet_pass=True, shady_pass=True,
-            required_all_item_ids=req_all, required_any_item_ids=req_any,
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_all_item_ids=req_all,
+            required_any_item_ids=req_any,
             offered_item_ids=[45, 57, 47],
         )
         self.assertTrue(t_pass3)
@@ -262,24 +277,46 @@ class TestStage1Evaluation(unittest.TestCase):
     def test_scan_stage1_seed_filter_fast_eval_required_items(self) -> None:
         """Test scan_stage1_seed_filter fast_eval skips heap when required items are active but 0 Shady Guys."""
         mock_mem = unittest.mock.MagicMock()
-        with patch.object(il, "get_stage_index", return_value=0), \
-             patch.object(il, "get_map_interactable_counts", return_value={
-                 "shady": 0, "moai": 10, "microwaves": 2, "boss_curses": 1, "magnets": 2,
-             }):
+        with (
+            patch.object(il, "get_stage_index", return_value=0),
+            patch.object(
+                il,
+                "get_map_interactable_counts",
+                return_value={
+                    "shady": 0,
+                    "moai": 10,
+                    "microwaves": 2,
+                    "boss_curses": 1,
+                    "magnets": 2,
+                },
+            ),
+        ):
             # When required_all_item_ids=[41] and shady=0: fast_eval skips heap and reports missing required items
             res_req = il.scan_stage1_seed_filter(
-                mock_mem, 0x1000, fast_eval=True, character=(0, "Fox"), required_all_item_ids=[41]
+                mock_mem,
+                0x1000,
+                fast_eval=True,
+                character=(0, "Fox"),
+                required_all_item_ids=[41],
             )
             self.assertTrue(res_req.get("shady_skipped"))
             self.assertFalse(res_req.get("all_matched"))
-            self.assertEqual(res_req.get("match_reason"), "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS")
+            self.assertEqual(
+                res_req.get("match_reason"), "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS"
+            )
             self.assertEqual(res_req.get("required_all_item_ids"), [41])
 
             # When required_all_item_ids=[] and required_any_item_ids=[] and shady=0: does not skip heap due to items
-            with patch.object(il, "scan_heap_interactables", return_value=([], [], [], [])):
+            with patch.object(
+                il, "scan_heap_interactables", return_value=([], [], [], [])
+            ):
                 res_no_req = il.scan_stage1_seed_filter(
-                    mock_mem, 0x1000, fast_eval=True, character=(0, "Fox"),
-                    required_all_item_ids=[], required_any_item_ids=[],
+                    mock_mem,
+                    0x1000,
+                    fast_eval=True,
+                    character=(0, "Fox"),
+                    required_all_item_ids=[],
+                    required_any_item_ids=[],
                 )
                 self.assertEqual(res_no_req.get("required_all_item_ids"), [])
                 self.assertTrue(res_no_req.get("all_matched"))
@@ -319,7 +356,13 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
             "character": "Fox",
             "character_id": 0,
             "is_fox": True,
-            "map_counts": {"shady": 1, "moai": 8, "microwaves": 2, "boss_curses": 1, "magnets": 2},
+            "map_counts": {
+                "shady": 1,
+                "moai": 8,
+                "microwaves": 2,
+                "boss_curses": 1,
+                "magnets": 2,
+            },
             "sm_total": 9,
             "sm_pass": True,
             "micro_pass": True,
@@ -415,12 +458,16 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
         with patch.object(il.console, "print") as mock_print:
             il.print_stage1_report(res)
             table_calls = [
-                call.args[0] for call in mock_print.call_args_list
+                call.args[0]
+                for call in mock_print.call_args_list
                 if call.args and isinstance(call.args[0], il.Table)
             ]
-            self.assertEqual(len(table_calls), 0, f"Expected 0 tables on failure, got: {table_calls}")
+            self.assertEqual(
+                len(table_calls), 0, f"Expected 0 tables on failure, got: {table_calls}"
+            )
             panels = [
-                call.args[0] for call in mock_print.call_args_list
+                call.args[0]
+                for call in mock_print.call_args_list
                 if call.args and isinstance(call.args[0], il.Panel)
             ]
             self.assertEqual(len(panels), 1, "Expected 1 status panel")
@@ -453,12 +500,16 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
         with patch.object(il.console, "print") as mock_print:
             il.print_stage1_report(res, reroll_num=5)
             table_calls = [
-                call.args[0] for call in mock_print.call_args_list
+                call.args[0]
+                for call in mock_print.call_args_list
                 if call.args and isinstance(call.args[0], il.Table)
             ]
-            self.assertEqual(len(table_calls), 0, f"Expected 0 tables on failure, got: {table_calls}")
+            self.assertEqual(
+                len(table_calls), 0, f"Expected 0 tables on failure, got: {table_calls}"
+            )
             panels = [
-                call.args[0] for call in mock_print.call_args_list
+                call.args[0]
+                for call in mock_print.call_args_list
                 if call.args and isinstance(call.args[0], il.Panel)
             ]
             self.assertEqual(len(panels), 1, "Expected 1 status panel")
@@ -478,7 +529,12 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
         with patch.object(il.console, "print") as mock_print:
             il.print_stage1_report(res)
             req_table = next(
-                (call.args[0] for call in mock_print.call_args_list if call.args and getattr(call.args[0], "title", None) == "Stage 1 Requirements"),
+                (
+                    call.args[0]
+                    for call in mock_print.call_args_list
+                    if call.args
+                    and getattr(call.args[0], "title", None) == "Stage 1 Requirements"
+                ),
                 None,
             )
             self.assertIsNotNone(req_table)
@@ -546,15 +602,23 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
         with patch.object(il.console, "print") as mock_print:
             il.print_stage1_report(res)
             # Find the Ranked Items table and Inventories table
-            tables = [call.args[0] for call in mock_print.call_args_list if call.args and hasattr(call.args[0], "columns")]
+            tables = [
+                call.args[0]
+                for call in mock_print.call_args_list
+                if call.args and hasattr(call.args[0], "columns")
+            ]
             all_cells = []
             for t in tables:
                 for col in t.columns:
                     for cell in col._cells:
                         all_cells.append(str(cell))
             # Verify [dim strike] applied to item name, rank, and status
-            self.assertTrue(any("[dim strike]" in c and "Dragonfire" in c for c in all_cells))
-            self.assertTrue(any("[dim strike]" in c and "Shady #1" in c for c in all_cells))
+            self.assertTrue(
+                any("[dim strike]" in c and "Dragonfire" in c for c in all_cells)
+            )
+            self.assertTrue(
+                any("[dim strike]" in c and "Shady #1" in c for c in all_cells)
+            )
             self.assertTrue(any("TAKEN" in c for c in all_cells))
 
     def test_stage1_report_plain_text_strikethrough_when_shady_done(self) -> None:
@@ -611,8 +675,14 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
         if il.console is not None:
             with patch.object(il.console, "print") as mock_print:
                 il.print_stage1_report(res, powerup_data=pu_data)
-                titles = [getattr(call.args[0], "title", "") for call in mock_print.call_args_list if call.args]
-                self.assertTrue(any("ACTIVE POWER-UPS & BUFFS" in str(t) for t in titles))
+                titles = [
+                    getattr(call.args[0], "title", "")
+                    for call in mock_print.call_args_list
+                    if call.args
+                ]
+                self.assertTrue(
+                    any("ACTIVE POWER-UPS & BUFFS" in str(t) for t in titles)
+                )
 
 
 class TestRequiredItemIdsEvaluation(unittest.TestCase):
@@ -944,13 +1014,19 @@ class TestShadyGuyRankedItems(unittest.TestCase):
         self.assertEqual(ranked[0]["item_name"], "ItemB")
         self.assertEqual(ranked[0]["dist"], 50.0)
         self.assertEqual(ranked[0]["shady_num"], 2)
-        self.assertTrue(ranked[0]["shady_done"], "Item from completed Shady Guy must have shady_done=True")
+        self.assertTrue(
+            ranked[0]["shady_done"],
+            "Item from completed Shady Guy must have shady_done=True",
+        )
 
         # Second item (150m, from Shady #1)
         self.assertEqual(ranked[1]["item_name"], "ItemA")
         self.assertEqual(ranked[1]["dist"], 150.0)
         self.assertEqual(ranked[1]["shady_num"], 1)
-        self.assertFalse(ranked[1]["shady_done"], "Item from active Shady Guy must have shady_done=False")
+        self.assertFalse(
+            ranked[1]["shady_done"],
+            "Item from active Shady Guy must have shady_done=False",
+        )
 
 
 class TestRequiredItemsColorScheme(unittest.TestCase):
@@ -960,7 +1036,7 @@ class TestRequiredItemsColorScheme(unittest.TestCase):
         self._orig_required_all_item_ids = list(il.REQUIRED_ALL_ITEM_IDS)
         self._orig_required_any_item_ids = list(il.REQUIRED_ANY_ITEM_IDS)
         il.REQUIRED_ALL_ITEM_IDS = [58]  # Borgar (Common item 58)
-        il.REQUIRED_ANY_ITEM_IDS = [7]   # Battery (Common item 7)
+        il.REQUIRED_ANY_ITEM_IDS = [7]  # Battery (Common item 7)
 
     def tearDown(self) -> None:
         il.REQUIRED_ALL_ITEM_IDS = self._orig_required_all_item_ids
@@ -994,11 +1070,16 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
     """Test distinct Shady Guy constraint evaluation for REQUIRED_ALL_ITEM_IDS and REQUIRED_ANY_ITEM_IDS."""
 
     def test_can_satisfy_empty_requirements(self) -> None:
-        self.assertEqual(il.can_satisfy_required_items_on_distinct_shadys([], [], []), (True, True, True))
+        self.assertEqual(
+            il.can_satisfy_required_items_on_distinct_shadys([], [], []),
+            (True, True, True),
+        )
 
     def test_can_satisfy_single_all_item(self) -> None:
         shady_guys = [{"items": [{"item_id": 41}]}]
-        all_passed, any_passed, satisfied = il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41], [])
+        all_passed, any_passed, satisfied = (
+            il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41], [])
+        )
         self.assertTrue(all_passed)
         self.assertTrue(any_passed)
         self.assertTrue(satisfied)
@@ -1008,7 +1089,9 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
             {"items": [{"item_id": 41}]},
             {"items": [{"item_id": 47}]},
         ]
-        all_passed, any_passed, satisfied = il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41, 47], [])
+        all_passed, any_passed, satisfied = (
+            il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41, 47], [])
+        )
         self.assertTrue(all_passed)
         self.assertTrue(any_passed)
         self.assertTrue(satisfied)
@@ -1017,7 +1100,9 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
         shady_guys = [
             {"items": [{"item_id": 41}, {"item_id": 47}]},
         ]
-        all_passed, any_passed, satisfied = il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41, 47], [])
+        all_passed, any_passed, satisfied = (
+            il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41, 47], [])
+        )
         self.assertFalse(all_passed)
         self.assertTrue(any_passed)
         self.assertFalse(satisfied)
@@ -1026,17 +1111,23 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
         shady_guys = [
             {"items": [{"item_id": 41}, {"item_id": 47}]},
         ]
-        all_passed, any_passed, satisfied = il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41], [47])
+        all_passed, any_passed, satisfied = (
+            il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41], [47])
+        )
         self.assertTrue(all_passed)
         self.assertTrue(any_passed)
         self.assertFalse(satisfied)
 
-    def test_can_satisfy_all_and_any_on_at_least_two_distinct_shadys_passes(self) -> None:
+    def test_can_satisfy_all_and_any_on_at_least_two_distinct_shadys_passes(
+        self,
+    ) -> None:
         shady_guys = [
             {"items": [{"item_id": 41}]},
             {"items": [{"item_id": 47}]},
         ]
-        all_passed, any_passed, satisfied = il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41], [47])
+        all_passed, any_passed, satisfied = (
+            il.can_satisfy_required_items_on_distinct_shadys(shady_guys, [41], [47])
+        )
         self.assertTrue(all_passed)
         self.assertTrue(any_passed)
         self.assertTrue(satisfied)
@@ -1119,11 +1210,21 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
 
     def test_fast_eval_skips_heap_when_shady_count_less_than_min_needed(self) -> None:
         mock_mem = unittest.mock.MagicMock()
-        with patch.object(il, "get_stage_index", return_value=0), \
-             patch.object(il, "get_map_interactable_counts", return_value={
-                 "shady": 1, "moai": 10, "microwaves": 2, "boss_curses": 1, "magnets": 2,
-             }), \
-             patch.object(il, "scan_heap_interactables") as mock_scan_heap:
+        with (
+            patch.object(il, "get_stage_index", return_value=0),
+            patch.object(
+                il,
+                "get_map_interactable_counts",
+                return_value={
+                    "shady": 1,
+                    "moai": 10,
+                    "microwaves": 2,
+                    "boss_curses": 1,
+                    "magnets": 2,
+                },
+            ),
+            patch.object(il, "scan_heap_interactables") as mock_scan_heap,
+        ):
             res = il.scan_stage1_seed_filter(
                 mock_mem,
                 0x1000,
@@ -1143,7 +1244,13 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
             "elapsed_s": 0.05,
             "character": "Fox",
             "character_id": 0,
-            "map_counts": {"shady": 1, "moai": 10, "microwaves": 2, "boss_curses": 1, "magnets": 2},
+            "map_counts": {
+                "shady": 1,
+                "moai": 10,
+                "microwaves": 2,
+                "boss_curses": 1,
+                "magnets": 2,
+            },
             "sm_total": 11,
             "sm_pass": True,
             "micro_pass": True,
@@ -1163,9 +1270,12 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
         self.assertIn("conflict on the same Shady Guy", out)
         self.assertIn("at least 2 different Shady Guys", out)
 
-    def test_print_stage1_report_consumed_target_item_and_depleted_microwave_rich(self) -> None:
+    def test_print_stage1_report_consumed_target_item_and_depleted_microwave_rich(
+        self,
+    ) -> None:
         """When target items are consumed and microwaves depleted, rich tables render DONE / DEPLETED."""
         from rich.console import Console
+
         test_buf = io.StringIO()
         test_console = Console(file=test_buf, record=True, width=140)
         result = {
@@ -1174,7 +1284,13 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
             "elapsed_s": 0.05,
             "character": "Fox",
             "character_id": 0,
-            "map_counts": {"shady": 1, "moai": 0, "microwaves": 1, "boss_curses": 0, "magnets": 0},
+            "map_counts": {
+                "shady": 1,
+                "moai": 0,
+                "microwaves": 1,
+                "boss_curses": 0,
+                "magnets": 0,
+            },
             "sm_total": 1,
             "sm_pass": True,
             "micro_pass": True,
@@ -1216,7 +1332,9 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
         self.assertIn("TAKEN", text)
         self.assertTrue("line-through" in html or "strike" in html)
 
-    def test_print_stage1_report_consumed_target_item_and_depleted_microwave_plain(self) -> None:
+    def test_print_stage1_report_consumed_target_item_and_depleted_microwave_plain(
+        self,
+    ) -> None:
         """When plain text fallback is used, consumed target items and depleted microwaves render properly."""
         result = {
             "is_stage_1": True,
@@ -1224,7 +1342,13 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
             "elapsed_s": 0.05,
             "character": "Fox",
             "character_id": 0,
-            "map_counts": {"shady": 1, "moai": 0, "microwaves": 1, "boss_curses": 0, "magnets": 0},
+            "map_counts": {
+                "shady": 1,
+                "moai": 0,
+                "microwaves": 1,
+                "boss_curses": 0,
+                "magnets": 0,
+            },
             "sm_total": 1,
             "sm_pass": True,
             "micro_pass": True,
@@ -1264,9 +1388,12 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
         self.assertIn("[DONE] Target Items (Anvil):    CONSUMED", out)
         self.assertIn("0 uses - DEPLETED", out)
 
-    def test_print_stage_inspect_report_depleted_microwave_and_target_item(self) -> None:
+    def test_print_stage_inspect_report_depleted_microwave_and_target_item(
+        self,
+    ) -> None:
         """In Stage 2+ inspection report, depleted microwaves and target items show proper state."""
         from rich.console import Console
+
         test_buf = io.StringIO()
         test_console = Console(file=test_buf, record=True, width=140)
         result = {
@@ -1275,7 +1402,13 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
             "elapsed_s": 0.05,
             "character": "Fox",
             "character_id": 0,
-            "map_counts": {"shady": 1, "moai": 0, "microwaves": 1, "boss_curses": 0, "magnets": 0},
+            "map_counts": {
+                "shady": 1,
+                "moai": 0,
+                "microwaves": 1,
+                "boss_curses": 0,
+                "magnets": 0,
+            },
             "target_matches": [
                 {
                     "shady_num": 1,
@@ -1312,7 +1445,501 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
         self.assertIn("Target: Tape", text)
         self.assertIn("TAKEN", text)
 
+    def test_print_stage1_report_moai_and_boss_curse_done_rich(self) -> None:
+        """In Stage 1 Requirements table (Rich), done Moais, depleted Microwaves,
+        and cleansed Boss Curses are displayed with completion styling."""
+        from rich.console import Console
+
+        test_buf = io.StringIO()
+        test_console = Console(file=test_buf, record=True, width=140)
+        result = {
+            "is_stage_1": True,
+            "all_matched": True,
+            "match_reason": "THRESHOLDS_MATCH",
+            "elapsed_s": 0.04,
+            "sm_pass": True,
+            "micro_pass": True,
+            "boss_pass": True,
+            "magnet_pass": True,
+            "sm_total": 8,
+            "map_counts": {
+                "shady": 6,
+                "moai": 2,
+                "microwaves": 1,
+                "boss_curses": 1,
+                "magnets": 1,
+            },
+            "shady_guys": [
+                {"shady_num": i, "done": True, "items": []} for i in range(1, 7)
+            ],
+            "moais": [
+                {"dir": "N", "done": True},
+                {"dir": "SW", "done": True},
+            ],
+            "microwaves": [
+                {
+                    "color": "White",
+                    "rarity": 0,
+                    "uses_left": 0,
+                    "map_sector": "N",
+                    "style": "bright_white",
+                },
+            ],
+            "boss_curses": [
+                {"dir": "E", "done": True},
+            ],
+        }
+        with patch.object(il, "console", test_console):
+            il.print_stage1_report(result)
+        text = test_console.export_text()
+        self.assertIn("DEPLETED", text)
+        self.assertIn("CLEANSED", text)
+        self.assertIn("Stage 1 Requirements", text)
+
+    def test_print_stage1_report_moai_and_boss_curse_done_plaintext(self) -> None:
+        """In Stage 1 Requirements (plain-text), done Moais, depleted Microwaves,
+        and cleansed Boss Curses output ANSI dim/strike."""
+        result = {
+            "is_stage_1": True,
+            "all_matched": True,
+            "match_reason": "THRESHOLDS_MATCH",
+            "elapsed_s": 0.04,
+            "sm_pass": True,
+            "micro_pass": True,
+            "boss_pass": True,
+            "magnet_pass": True,
+            "sm_total": 8,
+            "map_counts": {
+                "shady": 6,
+                "moai": 2,
+                "microwaves": 1,
+                "boss_curses": 1,
+                "magnets": 1,
+            },
+            "shady_guys": [
+                {"shady_num": i, "done": True, "items": []} for i in range(1, 7)
+            ],
+            "moais": [
+                {"dir": "N", "done": True},
+                {"dir": "SW", "done": True},
+            ],
+            "microwaves": [
+                {"color": "White", "rarity": 0, "uses_left": 0, "map_sector": "N"},
+            ],
+            "boss_curses": [
+                {"dir": "E", "done": True},
+            ],
+        }
+        buf = io.StringIO()
+        with patch("sys.stdout", buf), patch.object(il, "console", None):
+            il.print_stage1_report(result)
+        out = buf.getvalue()
+        self.assertIn("\033[2;9m", out)
+        self.assertIn("[DONE] Shady + Moai:", out)
+        self.assertIn("[DEPLETED]", out)
+        self.assertIn("[CLEANSED]", out)
+
+    def test_print_stage_inspect_report_moai_and_boss_curse_done_rich(self) -> None:
+        """In Stage 2+ inspection report (Rich), collected Moais and cleansed Boss Curses render as completed."""
+        from rich.console import Console
+
+        test_buf = io.StringIO()
+        test_console = Console(file=test_buf, record=True, width=140)
+        result = {
+            "is_stage_1": False,
+            "stage_num": 2,
+            "elapsed_s": 0.05,
+            "character": "Fox",
+            "character_id": 0,
+            "map_counts": {
+                "shady": 1,
+                "moai": 1,
+                "microwaves": 1,
+                "boss_curses": 1,
+                "magnets": 0,
+            },
+            "shady_guys": [
+                {
+                    "shady_num": 1,
+                    "rarity": "COMMON",
+                    "dist": 20.0,
+                    "done": True,
+                    "items": [],
+                    "gold_prices": [],
+                    "multipliers": [],
+                },
+            ],
+            "moais": [
+                {"dir": "NE", "done": True},
+            ],
+            "microwaves": [
+                {
+                    "color": "White",
+                    "rarity": 0,
+                    "dist": 30.0,
+                    "uses_left": 0,
+                    "map_sector": "N",
+                    "style": "bright_white",
+                },
+            ],
+            "boss_curses": [
+                {"dir": "W", "done": True},
+            ],
+        }
+        with patch.object(il, "console", test_console):
+            il.print_stage_inspect_report(result)
+        text = test_console.export_text()
+        self.assertIn("COLLECTED", text)
+        self.assertIn("CLEANSED", text)
+        self.assertIn("ALL TAKEN", text)
+        self.assertIn("ALL COMPLETED", text)
+
+    def test_print_stage_inspect_report_moai_and_boss_curse_done_plaintext(
+        self,
+    ) -> None:
+        """In Stage 2+ inspection report (plain-text), collected Moais, depleted Microwaves,
+        and cleansed Boss Curses output ANSI dim/strike."""
+        result = {
+            "is_stage_1": False,
+            "stage_num": 2,
+            "elapsed_s": 0.05,
+            "character": "Fox",
+            "character_id": 0,
+            "map_counts": {
+                "shady": 1,
+                "moai": 1,
+                "microwaves": 1,
+                "boss_curses": 1,
+                "magnets": 0,
+            },
+            "shady_guys": [
+                {
+                    "shady_num": 1,
+                    "rarity": "COMMON",
+                    "dist": 20.0,
+                    "done": True,
+                    "items": [],
+                    "gold_prices": [],
+                    "multipliers": [],
+                },
+            ],
+            "moais": [
+                {"dir": "NE", "done": True},
+            ],
+            "microwaves": [
+                {
+                    "color": "White",
+                    "rarity": 0,
+                    "dist": 30.0,
+                    "uses_left": 0,
+                    "map_sector": "N",
+                },
+            ],
+            "boss_curses": [
+                {"dir": "W", "done": True},
+            ],
+        }
+        buf = io.StringIO()
+        with patch("sys.stdout", buf), patch.object(il, "console", None):
+            il.print_stage_inspect_report(result)
+        out = buf.getvalue()
+        self.assertIn("\033[2;9m", out)
+        self.assertIn("[DEPLETED]", out)
+        self.assertIn("[CLEANSED]", out)
+
+    def test_track_seed_offerings_default(self) -> None:
+        """TRACK_SEED_OFFERINGS should default to False to prevent massive JSON disk I/O lag."""
+        self.assertFalse(il.TRACK_SEED_OFFERINGS)
+
+
+class TestInspectLiveItemCombinations(unittest.TestCase):
+    """Test required item combination logic and nested list support."""
+
+    def setUp(self) -> None:
+        self._orig_required_all = list(il.REQUIRED_ALL_ITEM_IDS)
+        self._orig_required_any = list(il.REQUIRED_ANY_ITEM_IDS)
+        il.REQUIRED_ALL_ITEM_IDS = []
+        il.REQUIRED_ANY_ITEM_IDS = []
+
+    def tearDown(self) -> None:
+        il.REQUIRED_ALL_ITEM_IDS = self._orig_required_all
+        il.REQUIRED_ANY_ITEM_IDS = self._orig_required_any
+
+    def test_normalize_required_item_combos_basic(self) -> None:
+        """Test normalization of flat lists, ints, strings, and nested lists."""
+        self.assertEqual(il.normalize_required_item_combos(41), [[41]])
+        self.assertEqual(il.normalize_required_item_combos("41"), [[41]])
+        self.assertEqual(il.normalize_required_item_combos("Anvil"), [[41]])
+        self.assertEqual(il.normalize_required_item_combos([41, 47]), [[41], [47]])
+        self.assertEqual(
+            il.normalize_required_item_combos([41, [22, 47]]),
+            [[41], [22, 47]],
+        )
+        self.assertEqual(
+            il.normalize_required_item_combos([[41, 47, 22]]),
+            [[41, 47, 22]],
+        )
+        self.assertEqual(
+            il.normalize_required_item_combos(["Anvil", [22, "47"]]),
+            [[41], [22, 47]],
+        )
+
+    def test_normalize_required_item_combos_edge_cases(self) -> None:
+        """Empty lists, None, and empty sub-lists are handled gracefully."""
+        self.assertEqual(il.normalize_required_item_combos([]), [])
+        self.assertEqual(il.normalize_required_item_combos(None), [])
+        self.assertEqual(il.normalize_required_item_combos([[]]), [])
+        self.assertEqual(il.normalize_required_item_combos([41, []]), [[41]])
+        self.assertEqual(il.normalize_required_item_combos([41, [None, ""]]), [[41]])
+
+    def test_is_target_item_with_nested_combinations(self) -> None:
+        """is_target_item identifies items from nested combinations without TypeError."""
+        il.REQUIRED_ALL_ITEM_IDS = [41, [22, 47]]
+        il.REQUIRED_ANY_ITEM_IDS = [[17, 49]]
+
+        self.assertTrue(il.is_target_item(41))
+        self.assertTrue(il.is_target_item(22))
+        self.assertTrue(il.is_target_item(47))
+        self.assertTrue(il.is_target_item(17))
+        self.assertTrue(il.is_target_item(49))
+        self.assertFalse(il.is_target_item(999))
+
+    def test_required_all_nested_combinations_satisfied(self) -> None:
+        """REQUIRED_ALL with [41, [22, 47]] passes when 41, 22, and 47 are all offered."""
+        res = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_all_item_ids=[41, [22, 47]],
+            offered_item_ids={41, 22, 47},
+        )
+        self.assertTrue(res[0])
+        self.assertTrue(res[3])
+        self.assertEqual(res[4], "PERFECT_MATCH_ALL")
+
+    def test_required_all_nested_combinations_missing_one_fails(self) -> None:
+        """REQUIRED_ALL with [41, [22, 47]] fails if any item from the combo is missing."""
+        res = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_all_item_ids=[41, [22, 47]],
+            offered_item_ids={41, 22},  # 47 is missing
+        )
+        self.assertFalse(res[0])
+        self.assertFalse(res[3])
+        self.assertEqual(res[4], "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS")
+
+    def test_required_any_nested_combinations_alternatives(self) -> None:
+        """REQUIRED_ANY with [22, [41, 47]] passes if 22 is present OR both (41 & 47) are present."""
+        req_any = [22, [41, 47]]
+
+        # Option A: 22 present alone -> passes
+        res_a = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_any_item_ids=req_any,
+            offered_item_ids={22},
+        )
+        self.assertTrue(res_a[3])
+        self.assertEqual(res_a[4], "PERFECT_MATCH_ALL")
+
+        # Option B: 41 & 47 both present -> passes
+        res_b = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_any_item_ids=req_any,
+            offered_item_ids={41, 47},
+        )
+        self.assertTrue(res_b[3])
+        self.assertEqual(res_b[4], "PERFECT_MATCH_ALL")
+
+        # Option C: 41 alone present (combo incomplete) -> fails
+        res_c = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_any_item_ids=req_any,
+            offered_item_ids={41},
+        )
+        self.assertFalse(res_c[3])
+        self.assertEqual(res_c[4], "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS")
+
+    def test_combinations_with_more_than_two_items(self) -> None:
+        """Combination of 3+ items requires every item in the combination to be present."""
+        req_any = [[41, 47, 22]]
+
+        # 2 of 3 items present -> fails
+        res_fail = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_any_item_ids=req_any,
+            offered_item_ids={41, 47},
+        )
+        self.assertFalse(res_fail[3])
+
+        # All 3 items present -> passes
+        res_pass = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_any_item_ids=req_any,
+            offered_item_ids={41, 47, 22},
+        )
+        self.assertTrue(res_pass[3])
+
+    def test_distinct_shady_guys_with_combinations_success(self) -> None:
+        """Items in combinations must be obtained from separate Shady Guys."""
+        shady_guys = [
+            {"items": [{"item_id": 41}]},  # Shady 1 has Anvil (41)
+            {"items": [{"item_id": 22}]},  # Shady 2 has Dragonfire (22)
+            {"items": [{"item_id": 47}]},  # Shady 3 has Soul Harvester (47)
+        ]
+        all_passed, any_passed, satisfied = (
+            il.can_satisfy_required_items_on_distinct_shadys(
+                shady_guys,
+                req_all=[41, [22, 47]],
+                req_any=[],
+            )
+        )
+        self.assertTrue(all_passed)
+        self.assertTrue(satisfied)
+
+    def test_distinct_shady_guys_with_combinations_conflict(self) -> None:
+        """When items in a combination appear only on the same Shady Guy, conflict is detected."""
+        shady_guys = [
+            {"items": [{"item_id": 41}]},  # Shady 1 has Anvil (41)
+            {
+                "items": [{"item_id": 22}, {"item_id": 47}]
+            },  # Shady 2 has BOTH Dragonfire (22) and Soul Harvester (47)
+        ]
+        # Player cannot buy both 22 and 47 from Shady 2 because vendor vanishes after one purchase.
+        all_passed, any_passed, satisfied = (
+            il.can_satisfy_required_items_on_distinct_shadys(
+                shady_guys,
+                req_all=[41, [22, 47]],
+                req_any=[],
+            )
+        )
+        self.assertFalse(all_passed)
+        self.assertFalse(satisfied)
+
+        res = il.evaluate_stage1_criteria(
+            sm_pass=True,
+            micro_pass=True,
+            boss_pass=True,
+            magnet_pass=True,
+            shady_pass=True,
+            required_all_item_ids=[41, [22, 47]],
+            shady_guys=shady_guys,
+        )
+        self.assertFalse(res[3])
+        self.assertEqual(res[4], "REQUIRED_ITEMS_CONFLICT_SAME_SHADY")
+
+    def test_duplicate_items_in_combinations(self) -> None:
+        """Duplicate item IDs require distinct Shady Guy instances for each occurrence."""
+        req_all = [41, [41]]  # Two Anvils required
+        # Only 1 Shady Guy with Anvil
+        sg_one = [
+            {"items": [{"item_id": 41}]},
+            {"items": [{"item_id": 22}]},
+        ]
+        all_p, _, sat = il.can_satisfy_required_items_on_distinct_shadys(
+            sg_one, req_all=req_all, req_any=[]
+        )
+        self.assertFalse(sat)
+
+        # 2 Shady Guys with Anvil
+        sg_two = [
+            {"items": [{"item_id": 41}]},
+            {"items": [{"item_id": 41}]},
+        ]
+        all_p2, _, sat2 = il.can_satisfy_required_items_on_distinct_shadys(
+            sg_two, req_all=req_all, req_any=[]
+        )
+        self.assertTrue(sat2)
+
+    def test_print_stage1_report_with_combination_rich(self) -> None:
+        """Rich table report formats combination rows cleanly."""
+        from rich.console import Console
+
+        test_buf = io.StringIO()
+        test_console = Console(file=test_buf, record=True, width=140)
+
+        result = {
+            "is_stage_1": True,
+            "stage_index": 0,
+            "elapsed_s": 0.05,
+            "character": "Fox",
+            "character_id": 0,
+            "map_counts": {
+                "shady": 3,
+                "moai": 0,
+                "microwaves": 2,
+                "boss_curses": 1,
+                "magnets": 0,
+            },
+            "sm_total": 3,
+            "sm_pass": True,
+            "micro_pass": True,
+            "boss_pass": True,
+            "magnet_pass": True,
+            "all_matched": True,
+            "match_reason": "PERFECT_MATCH_ALL",
+            "required_all_item_ids": [41, [22, 47]],
+            "required_any_item_ids": [],
+            "offered_item_counts": {41: 1, 22: 1, 47: 1},
+            "shady_guys": [
+                {
+                    "shady_num": 1,
+                    "rarity": "COMMON",
+                    "dist": 10.0,
+                    "done": False,
+                    "items": [{"item_id": 41, "item_name": "Tape"}],
+                },
+                {
+                    "shady_num": 2,
+                    "rarity": "COMMON",
+                    "dist": 20.0,
+                    "done": False,
+                    "items": [{"item_id": 22, "item_name": "Dragonfire"}],
+                },
+                {
+                    "shady_num": 3,
+                    "rarity": "COMMON",
+                    "dist": 30.0,
+                    "done": False,
+                    "items": [{"item_id": 47, "item_name": "Soul Harvester"}],
+                },
+            ],
+            "microwaves": [],
+            "moais": [],
+            "boss_curses": [],
+        }
+        with patch.object(il, "console", test_console):
+            il.print_stage1_report(result)
+        text = test_console.export_text()
+        self.assertIn("Target Items (Anvil)", text)
+        self.assertIn("Target Combo (Dragonfire + Soul Harvester)", text)
+        self.assertIn("MATCHED", text)
+
 
 if __name__ == "__main__":
     unittest.main()
-

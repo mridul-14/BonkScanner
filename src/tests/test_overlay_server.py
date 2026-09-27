@@ -35,7 +35,9 @@ class OverlayServerTests(unittest.TestCase):
         port = free_port()
         failed = LocalOverlayServer(port=port)
         with patch("infra.overlay_server.threading.Thread") as thread_type:
-            thread_type.return_value.start.side_effect = RuntimeError("thread unavailable")
+            thread_type.return_value.start.side_effect = RuntimeError(
+                "thread unavailable"
+            )
             with self.assertRaisesRegex(RuntimeError, "thread unavailable"):
                 failed.start()
 
@@ -88,24 +90,60 @@ class OverlayServerTests(unittest.TestCase):
         store = OverlayStateStore()
         self.assertEqual(store.get_widget_revision(), 0)
 
-        store.set_state({"widgets": {"kps": {
-            "id": "kps", "enabled": True, "width": 100, "background_opacity": 0.0,
-        }}})
+        store.set_state(
+            {
+                "widgets": {
+                    "kps": {
+                        "id": "kps",
+                        "enabled": True,
+                        "width": 100,
+                        "background_opacity": 0.0,
+                    }
+                }
+            }
+        )
         self.assertEqual(store.get_widget_revision(), 1)
 
-        store.set_state({"widgets": {"kps": {
-            "id": "kps", "enabled": True, "width": 250, "background_opacity": 0.0,
-        }}})
+        store.set_state(
+            {
+                "widgets": {
+                    "kps": {
+                        "id": "kps",
+                        "enabled": True,
+                        "width": 250,
+                        "background_opacity": 0.0,
+                    }
+                }
+            }
+        )
         self.assertEqual(store.get_widget_revision(), 1)
 
-        store.set_state({"widgets": {"kps": {
-            "id": "kps", "enabled": True, "width": 250, "background_opacity": 0.4,
-        }}})
+        store.set_state(
+            {
+                "widgets": {
+                    "kps": {
+                        "id": "kps",
+                        "enabled": True,
+                        "width": 250,
+                        "background_opacity": 0.4,
+                    }
+                }
+            }
+        )
         self.assertEqual(store.get_widget_revision(), 2)
 
-        store.set_state({"widgets": {"kps": {
-            "id": "kps", "enabled": False, "width": 250, "background_opacity": 0.4,
-        }}})
+        store.set_state(
+            {
+                "widgets": {
+                    "kps": {
+                        "id": "kps",
+                        "enabled": False,
+                        "width": 250,
+                        "background_opacity": 0.4,
+                    }
+                }
+            }
+        )
         self.assertEqual(store.get_widget_revision(), 3)
 
     def test_widget_revision_endpoint_returns_current_revision(self) -> None:
@@ -114,7 +152,9 @@ class OverlayServerTests(unittest.TestCase):
             (asset_dir / "index.html").write_text("<html></html>", encoding="utf-8")
             store = OverlayStateStore()
             store.set_state({"widgets": {"stats": {"id": "stats", "enabled": True}}})
-            server = LocalOverlayServer(port=free_port(), state_store=store, asset_dir=asset_dir)
+            server = LocalOverlayServer(
+                port=free_port(), state_store=store, asset_dir=asset_dir
+            )
             server.start()
             try:
                 with urlopen(
@@ -133,10 +173,14 @@ class OverlayServerTests(unittest.TestCase):
             (asset_dir / "index.html").write_text("<html></html>", encoding="utf-8")
             store = OverlayStateStore()
             store.set_state({"status": "live", "answer": 42})
-            server = LocalOverlayServer(port=free_port(), state_store=store, asset_dir=asset_dir)
+            server = LocalOverlayServer(
+                port=free_port(), state_store=store, asset_dir=asset_dir
+            )
             server.start()
             try:
-                with urlopen(f"http://127.0.0.1:{server.port}/api/overlay-state", timeout=2) as response:
+                with urlopen(
+                    f"http://127.0.0.1:{server.port}/api/overlay-state", timeout=2
+                ) as response:
                     payload = json.loads(response.read().decode("utf-8"))
                     self.assertEqual(payload["status"], "live")
                     self.assertEqual(response.headers["Cache-Control"], "no-store")
@@ -211,12 +255,25 @@ class OverlayServerTests(unittest.TestCase):
             "canvas_width": 2560,
             "canvas_height": 1440,
             "widgets": [
-                {"id": "kps", "order": 5, "y": "20", "scale": 9.9,
-                 "selected_kps_metrics": ["current", "bogus", "run_avg"]},
-                {"id": "stats", "order": "not-an-int", "scale": 0.01,
-                 "selected_stats": ["Damage", "  ", "Luck"]},
-                {"id": "build_progression", "max_rows": 13,
-                 "show_completed": True, "show_border": True},
+                {
+                    "id": "kps",
+                    "order": 5,
+                    "y": "20",
+                    "scale": 9.9,
+                    "selected_kps_metrics": ["current", "bogus", "run_avg"],
+                },
+                {
+                    "id": "stats",
+                    "order": "not-an-int",
+                    "scale": 0.01,
+                    "selected_stats": ["Damage", "  ", "Luck"],
+                },
+                {
+                    "id": "build_progression",
+                    "max_rows": 13,
+                    "show_completed": True,
+                    "show_border": True,
+                },
                 {"id": "  "},
                 "not-a-dict",
             ],
@@ -230,18 +287,25 @@ class OverlayServerTests(unittest.TestCase):
             asset_dir = Path(temp_dir)
             (asset_dir / "index.html").write_text("<html></html>", encoding="utf-8")
             store = OverlayStateStore()
-            store.set_state({
-                "status": "live",
-                "widgets": {"stale": "replaced"},
-                "canvas_width": 1,
-                "canvas_height": 2,
-            })
+            store.set_state(
+                {
+                    "status": "live",
+                    "widgets": {"stale": "replaced"},
+                    "canvas_width": 1,
+                    "canvas_height": 2,
+                }
+            )
             server = LocalOverlayServer(
-                port=free_port(), state_store=store, asset_dir=asset_dir, settings=Settings()
+                port=free_port(),
+                state_store=store,
+                asset_dir=asset_dir,
+                settings=Settings(),
             )
             server.start()
             try:
-                with urlopen(f"http://127.0.0.1:{server.port}/api/overlay-state", timeout=2) as response:
+                with urlopen(
+                    f"http://127.0.0.1:{server.port}/api/overlay-state", timeout=2
+                ) as response:
                     payload = json.loads(response.read().decode("utf-8"))
             finally:
                 server.stop()
@@ -293,7 +357,9 @@ class OverlayServerTests(unittest.TestCase):
     def test_widget_overlay_route_serves_overlay_page(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             asset_dir = Path(temp_dir)
-            (asset_dir / "index.html").write_text("<html>overlay</html>", encoding="utf-8")
+            (asset_dir / "index.html").write_text(
+                "<html>overlay</html>", encoding="utf-8"
+            )
             server = LocalOverlayServer(port=free_port(), asset_dir=asset_dir)
             server.start()
             try:
@@ -305,7 +371,9 @@ class OverlayServerTests(unittest.TestCase):
                         url = f"http://127.0.0.1:{server.port}/overlay/{widget_id}"
                         with urlopen(url, timeout=2) as response:
                             self.assertEqual(response.status, 200)
-                            self.assertEqual(response.read().decode("utf-8"), "<html>overlay</html>")
+                            self.assertEqual(
+                                response.read().decode("utf-8"), "<html>overlay</html>"
+                            )
             finally:
                 server.stop()
 
@@ -334,7 +402,9 @@ class OverlayServerTests(unittest.TestCase):
                     "serving the page counted as a client polling",
                 )
 
-                with urlopen(f"http://127.0.0.1:{server.port}/api/overlay-state", timeout=2):
+                with urlopen(
+                    f"http://127.0.0.1:{server.port}/api/overlay-state", timeout=2
+                ):
                     pass
                 elapsed = server.seconds_since_state_request()
                 self.assertIsNotNone(elapsed)
@@ -376,7 +446,9 @@ class OverlayServerTests(unittest.TestCase):
             try:
                 request = Request(
                     f"http://127.0.0.1:{server.port}/api/save-widget-positions",
-                    data=json.dumps({"id": "kps", "width": 3, "height": 2}).encode("utf-8"),
+                    data=json.dumps({"id": "kps", "width": 3, "height": 2}).encode(
+                        "utf-8"
+                    ),
                     headers={"Content-Type": "application/json"},
                     method="POST",
                 )
@@ -409,7 +481,9 @@ class OverlayServerTests(unittest.TestCase):
             try:
                 request = Request(
                     f"http://127.0.0.1:{server.port}/api/save-widget-positions",
-                    data=json.dumps({"id": "kps", "width": 321, "height": 74}).encode("utf-8"),
+                    data=json.dumps({"id": "kps", "width": 321, "height": 74}).encode(
+                        "utf-8"
+                    ),
                     headers={"Content-Type": "application/json"},
                     method="POST",
                 )
@@ -459,7 +533,9 @@ class OverlayServerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             asset_dir = Path(temp_dir)
             (asset_dir / "index.html").write_text("<html></html>", encoding="utf-8")
-            server = LocalOverlayServer(host="0.0.0.0", port=free_port(), asset_dir=asset_dir)
+            server = LocalOverlayServer(
+                host="0.0.0.0", port=free_port(), asset_dir=asset_dir
+            )
             server.start()
             try:
                 self.assertEqual(server._server.server_address[0], "127.0.0.1")
@@ -488,14 +564,22 @@ class OverlayAssetDirTests(unittest.TestCase):
             f"overlay index.html missing under {asset_dir}",
         )
 
-    def test_overlay_editor_watches_widget_revisions_without_state_polling(self) -> None:
+    def test_overlay_editor_watches_widget_revisions_without_state_polling(
+        self,
+    ) -> None:
         """Edit mode watches settings while normal overlay polling remains intact."""
-        script = (_default_overlay_asset_dir() / "overlay.js").read_text(encoding="utf-8")
+        script = (_default_overlay_asset_dir() / "overlay.js").read_text(
+            encoding="utf-8"
+        )
         self.assertIn("watchEditWidgetChanges();", script)
         self.assertIn("/api/overlay-widget-revision?after=", script)
-        self.assertIn("if (!isEditMode) {\n      window.setTimeout(refresh, pollMs);", script)
+        self.assertIn(
+            "if (!isEditMode) {\n      window.setTimeout(refresh, pollMs);", script
+        )
         self.assertIn("syncEditModeWidgets(html, widgets);", script)
-        self.assertIn("preserveEditWidgetLayout(currentElement, desiredElement);", script)
+        self.assertIn(
+            "preserveEditWidgetLayout(currentElement, desiredElement);", script
+        )
         self.assertIn("currentElement.replaceWith(desiredElement);", script)
         self.assertIn(".widget-wrapper.draggable:not([data-edit-initialized])", script)
         self.assertIn("if (!el.isConnected) {", script)
@@ -517,15 +601,21 @@ class OverlayAssetDirTests(unittest.TestCase):
         is the failure mode the size floor above exists to make unrecoverable.
         So the units are pinned here, not just the scaling.
         """
-        script = (_default_overlay_asset_dir() / "overlay.js").read_text(encoding="utf-8")
-        style = (_default_overlay_asset_dir() / "overlay.css").read_text(encoding="utf-8")
+        script = (_default_overlay_asset_dir() / "overlay.js").read_text(
+            encoding="utf-8"
+        )
+        style = (_default_overlay_asset_dir() / "overlay.css").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn("function applyEditorScale()", script)
         self.assertIn("edit-canvas-frame", script)
         self.assertIn("#edit-canvas-frame", style)
         self.assertIn("transform: scale(var(--editor-scale, 1));", style)
         # Never enlarged past 1:1, and never shrunk into a postage stamp.
-        self.assertIn("Math.max(EDITOR_MIN_SCALE, Math.min(1, fitWidth, fitHeight))", script)
+        self.assertIn(
+            "Math.max(EDITOR_MIN_SCALE, Math.min(1, fitWidth, fitHeight))", script
+        )
 
         # Pointer deltas arrive in screen pixels and `left`/`top` are canvas
         # pixels; they agree only at scale 1.
@@ -536,7 +626,9 @@ class OverlayAssetDirTests(unittest.TestCase):
         self.assertIn("const w = el.offsetWidth;", script)
         self.assertIn("const h = el.offsetHeight;", script)
         self.assertIn("const width = Math.max(1, currentElement.offsetWidth);", script)
-        self.assertIn("const height = Math.max(1, currentElement.offsetHeight);", script)
+        self.assertIn(
+            "const height = Math.max(1, currentElement.offsetHeight);", script
+        )
 
         # The CSS half of the size floor, in step with the server's.
         self.assertIn(f"min-width: {MIN_WIDGET_WIDTH}px;", style)
@@ -566,31 +658,46 @@ class OverlayAssetDirTests(unittest.TestCase):
         position is the user's, may legally sit further right than the clamp
         would place anything, and must not slide back when they let go.
         """
-        script = (_default_overlay_asset_dir() / "overlay.js").read_text(encoding="utf-8")
+        script = (_default_overlay_asset_dir() / "overlay.js").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn("const REFERENCE_CANVAS_WIDTH = 1920;", script)
         # `y` is carried through untouched; only `x` is mapped onto the canvas.
-        self.assertIn("x: Math.round(reference.x * (canvasWidth / REFERENCE_CANVAS_WIDTH))", script)
+        self.assertIn(
+            "x: Math.round(reference.x * (canvasWidth / REFERENCE_CANVAS_WIDTH))",
+            script,
+        )
         self.assertIn("y: reference.y,", script)
         self.assertNotIn("REFERENCE_CANVAS_HEIGHT", script)
 
         # The measured correction, and that it runs before anything reads a
         # position back out of the DOM.
         self.assertIn("function clampDefaultedWidgets()", script)
-        self.assertIn('root.querySelectorAll(\'.widget-wrapper[data-defaulted="true"]\')', script)
-        self.assertIn("const maxLeft = Math.max(0, canvasWidth - element.offsetWidth);", script)
-        self.assertIn("const maxTop = Math.max(0, canvasHeight - element.offsetHeight);", script)
+        self.assertIn(
+            "root.querySelectorAll('.widget-wrapper[data-defaulted=\"true\"]')", script
+        )
+        self.assertIn(
+            "const maxLeft = Math.max(0, canvasWidth - element.offsetWidth);", script
+        )
+        self.assertIn(
+            "const maxTop = Math.max(0, canvasHeight - element.offsetHeight);", script
+        )
         self.assertIn("clampDefaultedWidgets();", script)
 
         # Marked on the way in, dropped the moment a drag owns the position.
-        self.assertIn('const defaultedAttr = placed ? "" : ` data-defaulted="true"`;', script)
+        self.assertIn(
+            'const defaultedAttr = placed ? "" : ` data-defaulted="true"`;', script
+        )
         self.assertIn('el.removeAttribute("data-defaulted");', script)
 
     def test_default_server_serves_the_real_overlay_page(self) -> None:
         server = LocalOverlayServer(port=free_port())
         server.start()
         try:
-            with urlopen(f"http://127.0.0.1:{server.port}/overlay", timeout=2) as response:
+            with urlopen(
+                f"http://127.0.0.1:{server.port}/overlay", timeout=2
+            ) as response:
                 self.assertEqual(response.status, 200)
                 self.assertIn(b"<", response.read(64))
         finally:

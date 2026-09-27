@@ -6,6 +6,7 @@ successful reads over 26 s -- so neither a TTL nor a read failure will ever
 clear the display. Pause produces a byte-identical freeze where holding the
 value is *correct*. Only `RunLifecycle` separates them.
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401  -- puts `src/` on sys.path regardless of collection order
@@ -26,7 +27,9 @@ class FakeProjection:
     run_completed: bool = False
 
 
-def snapshot(*readings: ItemCooldownReading, my_time: float = 100.0) -> ItemCooldownSnapshot:
+def snapshot(
+    *readings: ItemCooldownReading, my_time: float = 100.0
+) -> ItemCooldownSnapshot:
     return ItemCooldownSnapshot(my_time_seconds=my_time, readings=readings)
 
 
@@ -48,7 +51,9 @@ def lantern(*, next_trigger: float, stacks: int = 1, name: str = "Bob's Light"):
 class CountdownRenderTests(unittest.TestCase):
     def test_the_countdown_is_the_mark_minus_the_carried_clock(self) -> None:
         html = build_item_cooldowns_overlay_html(
-            FakeProjection(item_cooldowns=snapshot(lantern(next_trigger=126.5), my_time=100.0))
+            FakeProjection(
+                item_cooldowns=snapshot(lantern(next_trigger=126.5), my_time=100.0)
+            )
         )
         # Truncated, never rounded up: a countdown must not claim more time
         # than remains. 26.5 s left reads as 26.
@@ -64,7 +69,9 @@ class CountdownRenderTests(unittest.TestCase):
         a tamper run. Only a magnitude above one second distinguishes the two.
         """
         html = build_item_cooldowns_overlay_html(
-            FakeProjection(item_cooldowns=snapshot(lantern(next_trigger=98.5), my_time=100.0))
+            FakeProjection(
+                item_cooldowns=snapshot(lantern(next_trigger=98.5), my_time=100.0)
+            )
         )
         self.assertIn(": 0s", html)
         # Against the rendered *text*, not the markup: the text shadow's CSS is
@@ -74,7 +81,9 @@ class CountdownRenderTests(unittest.TestCase):
     def test_a_barely_negative_remaining_also_reads_as_zero(self) -> None:
         """The measured case, kept beside the one that has teeth."""
         html = build_item_cooldowns_overlay_html(
-            FakeProjection(item_cooldowns=snapshot(lantern(next_trigger=99.99), my_time=100.0))
+            FakeProjection(
+                item_cooldowns=snapshot(lantern(next_trigger=99.99), my_time=100.0)
+            )
         )
         self.assertIn(": 0s", html)
 
@@ -87,7 +96,9 @@ class CountdownRenderTests(unittest.TestCase):
         """
         html = visible_text(
             build_item_cooldowns_overlay_html(
-                FakeProjection(item_cooldowns=snapshot(lantern(next_trigger=130.0, stacks=4)))
+                FakeProjection(
+                    item_cooldowns=snapshot(lantern(next_trigger=130.0, stacks=4))
+                )
             )
         )
         self.assertIn("Bob's Light: 30s", html)
@@ -97,10 +108,14 @@ class CountdownRenderTests(unittest.TestCase):
         from projections.in_game_html import CRITICAL_COLOR
 
         near = build_item_cooldowns_overlay_html(
-            FakeProjection(item_cooldowns=snapshot(lantern(next_trigger=103.0), my_time=100.0))
+            FakeProjection(
+                item_cooldowns=snapshot(lantern(next_trigger=103.0), my_time=100.0)
+            )
         )
         far = build_item_cooldowns_overlay_html(
-            FakeProjection(item_cooldowns=snapshot(lantern(next_trigger=130.0), my_time=100.0))
+            FakeProjection(
+                item_cooldowns=snapshot(lantern(next_trigger=130.0), my_time=100.0)
+            )
         )
         self.assertIn(CRITICAL_COLOR, near)
         self.assertNotIn(CRITICAL_COLOR, far)
@@ -125,8 +140,11 @@ class CountdownRenderTests(unittest.TestCase):
         from core.item_metadata import ITEM_RARITY_COLOR_MAP
 
         legendary = ItemCooldownReading(
-            item_id=54, name="Holy Book", stack_count=1,
-            cooldown_seconds=8.0, next_trigger_time=130.0,
+            item_id=54,
+            name="Holy Book",
+            stack_count=1,
+            cooldown_seconds=8.0,
+            next_trigger_time=130.0,
         )
         html = build_item_cooldowns_overlay_html(
             FakeProjection(
@@ -140,8 +158,11 @@ class CountdownRenderTests(unittest.TestCase):
         from projections.in_game_html import FALLBACK_COLOR
 
         unknown = ItemCooldownReading(
-            item_id=9999, name="Mystery Item", stack_count=1,
-            cooldown_seconds=10.0, next_trigger_time=130.0,
+            item_id=9999,
+            name="Mystery Item",
+            stack_count=1,
+            cooldown_seconds=10.0,
+            next_trigger_time=130.0,
         )
         html = build_item_cooldowns_overlay_html(
             FakeProjection(item_cooldowns=snapshot(unknown))
@@ -164,7 +185,9 @@ class CountdownRenderTests(unittest.TestCase):
 
         rarity = {c.lower() for c in ITEM_RARITY_COLOR_MAP.values()}
         clash = {name: c for name, c in POWERUP_COLORS.items() if c.lower() in rarity}
-        self.assertEqual(clash, {}, f"powerup colours colliding with a rarity tier: {clash}")
+        self.assertEqual(
+            clash, {}, f"powerup colours colliding with a rarity tier: {clash}"
+        )
 
     def test_no_powerup_row_is_dimmer_than_the_block_it_is_scanned_with(self) -> None:
         """The Powerups block is read as a group, so one dark row is a defect.
@@ -185,9 +208,11 @@ class CountdownRenderTests(unittest.TestCase):
         def relative_luminance(hex_colour: str) -> float:
             channels = []
             for offset in (1, 3, 5):
-                value = int(hex_colour[offset:offset + 2], 16) / 255
+                value = int(hex_colour[offset : offset + 2], 16) / 255
                 channels.append(
-                    value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+                    value / 12.92
+                    if value <= 0.04045
+                    else ((value + 0.055) / 1.055) ** 2.4
                 )
             red, green, blue = channels
             return 0.2126 * red + 0.7152 * green + 0.0722 * blue
@@ -197,7 +222,9 @@ class CountdownRenderTests(unittest.TestCase):
             for name, colour in POWERUP_COLORS.items()
             if relative_luminance(colour) < 0.45
         }
-        self.assertEqual(dim, {}, f"powerup colours too dark to scan with the block: {dim}")
+        self.assertEqual(
+            dim, {}, f"powerup colours too dark to scan with the block: {dim}"
+        )
 
     def test_every_layout_entry_has_a_known_rarity(self) -> None:
         """The guard the per-item colour table used to provide.
@@ -242,12 +269,17 @@ class HiddenWhenNothingToSayTests(unittest.TestCase):
     def test_an_empty_reading_renders_nothing(self) -> None:
         """No timed item held is not a state worth a caption."""
         self.assertEqual(
-            build_item_cooldowns_overlay_html(FakeProjection(item_cooldowns=snapshot())), ""
+            build_item_cooldowns_overlay_html(
+                FakeProjection(item_cooldowns=snapshot())
+            ),
+            "",
         )
 
     def test_a_missing_clock_renders_nothing(self) -> None:
         """Without the clock there is no countdown, only a mark nobody can read."""
-        broken = ItemCooldownSnapshot(my_time_seconds=None, readings=(lantern(next_trigger=1.0),))
+        broken = ItemCooldownSnapshot(
+            my_time_seconds=None, readings=(lantern(next_trigger=1.0),)
+        )
         self.assertEqual(
             build_item_cooldowns_overlay_html(FakeProjection(item_cooldowns=broken)), ""
         )
@@ -265,7 +297,10 @@ class LifecycleGateTests(unittest.TestCase):
         frozen and every read succeeds. A TTL sees no failure to retire.
         """
         live = snapshot(lantern(next_trigger=3596.12), my_time=3581.54)
-        self.assertIn("14s", build_item_cooldowns_overlay_html(FakeProjection(item_cooldowns=live)))
+        self.assertIn(
+            "14s",
+            build_item_cooldowns_overlay_html(FakeProjection(item_cooldowns=live)),
+        )
         self.assertEqual(
             build_item_cooldowns_overlay_html(
                 FakeProjection(item_cooldowns=live, run_completed=True)
@@ -290,7 +325,8 @@ class LifecycleGateTests(unittest.TestCase):
     def test_edit_mode_still_shows_the_widget_after_a_completed_run(self) -> None:
         """Otherwise the widget cannot be positioned except during a live run."""
         html = build_item_cooldowns_overlay_html(
-            FakeProjection(item_cooldowns=snapshot(), run_completed=True), edit_mode=True
+            FakeProjection(item_cooldowns=snapshot(), run_completed=True),
+            edit_mode=True,
         )
         self.assertNotEqual(html, "")
 
@@ -395,7 +431,9 @@ class TrackerPublishTests(unittest.TestCase):
         from projections.in_game import project_in_game_overlay
 
         tracker = self._tracker()
-        tracker.update_item_cooldowns(snapshot(lantern(next_trigger=3596.12), my_time=3581.54))
+        tracker.update_item_cooldowns(
+            snapshot(lantern(next_trigger=3596.12), my_time=3581.54)
+        )
 
         tracker.mark_run_completed()
         self.assertFalse(
@@ -405,7 +443,11 @@ class TrackerPublishTests(unittest.TestCase):
 
         tracker.snapshots.append(
             LiveRunSnapshot(
-                captured_at=0.0, stats={}, game_time_seconds=1.0, mob_kills=0, stage_index=0
+                captured_at=0.0,
+                stats={},
+                game_time_seconds=1.0,
+                mob_kills=0,
+                stage_index=0,
             )
         )
         tracker.mark_run_completed()

@@ -44,9 +44,7 @@ class StageSummarySizingTests(unittest.TestCase):
             '.widget-wrapper[data-id="stage_summary"]:not(.custom-size-active)'
         )
 
-        natural_width = re.search(
-            r"--widget-natural-width:\s*calc\((\d+)px", panel
-        )
+        natural_width = re.search(r"--widget-natural-width:\s*calc\((\d+)px", panel)
         wrapper_width = re.search(r"min-width:\s*calc\((\d+)px", absolute_wrapper)
         self.assertIsNotNone(natural_width)
         self.assertIsNotNone(wrapper_width)

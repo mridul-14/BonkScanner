@@ -92,7 +92,9 @@ class RecordingTimelineRenderTests(unittest.TestCase):
         )
         harness.view.refresh()
 
-        self.assertEqual(harness.timeline_label.text, "Recording 00:42 | Paused in game")
+        self.assertEqual(
+            harness.timeline_label.text, "Recording 00:42 | Paused in game"
+        )
 
     def test_recording_with_snapshots_shows_range_and_selection(self) -> None:
         harness = build_recording_timeline_view(
@@ -116,7 +118,9 @@ class RecordingTimelineRenderTests(unittest.TestCase):
         )
         harness.view.refresh()
 
-        self.assertEqual(harness.timeline_label.text, "Recording 00:42 | 2 snapshots | --")
+        self.assertEqual(
+            harness.timeline_label.text, "Recording 00:42 | 2 snapshots | --"
+        )
         self.assertEqual(
             harness.slider_time_label.text, "Timeline: 00:10 - 00:20 | Selected: --"
         )
@@ -193,7 +197,9 @@ class RecordingTimelineSliderTests(unittest.TestCase):
 class RecordingTimelineCommandTests(unittest.TestCase):
     def test_moving_the_slider_selects_and_rerenders(self) -> None:
         harness = build_recording_timeline_view(
-            recording=True, snapshot_labels=("00:10", "00:20", "00:30"), selected_index=0
+            recording=True,
+            snapshot_labels=("00:10", "00:20", "00:30"),
+            selected_index=0,
         )
         harness.view.handle_slider_value(2)
 
@@ -232,7 +238,9 @@ class RecordingTimelineCommandTests(unittest.TestCase):
 
         self.assertEqual(1, harness.toggles)
 
-    def test_queued_selection_is_discarded_after_snapshot_store_replacement(self) -> None:
+    def test_queued_selection_is_discarded_after_snapshot_store_replacement(
+        self,
+    ) -> None:
         throttle = DeferredThrottle()
         harness = build_recording_timeline_view(
             recording=True,
@@ -348,7 +356,9 @@ class RecordingTimelineInitialPaintTests(unittest.TestCase):
             view._record_btn.ensurePolished()
             sizes.append(view._record_btn.sizeHint())
 
-        self.assertEqual(1, len(set((size.width(), size.height()) for size in sizes)), sizes)
+        self.assertEqual(
+            1, len(set((size.width(), size.height()) for size in sizes)), sizes
+        )
 
     def test_destroying_the_tab_cancels_a_trailing_slider_callback(self) -> None:
         # DeferredDelete is deliberately isolated. Running it against the one
@@ -424,11 +434,7 @@ class RecordingTimelineEncapsulationTests(unittest.TestCase):
         """The point of the pilot: no public widget attributes to reach through."""
         harness = build_recording_timeline_view()
 
-        public = [
-            name
-            for name in vars(harness.view)
-            if not name.startswith("_")
-        ]
+        public = [name for name in vars(harness.view) if not name.startswith("_")]
         self.assertEqual([], public)
 
     def test_component_holds_no_reference_to_an_owner(self) -> None:

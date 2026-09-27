@@ -120,7 +120,9 @@ SNAPSHOTS = (
 def _tab_with_stage_cards(snapshots=SNAPSHOTS):
     tab = build_recordings_tab()
     tab._loaded_vod = SimpleNamespace(
-        metadata=SimpleNamespace(name="Run", created_label="today", duration_seconds=120),
+        metadata=SimpleNamespace(
+            name="Run", created_label="today", duration_seconds=120
+        ),
         snapshots=snapshots,
     )
     tab._snapshot_index = 0
@@ -165,7 +167,10 @@ class StageCardTests(unittest.TestCase):
         tab = _tab_with_stage_cards()
         tab.refresh_loaded_vod_ui()
 
-        stage_one, stage_two = tab._stage_summary_labels[0], tab._stage_summary_labels[1]
+        stage_one, stage_two = (
+            tab._stage_summary_labels[0],
+            tab._stage_summary_labels[1],
+        )
         self.assertNotEqual(stage_one["kills"].text(), "--")
         self.assertNotEqual(stage_two["kills"].text(), "--")
         self.assertNotEqual(stage_two["time"].text(), "--")
@@ -354,7 +359,9 @@ class CompareDetailsVisibilityTests(unittest.TestCase):
         hint = tab._compare_hint_label.text()
         self.assertIn('<b style="color:#38BDF8;">A</b>', hint)
         self.assertIn('<b style="color:#C084FC;">B</b>', hint)
-        self.assertLess(hint.index(SNAPSHOTS[3].time_label), hint.index(SNAPSHOTS[1].time_label))
+        self.assertLess(
+            hint.index(SNAPSHOTS[3].time_label), hint.index(SNAPSHOTS[1].time_label)
+        )
 
     def test_the_pin_drives_the_compare_baseline(self) -> None:
         tab = self._tab()

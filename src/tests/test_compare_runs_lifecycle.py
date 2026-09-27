@@ -50,10 +50,13 @@ class CompareRunsLifecycleTests(unittest.TestCase):
         view._run_a_status_label = _FakeLabel()
         loaded = SimpleNamespace(snapshots=())
 
-        with patch.object(compare_runs_tab, "load_vod", return_value=loaded), patch.object(
-            view._load_lanes["a"]._executor,
-            "submit",
-            side_effect=lambda callback, request: callback(request),
+        with (
+            patch.object(compare_runs_tab, "load_vod", return_value=loaded),
+            patch.object(
+                view._load_lanes["a"]._executor,
+                "submit",
+                side_effect=lambda callback, request: callback(request),
+            ),
         ):
             view.load_compare_run("a", "run-a.jsonl")
 
@@ -106,9 +109,7 @@ class CompareRunsLifecycleTests(unittest.TestCase):
 
         view._report_compare_run_state("a", "Could not display recording")
 
-        self.assertIn(
-            "Could not display recording", view._run_a_status_label.text()
-        )
+        self.assertIn("Could not display recording", view._run_a_status_label.text())
         self.assertIn("corrupt diff", messages[0][0])
         self.assertEqual("warning", messages[0][1]["tag"])
 
@@ -119,8 +120,9 @@ class CompareRunsLifecycleTests(unittest.TestCase):
         )
         user_config = {"unrelated": True}
 
-        with patch.object(config, "user_config", user_config), patch.object(
-            config, "save_config", side_effect=OSError("disk full")
+        with (
+            patch.object(config, "user_config", user_config),
+            patch.object(config, "save_config", side_effect=OSError("disk full")),
         ):
             saved = view._save_compare_run_config_value(
                 "compact timeline state", "compare_test", True
@@ -138,10 +140,13 @@ class CompareRunsLifecycleTests(unittest.TestCase):
         )
         user_config = {"compare_test": "old"}
 
-        with patch.object(config, "user_config", user_config), patch.object(
-            config,
-            "save_config",
-            return_value=config.ConfigSaveResult(False, "verification failed"),
+        with (
+            patch.object(config, "user_config", user_config),
+            patch.object(
+                config,
+                "save_config",
+                return_value=config.ConfigSaveResult(False, "verification failed"),
+            ),
         ):
             saved = view._save_compare_run_config_value(
                 "compact timeline state", "compare_test", "new"
@@ -157,9 +162,7 @@ class CompareRunsLifecycleTests(unittest.TestCase):
             log=lambda message, **kwargs: messages.append((message, kwargs))
         )
         view._timeline_series_slots = SimpleNamespace(
-            set_slot=lambda *_args: (_ for _ in ()).throw(
-                OSError("config unavailable")
-            )
+            set_slot=lambda *_args: (_ for _ in ()).throw(OSError("config unavailable"))
         )
 
         view._set_series_slot(0, ("Damage",))

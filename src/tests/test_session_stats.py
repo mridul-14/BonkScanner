@@ -27,7 +27,10 @@ class SessionStatsTests(unittest.TestCase):
         with patch.object(
             config,
             "TWITCH_BOT",
-            {"tracked_items_source": "custom", "tracked_items": [{"item_names": ["Kevin"]}]},
+            {
+                "tracked_items_source": "custom",
+                "tracked_items": [{"item_names": ["Kevin"]}],
+            },
         ):
             stats.refresh_snapshot()
 

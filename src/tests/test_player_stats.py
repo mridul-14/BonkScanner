@@ -9,7 +9,11 @@ from core import stage_rules
 from core.stats import types as types_module
 from infra.memory.reader import MemoryReadError
 from core.stats.formats import PlayerStatFormat, WeaponStatFormat
-from core.stats.formatters import format_chaos_tome_stat_delta, format_player_stat_value, format_weapon_stat_value
+from core.stats.formatters import (
+    format_chaos_tome_stat_delta,
+    format_player_stat_value,
+    format_weapon_stat_value,
+)
 from core.stats.timeline import PlayerStatsTimeline
 from core.stats.types import (
     ChaosTomeStatSnapshot,
@@ -113,14 +117,20 @@ def build_player_stats_memory() -> FakeMemory:
     pointers.update(
         {
             run_timer_type_info: run_timer_class_ptr,
-            run_timer_class_ptr + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: run_timer_static_fields,
+            run_timer_class_ptr
+            + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: run_timer_static_fields,
             run_stats_type_info: run_stats_class_ptr,
-            run_stats_class_ptr + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: run_stats_static_fields,
-            run_stats_static_fields + PlayerStatsClient.RUN_STATS_DICT_OFFSET: run_stats_dict,
+            run_stats_class_ptr
+            + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: run_stats_static_fields,
+            run_stats_static_fields
+            + PlayerStatsClient.RUN_STATS_DICT_OFFSET: run_stats_dict,
             run_stats_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: run_stats_entries,
-            run_stats_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.DICT_ENTRY_KEY_OFFSET: kills_key,
+            run_stats_entries
+            + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+            + PlayerStatsClient.DICT_ENTRY_KEY_OFFSET: kills_key,
             money_utility_type_info: money_utility_class_ptr,
-            money_utility_class_ptr + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: money_utility_static_fields,
+            money_utility_class_ptr
+            + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: money_utility_static_fields,
             owner_stats + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
             player_inventory + PlayerStatsClient.PLAYER_XP_OFFSET: player_xp,
         }
@@ -131,7 +141,9 @@ def build_player_stats_memory() -> FakeMemory:
         entries + 0x6C: 0.15,
         entries + 0x28C: 0.09,
         run_timer_static_fields + PlayerStatsClient.RUN_TIMER_OFFSET: 21.52338219,
-        run_stats_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.RUN_STATS_ENTRY_VALUE_OFFSET: 37.0,
+        run_stats_entries
+        + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+        + PlayerStatsClient.RUN_STATS_ENTRY_VALUE_OFFSET: 37.0,
     }
     inventory_container = 0x20000600
     passive_dict = 0x20000700
@@ -142,10 +154,14 @@ def build_player_stats_memory() -> FakeMemory:
 
     pointers.update(
         {
-            owner_stats + PlayerStatsClient.INVENTORY_CONTAINER_OFFSET: inventory_container,
-            inventory_container + PlayerStatsClient.PASSIVE_ITEM_DICT_OFFSET: passive_dict,
+            owner_stats
+            + PlayerStatsClient.INVENTORY_CONTAINER_OFFSET: inventory_container,
+            inventory_container
+            + PlayerStatsClient.PASSIVE_ITEM_DICT_OFFSET: passive_dict,
             passive_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: passive_entries,
-            passive_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET: item_value,
+            passive_entries
+            + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+            + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET: item_value,
             item_value + PlayerStatsClient.ITEM_CLASS_META_OFFSET: class_meta,
             class_meta + PlayerStatsClient.CLASS_META_NAME_PTR_OFFSET: class_name_ptr,
         }
@@ -156,9 +172,12 @@ def build_player_stats_memory() -> FakeMemory:
         item_value + PlayerStatsClient.ITEM_STACK_COUNT_OFFSET: 2,
         run_stats_dict + PlayerStatsClient.DICT_COUNT_OFFSET: 1,
         run_stats_dict + PlayerStatsClient.DICT_VERSION_OFFSET: 1,
-        run_stats_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
+        run_stats_entries
+        + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+        + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
         player_xp + PlayerStatsClient.PLAYER_XP_LEVEL_OFFSET: 2,
-        money_utility_static_fields + PlayerStatsClient.MONEY_UTILITY_CHESTS_PURCHASED_OFFSET: 12,
+        money_utility_static_fields
+        + PlayerStatsClient.MONEY_UTILITY_CHESTS_PURCHASED_OFFSET: 12,
     }
     ascii_strings = {
         class_name_ptr: "ItemWrench",
@@ -207,24 +226,37 @@ def build_disabled_items_memory(
         run_class + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: run_static,
         run_static + 0x10: available_dict,
         available_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: available_entries,
-        run_static + PlayerStatsClient.RUN_UNLOCKABLES_BANISHED_ITEMS_OFFSET: banished_set,
+        run_static
+        + PlayerStatsClient.RUN_UNLOCKABLES_BANISHED_ITEMS_OFFSET: banished_set,
         banished_set + PlayerStatsClient.HASHSET_SLOTS_OFFSET: banished_slots,
     }
     ints = {
         global_list + PlayerStatsClient.LIST_SIZE_OFFSET: len(global_ids),
-        available_dict + PlayerStatsClient.DICT_COUNT_OFFSET: sum(group is not None for group in available_groups),
-        available_entries + PlayerStatsClient.ARRAY_LENGTH_OFFSET: len(available_groups),
+        available_dict + PlayerStatsClient.DICT_COUNT_OFFSET: sum(
+            group is not None for group in available_groups
+        ),
+        available_entries + PlayerStatsClient.ARRAY_LENGTH_OFFSET: len(
+            available_groups
+        ),
         banished_set + PlayerStatsClient.HASHSET_COUNT_OFFSET: len(banished_ids),
         banished_set + PlayerStatsClient.HASHSET_LAST_INDEX_OFFSET: len(banished_ids),
     }
 
     for index, item_id in enumerate(global_ids):
         item_ptr = 0x31000000 + index * 0x100
-        pointers[global_array + PlayerStatsClient.ARRAY_DATA_OFFSET + index * PlayerStatsClient.OBJECT_POINTER_SIZE] = item_ptr
+        pointers[
+            global_array
+            + PlayerStatsClient.ARRAY_DATA_OFFSET
+            + index * PlayerStatsClient.OBJECT_POINTER_SIZE
+        ] = item_ptr
         ints[item_ptr + PlayerStatsClient.ITEM_DATA_ENUM_OFFSET] = item_id
 
     for index, group in enumerate(available_groups):
-        entry = available_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + index * PlayerStatsClient.DICT_ENTRY_SIZE
+        entry = (
+            available_entries
+            + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+            + index * PlayerStatsClient.DICT_ENTRY_SIZE
+        )
         if group is None:
             ints[entry + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET] = -1
             continue
@@ -236,11 +268,19 @@ def build_disabled_items_memory(
         ints[item_list + PlayerStatsClient.LIST_SIZE_OFFSET] = len(group)
         for item_index, item_id in enumerate(group):
             item_ptr = 0x33000000 + index * 0x1000 + item_index * 0x100
-            pointers[item_array + PlayerStatsClient.ARRAY_DATA_OFFSET + item_index * PlayerStatsClient.OBJECT_POINTER_SIZE] = item_ptr
+            pointers[
+                item_array
+                + PlayerStatsClient.ARRAY_DATA_OFFSET
+                + item_index * PlayerStatsClient.OBJECT_POINTER_SIZE
+            ] = item_ptr
             ints[item_ptr + PlayerStatsClient.ITEM_DATA_ENUM_OFFSET] = item_id
 
     for index, item_id in enumerate(banished_ids):
-        slot = banished_slots + PlayerStatsClient.HASHSET_SLOT_START_OFFSET + index * PlayerStatsClient.HASHSET_SLOT_SIZE
+        slot = (
+            banished_slots
+            + PlayerStatsClient.HASHSET_SLOT_START_OFFSET
+            + index * PlayerStatsClient.HASHSET_SLOT_SIZE
+        )
         item_ptr = 0x34000000 + index * 0x100
         ints[slot + PlayerStatsClient.HASHSET_SLOT_HASH_CODE_OFFSET] = index + 1
         pointers[slot + PlayerStatsClient.HASHSET_SLOT_VALUE_OFFSET] = item_ptr
@@ -264,9 +304,8 @@ class PlayerStatsClientTests(unittest.TestCase):
 
     def _seed_luck(self, memory: FakeMemory, value: float) -> None:
         entries = 0x20000500
-        luck_offset = (
-            PlayerStatsClient.STAT_VALUE_BASE_OFFSET
-            + (30 * PlayerStatsClient.STAT_SLOT_SIZE)
+        luck_offset = PlayerStatsClient.STAT_VALUE_BASE_OFFSET + (
+            30 * PlayerStatsClient.STAT_SLOT_SIZE
         )
         memory.floats[entries + luck_offset] = value
 
@@ -289,7 +328,10 @@ class PlayerStatsClientTests(unittest.TestCase):
         self._seed_luck(memory, 0.5)
         reads: list[int] = []
         underlying = memory.read_float
-        memory.read_float = lambda address: (reads.append(address), underlying(address))[1]
+        memory.read_float = lambda address: (
+            reads.append(address),
+            underlying(address),
+        )[1]
         client = PlayerStatsClient(memory=memory)
 
         client.get_luck()
@@ -320,9 +362,8 @@ class PlayerStatsClientTests(unittest.TestCase):
     def test_player_crit_damage_display_includes_base_crit_multiplier(self) -> None:
         memory = self.build_memory()
         entries = 0x20000500
-        crit_damage_offset = (
-            PlayerStatsClient.STAT_VALUE_BASE_OFFSET
-            + (19 * PlayerStatsClient.STAT_SLOT_SIZE)
+        crit_damage_offset = PlayerStatsClient.STAT_VALUE_BASE_OFFSET + (
+            19 * PlayerStatsClient.STAT_SLOT_SIZE
         )
         memory.floats[entries + crit_damage_offset] = 3.3
         client = PlayerStatsClient(memory=memory)
@@ -341,7 +382,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         self.assertEqual(result.items, ())
 
     def test_get_disabled_items_reports_memory_read_error(self) -> None:
-        memory = build_disabled_items_memory(global_ids=(4, 7), available_groups=((4,),))
+        memory = build_disabled_items_memory(
+            global_ids=(4, 7), available_groups=((4,),)
+        )
         del memory.pointers[
             memory.module_base + PlayerStatsClient.DATA_MANAGER_TYPE_INFO_OFFSET
         ]
@@ -352,7 +395,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         self.assertEqual(result.items, ())
 
     def test_get_disabled_items_allows_successful_empty_result(self) -> None:
-        memory = build_disabled_items_memory(global_ids=(4, 7), available_groups=((4, 7),))
+        memory = build_disabled_items_memory(
+            global_ids=(4, 7), available_groups=((4, 7),)
+        )
 
         result = PlayerStatsClient(memory=memory).get_disabled_items()
 
@@ -391,15 +436,17 @@ class PlayerStatsClientTests(unittest.TestCase):
 
     def test_get_passive_items_rejects_implausible_stack_count(self) -> None:
         memory = self.build_memory()
-        memory.ints[
-            0x20000900 + PlayerStatsClient.ITEM_STACK_COUNT_OFFSET
-        ] = PlayerStatsClient.MAX_PASSIVE_ITEM_STACK_COUNT + 1
+        memory.ints[0x20000900 + PlayerStatsClient.ITEM_STACK_COUNT_OFFSET] = (
+            PlayerStatsClient.MAX_PASSIVE_ITEM_STACK_COUNT + 1
+        )
         client = PlayerStatsClient(memory=memory)
 
         with self.assertRaises(ValueError):
             client.get_passive_items()
 
-    def test_get_passive_items_rejects_stack_count_that_changes_between_reads(self) -> None:
+    def test_get_passive_items_rejects_stack_count_that_changes_between_reads(
+        self,
+    ) -> None:
         memory = self.build_memory()
         stack_address = 0x20000900 + PlayerStatsClient.ITEM_STACK_COUNT_OFFSET
         original_read_i32 = memory.read_i32
@@ -416,7 +463,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             client.get_passive_items()
 
-    def test_get_passive_items_prefers_item_id_for_crypt_key_over_placeholder_class(self) -> None:
+    def test_get_passive_items_prefers_item_id_for_crypt_key_over_placeholder_class(
+        self,
+    ) -> None:
         memory = self.build_memory()
         passive_entries = 0x20000800
         class_name_ptr = 0x20000B00
@@ -432,7 +481,9 @@ class PlayerStatsClientTests(unittest.TestCase):
 
         self.assertEqual(items, ("Crypt key x2",))
 
-    def test_get_passive_items_uses_item_id_for_one_ring_when_class_is_placeholder(self) -> None:
+    def test_get_passive_items_uses_item_id_for_one_ring_when_class_is_placeholder(
+        self,
+    ) -> None:
         memory = self.build_memory()
         passive_entries = 0x20000800
         class_name_ptr = 0x20000B00
@@ -448,7 +499,9 @@ class PlayerStatsClientTests(unittest.TestCase):
 
         self.assertEqual(items, ("The One Ring x2",))
 
-    def test_get_passive_items_falls_back_to_class_name_when_item_id_is_unknown(self) -> None:
+    def test_get_passive_items_falls_back_to_class_name_when_item_id_is_unknown(
+        self,
+    ) -> None:
         memory = self.build_memory()
         passive_entries = 0x20000800
         class_name_ptr = 0x20000B00
@@ -464,7 +517,9 @@ class PlayerStatsClientTests(unittest.TestCase):
 
         self.assertEqual(items, ("Golden Egg x2",))
 
-    def test_get_passive_items_falls_back_to_class_name_when_item_id_is_unreadable(self) -> None:
+    def test_get_passive_items_falls_back_to_class_name_when_item_id_is_unreadable(
+        self,
+    ) -> None:
         memory = self.build_memory()
         class_name_ptr = 0x20000B00
         memory.ascii_strings[class_name_ptr] = "ItemGoldenEgg"
@@ -502,15 +557,29 @@ class PlayerStatsClientTests(unittest.TestCase):
         item_value = 0x20001B00
         class_meta = 0x20001C00
         class_name_ptr = 0x20001D00
-        memory.pointers[inventory_container + PlayerStatsClient.PASSIVE_ITEM_DICT_OFFSET] = 0
-        memory.pointers[player_inventory + PlayerStatsClient.ITEM_INVENTORY_OFFSET] = item_inventory
-        memory.pointers[item_inventory + PlayerStatsClient.ITEM_INVENTORY_ITEMS_DICT_OFFSET] = item_dict
-        memory.pointers[item_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET] = item_entries
         memory.pointers[
-            item_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET
+            inventory_container + PlayerStatsClient.PASSIVE_ITEM_DICT_OFFSET
+        ] = 0
+        memory.pointers[player_inventory + PlayerStatsClient.ITEM_INVENTORY_OFFSET] = (
+            item_inventory
+        )
+        memory.pointers[
+            item_inventory + PlayerStatsClient.ITEM_INVENTORY_ITEMS_DICT_OFFSET
+        ] = item_dict
+        memory.pointers[item_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET] = (
+            item_entries
+        )
+        memory.pointers[
+            item_entries
+            + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+            + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET
         ] = item_value
-        memory.pointers[item_value + PlayerStatsClient.ITEM_CLASS_META_OFFSET] = class_meta
-        memory.pointers[class_meta + PlayerStatsClient.CLASS_META_NAME_PTR_OFFSET] = class_name_ptr
+        memory.pointers[item_value + PlayerStatsClient.ITEM_CLASS_META_OFFSET] = (
+            class_meta
+        )
+        memory.pointers[class_meta + PlayerStatsClient.CLASS_META_NAME_PTR_OFFSET] = (
+            class_name_ptr
+        )
         memory.ints[item_dict + PlayerStatsClient.DICT_COUNT_OFFSET] = 1
         memory.ints[item_value + PlayerStatsClient.ITEM_STACK_COUNT_OFFSET] = 199
         memory.ascii_strings[class_name_ptr] = "ItemClover"
@@ -521,9 +590,15 @@ class PlayerStatsClientTests(unittest.TestCase):
         self.assertEqual(items, ("Clover x199",))
 
     def test_format_item_name_uses_item_display_overrides(self) -> None:
-        self.assertEqual(PlayerStatsClient._format_item_name("ItemGoldenRing"), "The One Ring")
-        self.assertEqual(PlayerStatsClient._format_item_name("ItemBobsLantern"), "Bob's Light")
-        self.assertEqual(PlayerStatsClient._format_item_name("ItemGloveBlood"), "Slurp Gloves")
+        self.assertEqual(
+            PlayerStatsClient._format_item_name("ItemGoldenRing"), "The One Ring"
+        )
+        self.assertEqual(
+            PlayerStatsClient._format_item_name("ItemBobsLantern"), "Bob's Light"
+        )
+        self.assertEqual(
+            PlayerStatsClient._format_item_name("ItemGloveBlood"), "Slurp Gloves"
+        )
 
     def test_get_run_timer_reads_confirmed_static_float(self) -> None:
         client = PlayerStatsClient(memory=self.build_memory())
@@ -539,7 +614,9 @@ class PlayerStatsClientTests(unittest.TestCase):
 
         self.assertAlmostEqual(value, 9.75)
 
-    def test_get_stage_timer_context_uses_my_time_and_fixed_stage_duration(self) -> None:
+    def test_get_stage_timer_context_uses_my_time_and_fixed_stage_duration(
+        self,
+    ) -> None:
         client = PlayerStatsClient(memory=self.build_memory())
 
         with patch.object(client, "_read_current_stage_time", return_value=(1, 123.0)):
@@ -549,7 +626,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         self.assertEqual(stage_index, 1)
         self.assertEqual(stage_duration, 540.0)
 
-    def test_get_powerup_tracking_snapshot_reads_status_effects_and_stage_time(self) -> None:
+    def test_get_powerup_tracking_snapshot_reads_status_effects_and_stage_time(
+        self,
+    ) -> None:
         memory = self.build_memory()
         base = memory.module_base
         player_inventory = 0x20001600
@@ -558,7 +637,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         status_entries = 0x26000200
         rage_effect = 0x26000300
         clock_effect = 0x26000400
-        map_controller_type_info = base + PlayerStatsClient.MAP_CONTROLLER_TYPE_INFO_OFFSET
+        map_controller_type_info = (
+            base + PlayerStatsClient.MAP_CONTROLLER_TYPE_INFO_OFFSET
+        )
         map_controller_class = 0x26000500
         map_controller_static = 0x26000600
         current_stage = 0x26000700
@@ -572,8 +653,10 @@ class PlayerStatsClientTests(unittest.TestCase):
 
         memory.pointers.update(
             {
-                player_inventory + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
-                status_effects + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
+                player_inventory
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
+                status_effects
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
                 status_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: status_entries,
                 status_entries
                 + PlayerStatsClient.DICT_ENTRY_START_OFFSET
@@ -583,13 +666,17 @@ class PlayerStatsClientTests(unittest.TestCase):
                 + PlayerStatsClient.DICT_ENTRY_SIZE
                 + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET: clock_effect,
                 map_controller_type_info: map_controller_class,
-                map_controller_class + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: map_controller_static,
-                map_controller_static + PlayerStatsClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: current_stage,
-                current_stage + PlayerStatsClient.STAGE_DATA_TIMELINE_OFFSET: stage_timeline,
+                map_controller_class
+                + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: map_controller_static,
+                map_controller_static
+                + PlayerStatsClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: current_stage,
+                current_stage
+                + PlayerStatsClient.STAGE_DATA_TIMELINE_OFFSET: stage_timeline,
                 rsg_type_info: rsg_class,
                 rsg_class + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: rsg_static,
                 rsg_static + PlayerStatsClient.RSG_INSTANCE_OFFSET: rsg_instance,
-                rsg_instance + PlayerStatsClient.RSG_ROOM_BOSS_OFFSET: graveyard_boss_room,
+                rsg_instance
+                + PlayerStatsClient.RSG_ROOM_BOSS_OFFSET: graveyard_boss_room,
             }
         )
         memory.ints.update(
@@ -612,7 +699,8 @@ class PlayerStatsClientTests(unittest.TestCase):
                 + PlayerStatsClient.DICT_ENTRY_KEY_OFFSET: 4,
                 rage_effect + PlayerStatsClient.STATUS_EFFECT_ESTATUS_OFFSET: 1,
                 clock_effect + PlayerStatsClient.STATUS_EFFECT_ESTATUS_OFFSET: 4,
-                map_controller_static + PlayerStatsClient.MAP_CONTROLLER_INDEX_OFFSET: 2,
+                map_controller_static
+                + PlayerStatsClient.MAP_CONTROLLER_INDEX_OFFSET: 2,
             }
         )
         memory.floats.update(
@@ -622,8 +710,10 @@ class PlayerStatsClientTests(unittest.TestCase):
                 rage_effect + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET: 990.0,
                 rage_effect + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1068.0,
                 clock_effect + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET: 995.0,
-                clock_effect + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1057.4,
-                stage_timeline + PlayerStatsClient.STAGE_TIMELINE_STAGE_TIME_OFFSET: 480.0,
+                clock_effect
+                + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1057.4,
+                stage_timeline
+                + PlayerStatsClient.STAGE_TIMELINE_STAGE_TIME_OFFSET: 480.0,
             }
         )
         memory.bytes.update(
@@ -650,7 +740,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         # roomBoss pointer, positive-only.
         self.assertTrue(snapshot.graveyard_boss_fighting)
         self.assertFalse(snapshot.graveyard_boss_defeated)
-        self.assertEqual([effect.name for effect in snapshot.effects], ["Rage", "Clock"])
+        self.assertEqual(
+            [effect.name for effect in snapshot.effects], ["Rage", "Clock"]
+        )
         self.assertTrue(snapshot.timing_health.complete)
 
         with patch.object(
@@ -678,7 +770,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         status_dict = 0x26000100
         status_entries = 0x26000200
         rage_effect = 0x26000300
-        map_controller_type_info = base + PlayerStatsClient.MAP_CONTROLLER_TYPE_INFO_OFFSET
+        map_controller_type_info = (
+            base + PlayerStatsClient.MAP_CONTROLLER_TYPE_INFO_OFFSET
+        )
         map_controller_class = 0x26000500
         map_controller_static = 0x26000600
         current_stage = 0x26000700
@@ -687,17 +781,23 @@ class PlayerStatsClientTests(unittest.TestCase):
         powerup_spec = PLAYER_STAT_SPEC_BY_LABEL["Powerup Multiplier"]
         memory.pointers.update(
             {
-                owner_stats + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
-                player_inventory + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
-                status_effects + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
+                owner_stats
+                + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
+                player_inventory
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
+                status_effects
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
                 status_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: status_entries,
                 status_entries
                 + PlayerStatsClient.DICT_ENTRY_START_OFFSET
                 + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET: rage_effect,
                 map_controller_type_info: map_controller_class,
-                map_controller_class + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: map_controller_static,
-                map_controller_static + PlayerStatsClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: current_stage,
-                current_stage + PlayerStatsClient.STAGE_DATA_TIMELINE_OFFSET: stage_timeline,
+                map_controller_class
+                + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: map_controller_static,
+                map_controller_static
+                + PlayerStatsClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: current_stage,
+                current_stage
+                + PlayerStatsClient.STAGE_DATA_TIMELINE_OFFSET: stage_timeline,
             }
         )
         memory.ints.update(
@@ -711,7 +811,8 @@ class PlayerStatsClientTests(unittest.TestCase):
                 + PlayerStatsClient.DICT_ENTRY_START_OFFSET
                 + PlayerStatsClient.DICT_ENTRY_KEY_OFFSET: 1,
                 rage_effect + PlayerStatsClient.STATUS_EFFECT_ESTATUS_OFFSET: 1,
-                map_controller_static + PlayerStatsClient.MAP_CONTROLLER_INDEX_OFFSET: 1,
+                map_controller_static
+                + PlayerStatsClient.MAP_CONTROLLER_INDEX_OFFSET: 1,
             }
         )
         memory.floats.update(
@@ -721,12 +822,15 @@ class PlayerStatsClientTests(unittest.TestCase):
                 run_timer_static_fields + PlayerStatsClient.STAGE_TIMER_OFFSET: 46.5,
                 rage_effect + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET: 990.0,
                 rage_effect + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1015.0,
-                stage_timeline + PlayerStatsClient.STAGE_TIMELINE_STAGE_TIME_OFFSET: 540.0,
+                stage_timeline
+                + PlayerStatsClient.STAGE_TIMELINE_STAGE_TIME_OFFSET: 540.0,
             }
         )
         return memory, owner_stats, entries, powerup_spec
 
-    def test_get_powerup_tracking_snapshot_caches_powerup_multiplier_until_ttl(self) -> None:
+    def test_get_powerup_tracking_snapshot_caches_powerup_multiplier_until_ttl(
+        self,
+    ) -> None:
         memory, owner_stats, entries, powerup_spec = self._powerup_multiplier_fixture()
         client = PlayerStatsClient(memory=memory)
 
@@ -747,7 +851,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         self.assertEqual(third.powerup_multiplier_display, "1.5x")
         self.assertEqual(fourth.powerup_multiplier_display, "2x")
 
-    def test_get_powerup_tracking_snapshot_ignores_a_one_frame_multiplier_dip(self) -> None:
+    def test_get_powerup_tracking_snapshot_ignores_a_one_frame_multiplier_dip(
+        self,
+    ) -> None:
         """A single bad multiplier read must never reach the duration maths.
 
         This read is force-refreshed on the frame a powerup is picked up --
@@ -772,7 +878,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         self.assertEqual(dip.powerup_multiplier, 1.5)
         self.assertEqual(recovered.powerup_multiplier, 1.5)
 
-    def test_get_powerup_tracking_snapshot_does_not_reuse_pm_cache_for_other_owner(self) -> None:
+    def test_get_powerup_tracking_snapshot_does_not_reuse_pm_cache_for_other_owner(
+        self,
+    ) -> None:
         memory = self.build_memory()
         base = memory.module_base
         owner_stats = 0x20000300
@@ -783,7 +891,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         status_effects = 0x26000000
         status_dict = 0x26000100
         status_entries = 0x26000200
-        map_controller_type_info = base + PlayerStatsClient.MAP_CONTROLLER_TYPE_INFO_OFFSET
+        map_controller_type_info = (
+            base + PlayerStatsClient.MAP_CONTROLLER_TYPE_INFO_OFFSET
+        )
         map_controller_class = 0x26000500
         map_controller_static = 0x26000600
         current_stage = 0x26000700
@@ -793,45 +903,59 @@ class PlayerStatsClientTests(unittest.TestCase):
 
         memory.pointers.update(
             {
-                owner_stats + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
-                owner_stats_2 + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
+                owner_stats
+                + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
+                owner_stats_2
+                + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
                 owner_stats_2 + PlayerStatsClient.STATS_CONTEXT_OFFSET: stats_context_2,
                 stats_context_2 + PlayerStatsClient.STATS_ENTRIES_OFFSET: entries_2,
-                player_inventory + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
-                status_effects + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
+                player_inventory
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
+                status_effects
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
                 status_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: status_entries,
                 map_controller_type_info: map_controller_class,
-                map_controller_class + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: map_controller_static,
-                map_controller_static + PlayerStatsClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: current_stage,
-                current_stage + PlayerStatsClient.STAGE_DATA_TIMELINE_OFFSET: stage_timeline,
+                map_controller_class
+                + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: map_controller_static,
+                map_controller_static
+                + PlayerStatsClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: current_stage,
+                current_stage
+                + PlayerStatsClient.STAGE_DATA_TIMELINE_OFFSET: stage_timeline,
             }
         )
         memory.ints.update(
             {
                 status_dict + PlayerStatsClient.DICT_VERSION_OFFSET: 1,
                 status_entries + PlayerStatsClient.ARRAY_LENGTH_OFFSET: 0,
-                map_controller_static + PlayerStatsClient.MAP_CONTROLLER_INDEX_OFFSET: 1,
+                map_controller_static
+                + PlayerStatsClient.MAP_CONTROLLER_INDEX_OFFSET: 1,
             }
         )
         memory.floats.update(
             {
                 run_timer_static_fields + PlayerStatsClient.MY_TIME_TIME_OFFSET: 1000.0,
                 run_timer_static_fields + PlayerStatsClient.STAGE_TIMER_OFFSET: 46.5,
-                stage_timeline + PlayerStatsClient.STAGE_TIMELINE_STAGE_TIME_OFFSET: 540.0,
+                stage_timeline
+                + PlayerStatsClient.STAGE_TIMELINE_STAGE_TIME_OFFSET: 540.0,
                 0x20000500 + powerup_spec.offset: 1.5,
                 entries_2 + powerup_spec.offset: 2.0,
             }
         )
         client = PlayerStatsClient(memory=memory)
 
-        with patch("infra.memory.player_stats_client.time.monotonic", side_effect=(100.0, 101.0)):
+        with patch(
+            "infra.memory.player_stats_client.time.monotonic",
+            side_effect=(100.0, 101.0),
+        ):
             first = client.get_powerup_tracking_snapshot(owner_stats)
             second = client.get_powerup_tracking_snapshot(owner_stats_2)
 
         self.assertEqual(first.powerup_multiplier_display, "1.5x")
         self.assertEqual(second.powerup_multiplier_display, "2x")
 
-    def test_get_active_status_effects_picks_up_new_effect_without_dict_rescan(self) -> None:
+    def test_get_active_status_effects_picks_up_new_effect_without_dict_rescan(
+        self,
+    ) -> None:
         memory = self.build_memory()
         owner_stats = 0x20000300
         player_inventory = 0x20001600
@@ -854,8 +978,10 @@ class PlayerStatsClientTests(unittest.TestCase):
 
         memory.pointers.update(
             {
-                player_inventory + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
-                status_effects + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
+                player_inventory
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
+                status_effects
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
                 status_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: status_entries,
                 rage_value_address: rage_effect,
                 shield_value_address: 0,
@@ -889,7 +1015,8 @@ class PlayerStatsClientTests(unittest.TestCase):
                 rage_effect + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET: 990.0,
                 rage_effect + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1015.0,
                 shield_effect + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET: 991.0,
-                shield_effect + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1016.0,
+                shield_effect
+                + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1016.0,
             }
         )
         client = PlayerStatsClient(memory=memory)
@@ -901,7 +1028,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         self.assertEqual([effect.name for effect in first], ["Rage"])
         self.assertEqual([effect.name for effect in second], ["Rage", "Shield"])
 
-    def test_get_active_status_effects_rescans_when_supported_effect_count_changes(self) -> None:
+    def test_get_active_status_effects_rescans_when_supported_effect_count_changes(
+        self,
+    ) -> None:
         memory = self.build_memory()
         owner_stats = 0x20000300
         player_inventory = 0x20001600
@@ -919,8 +1048,10 @@ class PlayerStatsClientTests(unittest.TestCase):
 
         memory.pointers.update(
             {
-                player_inventory + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
-                status_effects + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
+                player_inventory
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
+                status_effects
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
                 status_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: status_entries,
                 rage_entry + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET: rage_effect,
                 shield_entry + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET: shield_effect,
@@ -949,9 +1080,11 @@ class PlayerStatsClientTests(unittest.TestCase):
                 rage_effect + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET: 990.0,
                 rage_effect + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1015.0,
                 shield_effect + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET: 991.0,
-                shield_effect + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1016.0,
+                shield_effect
+                + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1016.0,
                 clock_effect + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET: 992.0,
-                clock_effect + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1017.0,
+                clock_effect
+                + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1017.0,
             }
         )
         client = PlayerStatsClient(memory=memory)
@@ -961,17 +1094,27 @@ class PlayerStatsClientTests(unittest.TestCase):
         memory.ints[status_dict + PlayerStatsClient.DICT_COUNT_OFFSET] = 4
         memory.ints[stonks_entry + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET] = 4
         memory.ints[stonks_entry + PlayerStatsClient.DICT_ENTRY_KEY_OFFSET] = 3
-        memory.pointers[stonks_entry + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET] = stonks_effect
+        memory.pointers[stonks_entry + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET] = (
+            stonks_effect
+        )
         memory.ints[stonks_effect + PlayerStatsClient.STATUS_EFFECT_ESTATUS_OFFSET] = 3
-        memory.floats[stonks_effect + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET] = 993.0
-        memory.floats[stonks_effect + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET] = 1018.0
+        memory.floats[stonks_effect + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET] = (
+            993.0
+        )
+        memory.floats[
+            stonks_effect + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET
+        ] = 1018.0
 
         second = client.get_active_status_effects(owner_stats)
 
         self.assertEqual([effect.name for effect in first], ["Rage", "Shield", "Clock"])
-        self.assertEqual([effect.name for effect in second], ["Rage", "Shield", "Stonks", "Clock"])
+        self.assertEqual(
+            [effect.name for effect in second], ["Rage", "Shield", "Stonks", "Clock"]
+        )
 
-    def test_get_active_status_effects_uses_object_effect_id_after_slot_reuse(self) -> None:
+    def test_get_active_status_effects_uses_object_effect_id_after_slot_reuse(
+        self,
+    ) -> None:
         memory = self.build_memory()
         owner_stats = 0x20000300
         player_inventory = 0x20001600
@@ -984,8 +1127,10 @@ class PlayerStatsClientTests(unittest.TestCase):
 
         memory.pointers.update(
             {
-                player_inventory + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
-                status_effects + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
+                player_inventory
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
+                status_effects
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
                 status_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: status_entries,
                 shield_entry + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET: shield_effect,
             }
@@ -1004,21 +1149,27 @@ class PlayerStatsClientTests(unittest.TestCase):
         memory.floats.update(
             {
                 shield_effect + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET: 990.0,
-                shield_effect + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1015.0,
+                shield_effect
+                + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1015.0,
                 haste_effect + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET: 1016.0,
-                haste_effect + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1033.0,
+                haste_effect
+                + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 1033.0,
             }
         )
         client = PlayerStatsClient(memory=memory)
 
         first = client.get_active_status_effects(owner_stats)
-        memory.pointers[shield_entry + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET] = haste_effect
+        memory.pointers[shield_entry + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET] = (
+            haste_effect
+        )
         second = client.get_active_status_effects(owner_stats)
 
         self.assertEqual([effect.name for effect in first], ["Shield"])
         self.assertEqual(second, ())
 
-    def test_get_active_status_effects_rescans_when_unsupported_slot_becomes_clock(self) -> None:
+    def test_get_active_status_effects_rescans_when_unsupported_slot_becomes_clock(
+        self,
+    ) -> None:
         memory = self.build_memory()
         owner_stats = 0x20000300
         player_inventory = 0x26000000
@@ -1031,11 +1182,15 @@ class PlayerStatsClientTests(unittest.TestCase):
 
         memory.pointers.update(
             {
-                owner_stats + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
-                player_inventory + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
-                status_effects + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
+                owner_stats
+                + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
+                player_inventory
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
+                status_effects
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
                 status_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: status_entries,
-                entry + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET: invulnerability_effect,
+                entry
+                + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET: invulnerability_effect,
             }
         )
         memory.ints.update(
@@ -1045,14 +1200,17 @@ class PlayerStatsClientTests(unittest.TestCase):
                 status_entries + PlayerStatsClient.ARRAY_LENGTH_OFFSET: 3,
                 entry + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 5,
                 entry + PlayerStatsClient.DICT_ENTRY_KEY_OFFSET: 5,
-                invulnerability_effect + PlayerStatsClient.STATUS_EFFECT_ESTATUS_OFFSET: 5,
+                invulnerability_effect
+                + PlayerStatsClient.STATUS_EFFECT_ESTATUS_OFFSET: 5,
                 clock_effect + PlayerStatsClient.STATUS_EFFECT_ESTATUS_OFFSET: 4,
             }
         )
         memory.floats.update(
             {
-                invulnerability_effect + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET: 100.0,
-                invulnerability_effect + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 100.5,
+                invulnerability_effect
+                + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET: 100.0,
+                invulnerability_effect
+                + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 100.5,
                 clock_effect + PlayerStatsClient.STATUS_EFFECT_ADDED_OFFSET: 100.6,
                 clock_effect + PlayerStatsClient.STATUS_EFFECT_EXPIRATION_OFFSET: 115.6,
             }
@@ -1063,14 +1221,18 @@ class PlayerStatsClientTests(unittest.TestCase):
 
         memory.ints[entry + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET] = 4
         memory.ints[entry + PlayerStatsClient.DICT_ENTRY_KEY_OFFSET] = 4
-        memory.pointers[entry + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET] = clock_effect
+        memory.pointers[entry + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET] = (
+            clock_effect
+        )
 
         effects = client.get_active_status_effects(owner_stats)
 
         self.assertEqual([effect.name for effect in effects], ["Clock"])
         self.assertEqual(effects[0].expiration_time, 115.6)
 
-    def test_active_status_effects_reports_unavailable_when_inventory_is_missing(self) -> None:
+    def test_active_status_effects_reports_unavailable_when_inventory_is_missing(
+        self,
+    ) -> None:
         memory = self.build_memory()
         owner_stats = 0x20000300
         memory.pointers[owner_stats + PlayerStatsClient.PLAYER_INVENTORY_OFFSET] = 0
@@ -1083,7 +1245,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         self.assertFalse(result.health.complete)
         self.assertEqual(result.health.failure_reason, "status_effects_unavailable")
 
-    def test_active_status_effects_reports_partial_when_effect_object_is_unreadable(self) -> None:
+    def test_active_status_effects_reports_partial_when_effect_object_is_unreadable(
+        self,
+    ) -> None:
         memory = self.build_memory()
         owner_stats = 0x20000300
         player_inventory = 0x26000000
@@ -1094,9 +1258,12 @@ class PlayerStatsClientTests(unittest.TestCase):
         entry = status_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET
         memory.pointers.update(
             {
-                owner_stats + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
-                player_inventory + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
-                status_effects + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
+                owner_stats
+                + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
+                player_inventory
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
+                status_effects
+                + PlayerStatsClient.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
                 status_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: status_entries,
                 entry + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET: clock_effect,
             }
@@ -1120,10 +1287,14 @@ class PlayerStatsClientTests(unittest.TestCase):
         self.assertFalse(result.health.complete)
         self.assertEqual(result.health.failure_reason, "status_effects_partial")
 
-    def test_read_current_stage_time_clears_stale_timeline_when_current_stage_is_missing(self) -> None:
+    def test_read_current_stage_time_clears_stale_timeline_when_current_stage_is_missing(
+        self,
+    ) -> None:
         memory = self.build_memory()
         base = memory.module_base
-        map_controller_type_info = base + PlayerStatsClient.MAP_CONTROLLER_TYPE_INFO_OFFSET
+        map_controller_type_info = (
+            base + PlayerStatsClient.MAP_CONTROLLER_TYPE_INFO_OFFSET
+        )
         map_controller_class = 0x26000500
         map_controller_static = 0x26000600
         current_stage = 0x26000700
@@ -1131,26 +1302,36 @@ class PlayerStatsClientTests(unittest.TestCase):
         memory.pointers.update(
             {
                 map_controller_type_info: map_controller_class,
-                map_controller_class + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: map_controller_static,
-                map_controller_static + PlayerStatsClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: current_stage,
-                current_stage + PlayerStatsClient.STAGE_DATA_TIMELINE_OFFSET: stage_timeline,
+                map_controller_class
+                + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: map_controller_static,
+                map_controller_static
+                + PlayerStatsClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: current_stage,
+                current_stage
+                + PlayerStatsClient.STAGE_DATA_TIMELINE_OFFSET: stage_timeline,
             }
         )
         memory.ints.update(
             {
-                map_controller_static + PlayerStatsClient.MAP_CONTROLLER_INDEX_OFFSET: 1,
+                map_controller_static
+                + PlayerStatsClient.MAP_CONTROLLER_INDEX_OFFSET: 1,
             }
         )
         memory.floats.update(
             {
-                stage_timeline + PlayerStatsClient.STAGE_TIMELINE_STAGE_TIME_OFFSET: 540.0,
+                stage_timeline
+                + PlayerStatsClient.STAGE_TIMELINE_STAGE_TIME_OFFSET: 540.0,
             }
         )
         client = PlayerStatsClient(memory=memory)
 
         first_stage_index, first_stage_time = client._read_current_stage_time()
-        memory.pointers[map_controller_static + PlayerStatsClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET] = 0
-        memory.ints[map_controller_static + PlayerStatsClient.MAP_CONTROLLER_INDEX_OFFSET] = 2
+        memory.pointers[
+            map_controller_static
+            + PlayerStatsClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET
+        ] = 0
+        memory.ints[
+            map_controller_static + PlayerStatsClient.MAP_CONTROLLER_INDEX_OFFSET
+        ] = 2
         second_stage_index, second_stage_time = client._read_current_stage_time()
 
         self.assertEqual((first_stage_index, first_stage_time), (1, 540.0))
@@ -1207,7 +1388,8 @@ class PlayerStatsClientTests(unittest.TestCase):
         memory.pointers.update(
             {
                 base + PlayerStatsClient.MY_PLAYER_TYPE_INFO_OFFSET: my_player_class,
-                my_player_class + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: my_player_static,
+                my_player_class
+                + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: my_player_static,
                 my_player_static + PlayerStatsClient.MY_PLAYER_INSTANCE_OFFSET: player,
                 player + PlayerStatsClient.PLAYER_INPUT_OFFSET: player_input,
                 player_input + PlayerStatsClient.DETECT_INTERACTABLES_OFFSET: detector,
@@ -1217,9 +1399,7 @@ class PlayerStatsClientTests(unittest.TestCase):
             }
         )
         memory.ascii_strings[chest_class_name] = "InteractableChest"
-        memory.bytes[
-            chest + PlayerStatsClient.INTERACTABLE_CHEST_OPENING_OFFSET
-        ] = 1
+        memory.bytes[chest + PlayerStatsClient.INTERACTABLE_CHEST_OPENING_OFFSET] = 1
         client = PlayerStatsClient(memory=memory)
 
         self.assertEqual(
@@ -1227,7 +1407,9 @@ class PlayerStatsClientTests(unittest.TestCase):
             (19, 12, True),
         )
 
-    def test_chest_counter_snapshot_guards_chest_opening_during_counter_read(self) -> None:
+    def test_chest_counter_snapshot_guards_chest_opening_during_counter_read(
+        self,
+    ) -> None:
         memory = self.build_memory()
         base = memory.module_base
         memory.mono_strings[0x20001200] = "chestsBought"
@@ -1252,17 +1434,14 @@ class PlayerStatsClientTests(unittest.TestCase):
                 + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: my_player_static,
                 my_player_static + PlayerStatsClient.MY_PLAYER_INSTANCE_OFFSET: player,
                 player + PlayerStatsClient.PLAYER_INPUT_OFFSET: player_input,
-                player_input
-                + PlayerStatsClient.DETECT_INTERACTABLES_OFFSET: detector,
+                player_input + PlayerStatsClient.DETECT_INTERACTABLES_OFFSET: detector,
                 current_address: 0,
                 chest + PlayerStatsClient.OBJECT_KLASS_OFFSET: chest_class,
                 chest_class + PlayerStatsClient.KLASS_NAME_PTR_OFFSET: chest_class_name,
             }
         )
         memory.ascii_strings[chest_class_name] = "InteractableChest"
-        memory.bytes[
-            chest + PlayerStatsClient.INTERACTABLE_CHEST_OPENING_OFFSET
-        ] = 1
+        memory.bytes[chest + PlayerStatsClient.INTERACTABLE_CHEST_OPENING_OFFSET] = 1
         underlying_read_ptr = memory.read_ptr
         current_reads = iter((0, chest))
 
@@ -1312,7 +1491,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         memory.ascii_strings[0x20000B00] = "ItemWrench"
         self.assertEqual(client.get_expected_chest_inputs(0x20000300)[1], 0)
 
-    def test_expected_chest_inputs_reject_transient_key_stack_read_failure(self) -> None:
+    def test_expected_chest_inputs_reject_transient_key_stack_read_failure(
+        self,
+    ) -> None:
         memory = self.build_memory()
         memory.ascii_strings[0x20000B00] = "ItemKey"
         client = PlayerStatsClient(memory=memory)
@@ -1372,8 +1553,14 @@ class PlayerStatsClientTests(unittest.TestCase):
             + PlayerStatsClient.DICT_ENTRY_START_OFFSET
             + PlayerStatsClient.RUN_STATS_ENTRY_VALUE_OFFSET
         )
-        second_entry = run_stats_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.DICT_ENTRY_SIZE
-        second_value_address = second_entry + PlayerStatsClient.RUN_STATS_ENTRY_VALUE_OFFSET
+        second_entry = (
+            run_stats_entries
+            + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+            + PlayerStatsClient.DICT_ENTRY_SIZE
+        )
+        second_value_address = (
+            second_entry + PlayerStatsClient.RUN_STATS_ENTRY_VALUE_OFFSET
+        )
         memory.ints[run_stats_dict + PlayerStatsClient.DICT_COUNT_OFFSET] = 2
         memory.ints[run_stats_entries + PlayerStatsClient.ARRAY_LENGTH_OFFSET] = 2
 
@@ -1389,13 +1576,17 @@ class PlayerStatsClientTests(unittest.TestCase):
         memory.mono_strings[0x20001200] = "otherStat"
         memory.floats[first_value_address] = 1.0
         memory.ints[second_entry + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET] = 2
-        memory.pointers[second_entry + PlayerStatsClient.DICT_ENTRY_KEY_OFFSET] = 0x20001210
+        memory.pointers[second_entry + PlayerStatsClient.DICT_ENTRY_KEY_OFFSET] = (
+            0x20001210
+        )
         memory.mono_strings[0x20001210] = "kills"
         memory.floats[second_value_address] = 91.0
 
         self.assertEqual(client.get_killed_mobs(), 91)
 
-    def test_get_passive_items_rejects_sample_when_stack_count_is_unreadable(self) -> None:
+    def test_get_passive_items_rejects_sample_when_stack_count_is_unreadable(
+        self,
+    ) -> None:
         memory = self.build_memory()
         item_value = 0x20000900
         del memory.ints[item_value + PlayerStatsClient.ITEM_STACK_COUNT_OFFSET]
@@ -1433,7 +1624,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         with self.assertRaises(MemoryReadError):
             client.get_passive_items()
 
-    def test_get_passive_items_raises_when_positive_count_has_no_decodable_entries(self) -> None:
+    def test_get_passive_items_raises_when_positive_count_has_no_decodable_entries(
+        self,
+    ) -> None:
         memory = self.build_memory()
         item_value = 0x20000900
         del memory.pointers[item_value + PlayerStatsClient.ITEM_CLASS_META_OFFSET]
@@ -1443,17 +1636,27 @@ class PlayerStatsClientTests(unittest.TestCase):
             client.get_passive_items()
 
     def test_format_player_stat_values_match_game_display_style(self) -> None:
-        self.assertEqual(format_player_stat_value(0.15, PlayerStatFormat.PERCENT), "15%")
-        self.assertEqual(format_player_stat_value(1.25, PlayerStatFormat.MULTIPLIER), "1.25x")
+        self.assertEqual(
+            format_player_stat_value(0.15, PlayerStatFormat.PERCENT), "15%"
+        )
+        self.assertEqual(
+            format_player_stat_value(1.25, PlayerStatFormat.MULTIPLIER), "1.25x"
+        )
         self.assertEqual(format_player_stat_value(10.0, PlayerStatFormat.FLAT), "10")
         self.assertEqual(format_player_stat_value(None, PlayerStatFormat.FLAT), "--")
 
     def test_format_weapon_stat_values_follow_weapon_ui_rules(self) -> None:
         self.assertEqual(format_weapon_stat_value(10.0, WeaponStatFormat.FLAT), "10")
         self.assertEqual(format_weapon_stat_value(2.0, WeaponStatFormat.FLAT), "2")
-        self.assertEqual(format_weapon_stat_value(1.16, WeaponStatFormat.MULTIPLIER), "1.16x")
-        self.assertEqual(format_weapon_stat_value(0.6, WeaponStatFormat.MULTIPLIER), "0.6x")
-        self.assertEqual(format_weapon_stat_value(0.34, WeaponStatFormat.PERCENT), "34%")
+        self.assertEqual(
+            format_weapon_stat_value(1.16, WeaponStatFormat.MULTIPLIER), "1.16x"
+        )
+        self.assertEqual(
+            format_weapon_stat_value(0.6, WeaponStatFormat.MULTIPLIER), "0.6x"
+        )
+        self.assertEqual(
+            format_weapon_stat_value(0.34, WeaponStatFormat.PERCENT), "34%"
+        )
 
     def test_calculate_chests_per_minute_matches_expected_formula(self) -> None:
         value = calculate_chests_per_minute(15.0, 2.0)
@@ -1468,7 +1671,9 @@ class PlayerStatsClientTests(unittest.TestCase):
         # one half of the estimated chest rate.
         self.assertAlmostEqual(live, standard / 2.0)
 
-    def test_calculate_chests_per_minute_returns_zero_for_non_positive_inputs(self) -> None:
+    def test_calculate_chests_per_minute_returns_zero_for_non_positive_inputs(
+        self,
+    ) -> None:
         self.assertEqual(calculate_chests_per_minute(0.0, 2.0), 0.0)
         self.assertEqual(calculate_chests_per_minute(15.0, 0.0), 0.0)
 
@@ -1520,35 +1725,65 @@ class PlayerStatsTimelineTests(unittest.TestCase):
 
         memory.pointers.update(
             {
-                owner_stats + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
-                player_inventory + PlayerStatsClient.WEAPON_INVENTORY_OFFSET: weapon_inventory,
+                owner_stats
+                + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
+                player_inventory
+                + PlayerStatsClient.WEAPON_INVENTORY_OFFSET: weapon_inventory,
                 weapon_inventory + PlayerStatsClient.WEAPONS_DICT_OFFSET: weapons_dict,
                 weapons_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: weapon_entries,
-                weapon_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET: weapon_base,
+                weapon_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET: weapon_base,
                 weapon_base + PlayerStatsClient.WEAPON_DATA_OFFSET: weapon_data,
-                weapon_base + PlayerStatsClient.WEAPON_STATS_DICT_OFFSET: weapon_stats_dict,
-                weapon_stats_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: weapon_stat_entries,
-                weapon_data + PlayerStatsClient.WEAPON_UPGRADE_DATA_OFFSET: upgrade_data,
-                upgrade_data + PlayerStatsClient.UPGRADE_MODIFIERS_OFFSET: upgrade_modifiers,
+                weapon_base
+                + PlayerStatsClient.WEAPON_STATS_DICT_OFFSET: weapon_stats_dict,
+                weapon_stats_dict
+                + PlayerStatsClient.DICT_ENTRIES_OFFSET: weapon_stat_entries,
+                weapon_data
+                + PlayerStatsClient.WEAPON_UPGRADE_DATA_OFFSET: upgrade_data,
+                upgrade_data
+                + PlayerStatsClient.UPGRADE_MODIFIERS_OFFSET: upgrade_modifiers,
                 upgrade_modifiers + PlayerStatsClient.LIST_ITEMS_OFFSET: upgrade_items,
                 upgrade_items + PlayerStatsClient.ARRAY_DATA_OFFSET: damage_modifier,
-                upgrade_items + PlayerStatsClient.ARRAY_DATA_OFFSET + PlayerStatsClient.OBJECT_POINTER_SIZE: speed_modifier,
+                upgrade_items
+                + PlayerStatsClient.ARRAY_DATA_OFFSET
+                + PlayerStatsClient.OBJECT_POINTER_SIZE: speed_modifier,
             }
         )
         memory.ints.update(
             {
                 weapons_dict + PlayerStatsClient.DICT_COUNT_OFFSET: 1,
-                weapon_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
-                weapon_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.WEAPON_DICT_ENTRY_KEY_OFFSET: 0,
+                weapon_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
+                weapon_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.WEAPON_DICT_ENTRY_KEY_OFFSET: 0,
                 weapon_base + PlayerStatsClient.WEAPON_LEVEL_OFFSET: 3,
                 weapon_data + PlayerStatsClient.WEAPON_ID_OFFSET: 0,
                 weapon_stats_dict + PlayerStatsClient.DICT_COUNT_OFFSET: 3,
-                weapon_stat_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
-                weapon_stat_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: 12,
-                weapon_stat_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.STAT_DICT_ENTRY_SIZE + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
-                weapon_stat_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.STAT_DICT_ENTRY_SIZE + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: 16,
-                weapon_stat_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + (2 * PlayerStatsClient.STAT_DICT_ENTRY_SIZE) + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
-                weapon_stat_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + (2 * PlayerStatsClient.STAT_DICT_ENTRY_SIZE) + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: 11,
+                weapon_stat_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
+                weapon_stat_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: 12,
+                weapon_stat_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.STAT_DICT_ENTRY_SIZE
+                + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
+                weapon_stat_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.STAT_DICT_ENTRY_SIZE
+                + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: 16,
+                weapon_stat_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + (2 * PlayerStatsClient.STAT_DICT_ENTRY_SIZE)
+                + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
+                weapon_stat_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + (2 * PlayerStatsClient.STAT_DICT_ENTRY_SIZE)
+                + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: 11,
                 upgrade_modifiers + PlayerStatsClient.LIST_SIZE_OFFSET: 2,
                 damage_modifier + PlayerStatsClient.STAT_MODIFIER_STAT_OFFSET: 12,
                 speed_modifier + PlayerStatsClient.STAT_MODIFIER_STAT_OFFSET: 11,
@@ -1558,9 +1793,17 @@ class PlayerStatsTimelineTests(unittest.TestCase):
             {
                 weapon_data + PlayerStatsClient.WEAPON_MAX_DURATION_OFFSET: -1.0,
                 weapon_data + PlayerStatsClient.WEAPON_MAX_SIZE_MULTIPLIER_OFFSET: 4.0,
-                weapon_stat_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.STAT_DICT_ENTRY_VALUE_OFFSET: 10.0,
-                weapon_stat_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.STAT_DICT_ENTRY_SIZE + PlayerStatsClient.STAT_DICT_ENTRY_VALUE_OFFSET: 2.0,
-                weapon_stat_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + (2 * PlayerStatsClient.STAT_DICT_ENTRY_SIZE) + PlayerStatsClient.STAT_DICT_ENTRY_VALUE_OFFSET: 0.6,
+                weapon_stat_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.STAT_DICT_ENTRY_VALUE_OFFSET: 10.0,
+                weapon_stat_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.STAT_DICT_ENTRY_SIZE
+                + PlayerStatsClient.STAT_DICT_ENTRY_VALUE_OFFSET: 2.0,
+                weapon_stat_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + (2 * PlayerStatsClient.STAT_DICT_ENTRY_SIZE)
+                + PlayerStatsClient.STAT_DICT_ENTRY_VALUE_OFFSET: 0.6,
             }
         )
 
@@ -1614,12 +1857,18 @@ class PlayerStatsTimelineTests(unittest.TestCase):
 
         memory.pointers.update(
             {
-                owner_stats + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
-                player_inventory + PlayerStatsClient.TOME_INVENTORY_OFFSET: tome_inventory,
-                tome_inventory + PlayerStatsClient.TOME_LEVELS_DICT_OFFSET: tome_levels_dict,
-                tome_inventory + PlayerStatsClient.TOME_UPGRADES_DICT_OFFSET: tome_upgrades_dict,
-                tome_levels_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: tome_levels_entries,
-                tome_upgrades_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: tome_upgrades_entries,
+                owner_stats
+                + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
+                player_inventory
+                + PlayerStatsClient.TOME_INVENTORY_OFFSET: tome_inventory,
+                tome_inventory
+                + PlayerStatsClient.TOME_LEVELS_DICT_OFFSET: tome_levels_dict,
+                tome_inventory
+                + PlayerStatsClient.TOME_UPGRADES_DICT_OFFSET: tome_upgrades_dict,
+                tome_levels_dict
+                + PlayerStatsClient.DICT_ENTRIES_OFFSET: tome_levels_entries,
+                tome_upgrades_dict
+                + PlayerStatsClient.DICT_ENTRIES_OFFSET: tome_upgrades_entries,
                 tome_upgrades_entries
                 + PlayerStatsClient.DICT_ENTRY_START_OFFSET
                 + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET: damage_modifier,
@@ -1632,17 +1881,42 @@ class PlayerStatsTimelineTests(unittest.TestCase):
         memory.ints.update(
             {
                 tome_levels_dict + PlayerStatsClient.DICT_COUNT_OFFSET: 2,
-                tome_levels_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
-                tome_levels_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: 0,
-                tome_levels_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.STAT_DICT_ENTRY_VALUE_OFFSET: 3,
-                tome_levels_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.STAT_DICT_ENTRY_SIZE + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
-                tome_levels_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.STAT_DICT_ENTRY_SIZE + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: 5,
-                tome_levels_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.STAT_DICT_ENTRY_SIZE + PlayerStatsClient.STAT_DICT_ENTRY_VALUE_OFFSET: 2,
+                tome_levels_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
+                tome_levels_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: 0,
+                tome_levels_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.STAT_DICT_ENTRY_VALUE_OFFSET: 3,
+                tome_levels_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.STAT_DICT_ENTRY_SIZE
+                + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
+                tome_levels_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.STAT_DICT_ENTRY_SIZE
+                + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: 5,
+                tome_levels_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.STAT_DICT_ENTRY_SIZE
+                + PlayerStatsClient.STAT_DICT_ENTRY_VALUE_OFFSET: 2,
                 tome_upgrades_dict + PlayerStatsClient.DICT_COUNT_OFFSET: 2,
-                tome_upgrades_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
-                tome_upgrades_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.WEAPON_DICT_ENTRY_KEY_OFFSET: 0,
-                tome_upgrades_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.DICT_ENTRY_SIZE + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
-                tome_upgrades_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.DICT_ENTRY_SIZE + PlayerStatsClient.WEAPON_DICT_ENTRY_KEY_OFFSET: 5,
+                tome_upgrades_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
+                tome_upgrades_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.WEAPON_DICT_ENTRY_KEY_OFFSET: 0,
+                tome_upgrades_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.DICT_ENTRY_SIZE
+                + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
+                tome_upgrades_entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.DICT_ENTRY_SIZE
+                + PlayerStatsClient.WEAPON_DICT_ENTRY_KEY_OFFSET: 5,
                 damage_modifier + PlayerStatsClient.STAT_MODIFIER_STAT_OFFSET: 12,
                 armor_modifier + PlayerStatsClient.STAT_MODIFIER_STAT_OFFSET: 4,
             }
@@ -1676,7 +1950,9 @@ class PlayerStatsTimelineTests(unittest.TestCase):
 
         self.assertEqual(tomes, ())
 
-    def test_chaos_tracking_state_reuses_ready_snapshots_and_settles_level_writes(self) -> None:
+    def test_chaos_tracking_state_reuses_ready_snapshots_and_settles_level_writes(
+        self,
+    ) -> None:
         memory = build_player_stats_memory()
         owner_stats = 0x20000300
         player_inventory = 0x20001600
@@ -1694,13 +1970,18 @@ class PlayerStatsTimelineTests(unittest.TestCase):
 
         memory.pointers.update(
             {
-                player_inventory + PlayerStatsClient.TOME_INVENTORY_OFFSET: tome_inventory,
+                player_inventory
+                + PlayerStatsClient.TOME_INVENTORY_OFFSET: tome_inventory,
                 tome_inventory + PlayerStatsClient.TOME_LEVELS_DICT_OFFSET: levels_dict,
                 levels_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: level_entries,
-                player_inventory + PlayerStatsClient.STAT_INVENTORY_OFFSET: stat_inventory,
-                stat_inventory + PlayerStatsClient.STAT_INVENTORY_PERMANENT_CHANGES_OFFSET: modifiers_dict,
-                modifiers_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: modifier_entries,
-                modifier_entry + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET: modifier_list,
+                player_inventory
+                + PlayerStatsClient.STAT_INVENTORY_OFFSET: stat_inventory,
+                stat_inventory
+                + PlayerStatsClient.STAT_INVENTORY_PERMANENT_CHANGES_OFFSET: modifiers_dict,
+                modifiers_dict
+                + PlayerStatsClient.DICT_ENTRIES_OFFSET: modifier_entries,
+                modifier_entry
+                + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET: modifier_list,
                 modifier_list + PlayerStatsClient.LIST_ITEMS_OFFSET: modifier_array,
                 modifier_array + PlayerStatsClient.ARRAY_DATA_OFFSET: modifier,
             }
@@ -1710,7 +1991,8 @@ class PlayerStatsTimelineTests(unittest.TestCase):
                 levels_dict + PlayerStatsClient.DICT_COUNT_OFFSET: 1,
                 levels_dict + PlayerStatsClient.DICT_VERSION_OFFSET: 1,
                 level_entry + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
-                level_entry + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: PlayerStatsClient.CHAOS_TOME_ID,
+                level_entry
+                + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: PlayerStatsClient.CHAOS_TOME_ID,
                 level_entry + PlayerStatsClient.STAT_DICT_ENTRY_VALUE_OFFSET: 3,
                 modifiers_dict + PlayerStatsClient.DICT_COUNT_OFFSET: 1,
                 modifiers_dict + PlayerStatsClient.DICT_VERSION_OFFSET: 1,
@@ -1772,7 +2054,9 @@ class PlayerStatsTimelineTests(unittest.TestCase):
         self.assertEqual(level, 4)
         self.assertIs(cached_modifiers, settled_modifiers)
 
-    def test_chaos_tracking_state_retries_unresolved_level_entry_without_version_change(self) -> None:
+    def test_chaos_tracking_state_retries_unresolved_level_entry_without_version_change(
+        self,
+    ) -> None:
         memory = build_player_stats_memory()
         owner_stats = 0x20000300
         player_inventory = 0x20001600
@@ -1783,8 +2067,10 @@ class PlayerStatsTimelineTests(unittest.TestCase):
 
         memory.pointers.update(
             {
-                owner_stats + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
-                player_inventory + PlayerStatsClient.TOME_INVENTORY_OFFSET: tome_inventory,
+                owner_stats
+                + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
+                player_inventory
+                + PlayerStatsClient.TOME_INVENTORY_OFFSET: tome_inventory,
                 player_inventory + PlayerStatsClient.STAT_INVENTORY_OFFSET: 0,
                 tome_inventory + PlayerStatsClient.TOME_LEVELS_DICT_OFFSET: levels_dict,
                 levels_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: level_entries,
@@ -1831,10 +2117,14 @@ class PlayerStatsTimelineTests(unittest.TestCase):
         memory.pointers.update(
             {
                 player_inventory + PlayerStatsClient.TOME_INVENTORY_OFFSET: 0,
-                player_inventory + PlayerStatsClient.STAT_INVENTORY_OFFSET: stat_inventory,
-                stat_inventory + PlayerStatsClient.STAT_INVENTORY_PERMANENT_CHANGES_OFFSET: modifiers_dict,
-                modifiers_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: modifier_entries,
-                modifier_entry + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET: modifier_list,
+                player_inventory
+                + PlayerStatsClient.STAT_INVENTORY_OFFSET: stat_inventory,
+                stat_inventory
+                + PlayerStatsClient.STAT_INVENTORY_PERMANENT_CHANGES_OFFSET: modifiers_dict,
+                modifiers_dict
+                + PlayerStatsClient.DICT_ENTRIES_OFFSET: modifier_entries,
+                modifier_entry
+                + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET: modifier_list,
                 modifier_list + PlayerStatsClient.LIST_ITEMS_OFFSET: modifier_array,
                 modifier_array + PlayerStatsClient.ARRAY_DATA_OFFSET: modifier,
             }
@@ -1866,7 +2156,8 @@ class PlayerStatsTimelineTests(unittest.TestCase):
         level_entry = level_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET
         memory.pointers.update(
             {
-                player_inventory + PlayerStatsClient.TOME_INVENTORY_OFFSET: tome_inventory,
+                player_inventory
+                + PlayerStatsClient.TOME_INVENTORY_OFFSET: tome_inventory,
                 tome_inventory + PlayerStatsClient.TOME_LEVELS_DICT_OFFSET: levels_dict,
                 levels_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: level_entries,
             }
@@ -1876,7 +2167,8 @@ class PlayerStatsTimelineTests(unittest.TestCase):
                 levels_dict + PlayerStatsClient.DICT_COUNT_OFFSET: 1,
                 levels_dict + PlayerStatsClient.DICT_VERSION_OFFSET: 1,
                 level_entry + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
-                level_entry + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: PlayerStatsClient.CHAOS_TOME_ID,
+                level_entry
+                + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: PlayerStatsClient.CHAOS_TOME_ID,
                 level_entry + PlayerStatsClient.STAT_DICT_ENTRY_VALUE_OFFSET: 1,
             }
         )
@@ -1906,13 +2198,18 @@ class PlayerStatsTimelineTests(unittest.TestCase):
         modifier_entry = modifier_entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET
         memory.pointers.update(
             {
-                player_inventory + PlayerStatsClient.TOME_INVENTORY_OFFSET: tome_inventory,
+                player_inventory
+                + PlayerStatsClient.TOME_INVENTORY_OFFSET: tome_inventory,
                 tome_inventory + PlayerStatsClient.TOME_LEVELS_DICT_OFFSET: levels_dict,
                 levels_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: level_entries,
-                player_inventory + PlayerStatsClient.STAT_INVENTORY_OFFSET: stat_inventory,
-                stat_inventory + PlayerStatsClient.STAT_INVENTORY_PERMANENT_CHANGES_OFFSET: modifiers_dict,
-                modifiers_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: modifier_entries,
-                modifier_entry + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET: modifier_list,
+                player_inventory
+                + PlayerStatsClient.STAT_INVENTORY_OFFSET: stat_inventory,
+                stat_inventory
+                + PlayerStatsClient.STAT_INVENTORY_PERMANENT_CHANGES_OFFSET: modifiers_dict,
+                modifiers_dict
+                + PlayerStatsClient.DICT_ENTRIES_OFFSET: modifier_entries,
+                modifier_entry
+                + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET: modifier_list,
                 modifier_list + PlayerStatsClient.LIST_ITEMS_OFFSET: modifier_array,
                 modifier_array + PlayerStatsClient.ARRAY_DATA_OFFSET: first_modifier,
             }
@@ -1922,7 +2219,8 @@ class PlayerStatsTimelineTests(unittest.TestCase):
                 levels_dict + PlayerStatsClient.DICT_COUNT_OFFSET: 1,
                 levels_dict + PlayerStatsClient.DICT_VERSION_OFFSET: 1,
                 level_entry + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
-                level_entry + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: PlayerStatsClient.CHAOS_TOME_ID,
+                level_entry
+                + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: PlayerStatsClient.CHAOS_TOME_ID,
                 level_entry + PlayerStatsClient.STAT_DICT_ENTRY_VALUE_OFFSET: 2,
                 modifiers_dict + PlayerStatsClient.DICT_COUNT_OFFSET: 1,
                 modifiers_dict + PlayerStatsClient.DICT_VERSION_OFFSET: 1,
@@ -1960,15 +2258,11 @@ class PlayerStatsTimelineTests(unittest.TestCase):
             client.get_chaos_tracking_state(owner_stats)
 
         memory.pointers[second_modifier_slot] = second_modifier
-        memory.ints[
-            second_modifier + PlayerStatsClient.STAT_MODIFIER_STAT_OFFSET
-        ] = 30
+        memory.ints[second_modifier + PlayerStatsClient.STAT_MODIFIER_STAT_OFFSET] = 30
         with self.assertRaisesRegex(MemoryReadError, "unexpected stat id"):
             client.get_chaos_tracking_state(owner_stats)
 
-        memory.ints[
-            second_modifier + PlayerStatsClient.STAT_MODIFIER_STAT_OFFSET
-        ] = 12
+        memory.ints[second_modifier + PlayerStatsClient.STAT_MODIFIER_STAT_OFFSET] = 12
 
         second_value_address = (
             second_modifier + PlayerStatsClient.STAT_MODIFIER_VALUE_OFFSET
@@ -1984,7 +2278,9 @@ class PlayerStatsTimelineTests(unittest.TestCase):
         _, modifiers = client.get_chaos_tracking_state(owner_stats)
         self.assertEqual(len(modifiers[12]), 2)
 
-    def test_chaos_tracking_state_retries_failed_modifier_dictionary_rescan(self) -> None:
+    def test_chaos_tracking_state_retries_failed_modifier_dictionary_rescan(
+        self,
+    ) -> None:
         memory = build_player_stats_memory()
         owner_stats = 0x20000300
         player_inventory = 0x20001600
@@ -2005,16 +2301,22 @@ class PlayerStatsTimelineTests(unittest.TestCase):
         luck_entry = damage_entry + PlayerStatsClient.DICT_ENTRY_SIZE
         memory.pointers.update(
             {
-                player_inventory + PlayerStatsClient.TOME_INVENTORY_OFFSET: tome_inventory,
+                player_inventory
+                + PlayerStatsClient.TOME_INVENTORY_OFFSET: tome_inventory,
                 tome_inventory + PlayerStatsClient.TOME_LEVELS_DICT_OFFSET: levels_dict,
                 levels_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: level_entries,
-                player_inventory + PlayerStatsClient.STAT_INVENTORY_OFFSET: stat_inventory,
-                stat_inventory + PlayerStatsClient.STAT_INVENTORY_PERMANENT_CHANGES_OFFSET: modifiers_dict,
-                modifiers_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: modifier_entries,
-                damage_entry + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET: damage_list,
+                player_inventory
+                + PlayerStatsClient.STAT_INVENTORY_OFFSET: stat_inventory,
+                stat_inventory
+                + PlayerStatsClient.STAT_INVENTORY_PERMANENT_CHANGES_OFFSET: modifiers_dict,
+                modifiers_dict
+                + PlayerStatsClient.DICT_ENTRIES_OFFSET: modifier_entries,
+                damage_entry
+                + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET: damage_list,
                 damage_list + PlayerStatsClient.LIST_ITEMS_OFFSET: damage_array,
                 damage_array + PlayerStatsClient.ARRAY_DATA_OFFSET: damage_modifier,
-                luck_entry + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET: luck_list,
+                luck_entry
+                + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET: luck_list,
                 luck_list + PlayerStatsClient.LIST_ITEMS_OFFSET: luck_array,
                 luck_array + PlayerStatsClient.ARRAY_DATA_OFFSET: luck_modifier,
             }
@@ -2024,7 +2326,8 @@ class PlayerStatsTimelineTests(unittest.TestCase):
                 levels_dict + PlayerStatsClient.DICT_COUNT_OFFSET: 1,
                 levels_dict + PlayerStatsClient.DICT_VERSION_OFFSET: 1,
                 level_entry + PlayerStatsClient.DICT_ENTRY_HASH_CODE_OFFSET: 1,
-                level_entry + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: PlayerStatsClient.CHAOS_TOME_ID,
+                level_entry
+                + PlayerStatsClient.STAT_DICT_ENTRY_KEY_OFFSET: PlayerStatsClient.CHAOS_TOME_ID,
                 level_entry + PlayerStatsClient.STAT_DICT_ENTRY_VALUE_OFFSET: 2,
                 modifiers_dict + PlayerStatsClient.DICT_COUNT_OFFSET: 1,
                 modifiers_dict + PlayerStatsClient.DICT_VERSION_OFFSET: 1,
@@ -2051,7 +2354,9 @@ class PlayerStatsTimelineTests(unittest.TestCase):
         client = PlayerStatsClient(memory=memory)
         self.assertEqual(set(client.get_chaos_tracking_state(owner_stats)[1]), {12})
 
-        luck_list_address = luck_entry + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET
+        luck_list_address = (
+            luck_entry + PlayerStatsClient.WEAPON_DICT_ENTRY_VALUE_OFFSET
+        )
         memory.pointers[luck_list_address] = 0
         memory.ints[modifiers_dict + PlayerStatsClient.DICT_COUNT_OFFSET] = 2
 
@@ -2065,7 +2370,9 @@ class PlayerStatsTimelineTests(unittest.TestCase):
         _, modifiers = client.get_chaos_tracking_state(owner_stats)
         self.assertEqual(set(modifiers), {12, 30})
 
-    def test_get_passive_items_falls_back_when_primary_dictionary_read_fails(self) -> None:
+    def test_get_passive_items_falls_back_when_primary_dictionary_read_fails(
+        self,
+    ) -> None:
         memory = build_player_stats_memory()
         owner_stats = 0x20000300
         inventory_container = 0x21000000
@@ -2079,12 +2386,18 @@ class PlayerStatsTimelineTests(unittest.TestCase):
 
         memory.pointers.update(
             {
-                owner_stats + PlayerStatsClient.INVENTORY_CONTAINER_OFFSET: inventory_container,
-                owner_stats + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
-                player_inventory + PlayerStatsClient.ITEM_INVENTORY_OFFSET: item_inventory,
-                item_inventory + PlayerStatsClient.ITEM_INVENTORY_ITEMS_DICT_OFFSET: passive_item_dict,
+                owner_stats
+                + PlayerStatsClient.INVENTORY_CONTAINER_OFFSET: inventory_container,
+                owner_stats
+                + PlayerStatsClient.PLAYER_INVENTORY_OFFSET: player_inventory,
+                player_inventory
+                + PlayerStatsClient.ITEM_INVENTORY_OFFSET: item_inventory,
+                item_inventory
+                + PlayerStatsClient.ITEM_INVENTORY_ITEMS_DICT_OFFSET: passive_item_dict,
                 passive_item_dict + PlayerStatsClient.DICT_ENTRIES_OFFSET: entries,
-                entries + PlayerStatsClient.DICT_ENTRY_START_OFFSET + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET: item_value,
+                entries
+                + PlayerStatsClient.DICT_ENTRY_START_OFFSET
+                + PlayerStatsClient.DICT_ENTRY_VALUE_OFFSET: item_value,
                 item_value + PlayerStatsClient.ITEM_CLASS_META_OFFSET: class_meta,
                 class_meta + PlayerStatsClient.CLASS_META_NAME_PTR_OFFSET: name_ptr,
             }
@@ -2124,12 +2437,19 @@ class PlayerStatsTimelineTests(unittest.TestCase):
             {
                 type_info: class_ptr,
                 class_ptr + PlayerStatsClient.CLASS_STATIC_FIELDS_OFFSET: static_fields,
-                static_fields + PlayerStatsClient.RUN_UNLOCKABLES_BANISHED_ITEMS_OFFSET: item_set,
-                static_fields + PlayerStatsClient.RUN_UNLOCKABLES_BANISHED_UPGRADABLES_OFFSET: upgradable_set,
+                static_fields
+                + PlayerStatsClient.RUN_UNLOCKABLES_BANISHED_ITEMS_OFFSET: item_set,
+                static_fields
+                + PlayerStatsClient.RUN_UNLOCKABLES_BANISHED_UPGRADABLES_OFFSET: upgradable_set,
                 item_set + PlayerStatsClient.HASHSET_SLOTS_OFFSET: item_slots,
-                upgradable_set + PlayerStatsClient.HASHSET_SLOTS_OFFSET: upgradable_slots,
-                item_slots + PlayerStatsClient.HASHSET_SLOT_START_OFFSET + PlayerStatsClient.HASHSET_SLOT_VALUE_OFFSET: item_data,
-                upgradable_slots + PlayerStatsClient.HASHSET_SLOT_START_OFFSET + PlayerStatsClient.HASHSET_SLOT_VALUE_OFFSET: tome_data,
+                upgradable_set
+                + PlayerStatsClient.HASHSET_SLOTS_OFFSET: upgradable_slots,
+                item_slots
+                + PlayerStatsClient.HASHSET_SLOT_START_OFFSET
+                + PlayerStatsClient.HASHSET_SLOT_VALUE_OFFSET: item_data,
+                upgradable_slots
+                + PlayerStatsClient.HASHSET_SLOT_START_OFFSET
+                + PlayerStatsClient.HASHSET_SLOT_VALUE_OFFSET: tome_data,
                 item_data + PlayerStatsClient.OBJECT_KLASS_OFFSET: item_klass,
                 item_klass + PlayerStatsClient.KLASS_NAME_PTR_OFFSET: item_klass_name,
                 tome_data + PlayerStatsClient.OBJECT_KLASS_OFFSET: tome_klass,
@@ -2142,8 +2462,12 @@ class PlayerStatsTimelineTests(unittest.TestCase):
                 item_set + PlayerStatsClient.HASHSET_LAST_INDEX_OFFSET: 1,
                 upgradable_set + PlayerStatsClient.HASHSET_COUNT_OFFSET: 1,
                 upgradable_set + PlayerStatsClient.HASHSET_LAST_INDEX_OFFSET: 1,
-                item_slots + PlayerStatsClient.HASHSET_SLOT_START_OFFSET + PlayerStatsClient.HASHSET_SLOT_HASH_CODE_OFFSET: 1,
-                upgradable_slots + PlayerStatsClient.HASHSET_SLOT_START_OFFSET + PlayerStatsClient.HASHSET_SLOT_HASH_CODE_OFFSET: 1,
+                item_slots
+                + PlayerStatsClient.HASHSET_SLOT_START_OFFSET
+                + PlayerStatsClient.HASHSET_SLOT_HASH_CODE_OFFSET: 1,
+                upgradable_slots
+                + PlayerStatsClient.HASHSET_SLOT_START_OFFSET
+                + PlayerStatsClient.HASHSET_SLOT_HASH_CODE_OFFSET: 1,
                 item_data + PlayerStatsClient.ITEM_DATA_ENUM_OFFSET: 35,
                 tome_data + PlayerStatsClient.TOME_DATA_ENUM_OFFSET: 15,
             }
@@ -2221,13 +2545,19 @@ class PlayerStatsTimelineTests(unittest.TestCase):
             "+24.5",
         )
 
-    def test_format_chaos_tome_stat_delta_converts_crit_damage_to_effective_scale(self) -> None:
+    def test_format_chaos_tome_stat_delta_converts_crit_damage_to_effective_scale(
+        self,
+    ) -> None:
         self.assertEqual(
-            format_chaos_tome_stat_delta("Crit Damage", 1.31, PlayerStatFormat.MULTIPLIER),
+            format_chaos_tome_stat_delta(
+                "Crit Damage", 1.31, PlayerStatFormat.MULTIPLIER
+            ),
             "+262%",
         )
 
-    def test_chaos_tome_snapshot_display_delta_converts_pickup_range_to_meters(self) -> None:
+    def test_chaos_tome_snapshot_display_delta_converts_pickup_range_to_meters(
+        self,
+    ) -> None:
         stat = ChaosTomeStatSnapshot(
             stat_id=29,
             label="Pickup Range",

@@ -14,6 +14,7 @@ The count is asserted here dynamically rather than read off a hand-maintained
 table in the census, because a static map cannot tell whether the collapse
 actually happened -- it only records what someone believed.
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401
@@ -127,7 +128,9 @@ class TasksThreadTheContextDownTests(unittest.TestCase):
     tamper broke.
     """
 
-    def test_the_recording_lifecycle_task_hands_its_pass_to_sync_run_state(self) -> None:
+    def test_the_recording_lifecycle_task_hands_its_pass_to_sync_run_state(
+        self,
+    ) -> None:
         received: list = []
         service, world = build_refresh_tasks(stats_client=_client([]))
         world.capture.sync_run_state = lambda context=None: (

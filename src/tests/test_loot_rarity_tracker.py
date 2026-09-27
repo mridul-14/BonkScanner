@@ -10,6 +10,7 @@ isolation, except where only a module-level call can reach the case.
 Design, measured windows and evidence levels: `docs/updates/functional_updates.md`,
 item 5 ("Verified Game Mechanics" / "Detection Design").
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401  -- puts `src/` on sys.path regardless of collection order
@@ -118,7 +119,9 @@ class LootRun:
         )
         return self
 
-    def acquire(self, item: str, *, counters: dict[str, int] | None = None) -> "LootRun":
+    def acquire(
+        self, item: str, *, counters: dict[str, int] | None = None
+    ) -> "LootRun":
         """One acquisition, observed on this pass and confirmed on the next."""
         self.tick(self.items + (item,), counters=counters)
         return self.tick()
@@ -143,7 +146,9 @@ class LootRun:
 
 def expectation_for(luck: float, rolls: int = 1) -> dict[str, float]:
     probabilities = calculate_luck_rarity_probabilities(luck)
-    return {tier: (value or 0.0) / 100.0 * rolls for tier, value in probabilities.items()}
+    return {
+        tier: (value or 0.0) / 100.0 * rolls for tier, value in probabilities.items()
+    }
 
 
 class LootExclusionTests(unittest.TestCase):
@@ -170,7 +175,9 @@ class LootExclusionTests(unittest.TestCase):
         self.assertEqual(run.stats().outstanding_tier_debts, ())
 
         run.acquire(LEGENDARY_ITEMS[2])
-        self.assertEqual(run.actual()["LEGENDARY"], 2, "the debt is settled, not standing")
+        self.assertEqual(
+            run.actual()["LEGENDARY"], 2, "the debt is settled, not standing"
+        )
 
     def test_a_second_decrease_before_the_first_settles_queues(self) -> None:
         """Two crafts owe two exclusions. A set, or a single slot, would let the
@@ -181,9 +188,7 @@ class LootExclusionTests(unittest.TestCase):
 
         run.lose(LEGENDARY_ITEMS[0])
         run.lose(LEGENDARY_ITEMS[1])
-        self.assertEqual(
-            run.stats().outstanding_tier_debts, ("LEGENDARY", "LEGENDARY")
-        )
+        self.assertEqual(run.stats().outstanding_tier_debts, ("LEGENDARY", "LEGENDARY"))
 
         before = run.actual()["LEGENDARY"]
         run.acquire(LEGENDARY_ITEMS[2])
@@ -241,11 +246,15 @@ class LootExclusionTests(unittest.TestCase):
             counters={**idle, loot.MOAI_COUNTER_LABEL: 1},
         )
         run.tick(counters={**idle, loot.MOAI_COUNTER_LABEL: 1})
-        self.assertEqual(run.actual()["LEGENDARY"], 0, "the Moai item is not a chest roll")
+        self.assertEqual(
+            run.actual()["LEGENDARY"], 0, "the Moai item is not a chest roll"
+        )
 
         # Shady Guy, counter one pass behind its item: the gain has been
         # observed but not yet credited when the increment is read.
-        run.tick(run.items + (RARE_ITEM,), counters={**idle, loot.MOAI_COUNTER_LABEL: 1})
+        run.tick(
+            run.items + (RARE_ITEM,), counters={**idle, loot.MOAI_COUNTER_LABEL: 1}
+        )
         run.tick(
             counters={
                 **idle,
@@ -422,7 +431,9 @@ class LootAccumulationTests(unittest.TestCase):
         for tier, value in contribution.items():
             self.assertAlmostEqual(after.expected[tier] - before.expected[tier], value)
 
-    def test_first_banish_collection_is_a_baseline_and_non_items_are_ignored(self) -> None:
+    def test_first_banish_collection_is_a_baseline_and_non_items_are_ignored(
+        self,
+    ) -> None:
         state = loot._LootState()
         loot.process_banishes(
             state,
@@ -456,9 +467,7 @@ class LootAccumulationTests(unittest.TestCase):
         )
         self.assertEqual(run.actual()["RARE"], 1, "the chest banish is a roll")
 
-        run.acquire(
-            LEGENDARY_ITEMS[0], counters={**idle, loot.MOAI_COUNTER_LABEL: 1}
-        )
+        run.acquire(LEGENDARY_ITEMS[0], counters={**idle, loot.MOAI_COUNTER_LABEL: 1})
         self.assertEqual(run.actual()["LEGENDARY"], 0, "the Moai debt remains")
 
     def test_an_unresolvable_rarity_contributes_to_neither_side(self) -> None:
@@ -518,7 +527,9 @@ class LootAccumulationTests(unittest.TestCase):
         self.assertTrue(early.stats().available)
         self.assertEqual(early.stats().actual["LEGENDARY"], 1)
 
-    def test_an_empty_inventory_on_the_first_map_is_measurable_however_late(self) -> None:
+    def test_an_empty_inventory_on_the_first_map_is_measurable_however_late(
+        self,
+    ) -> None:
         """What makes a run unmeasurable is the block of items already held, not
         the clock. `initial_item_increase_candidates` builds a candidate only
         `if count > 0`, so an empty inventory absorbs nothing and no roll has
@@ -797,9 +808,7 @@ class LootAccumulationTests(unittest.TestCase):
         loot.observe_run_position(
             state, stage_index=1, game_time_seconds=1500.0, item_count=None
         )
-        loot.process_item_gains(
-            state, (_gain(LEGENDARY_ITEMS[0], captured_at=1500.0),)
-        )
+        loot.process_item_gains(state, (_gain(LEGENDARY_ITEMS[0], captured_at=1500.0),))
         self.assertEqual(state.actual["LEGENDARY"], 1)
 
         # The item lane sees the new match first and starts the run itself.
@@ -850,7 +859,9 @@ class LootStatsOnRuntimeSnapshotTests(unittest.TestCase):
 
         published = run.tracker.runtime_snapshot().loot_stats
         self.assertFalse(published.available)
-        self.assertTrue(published.availability_decided, "a late attach decides immediately")
+        self.assertTrue(
+            published.availability_decided, "a late attach decides immediately"
+        )
 
         pending = LootRun().begin(())
         pending_stats = pending.tracker.runtime_snapshot().loot_stats
@@ -903,7 +914,9 @@ class LootStatsInRecordingsTests(unittest.TestCase):
         self.assertIsNone(values.loot_expected)
 
 
-def _gain(item_name: str, *, captured_at: float, luck: float = DEFAULT_LUCK) -> ItemGainEvent:
+def _gain(
+    item_name: str, *, captured_at: float, luck: float = DEFAULT_LUCK
+) -> ItemGainEvent:
     return ItemGainEvent(
         item_name=item_name,
         gained_count=1,

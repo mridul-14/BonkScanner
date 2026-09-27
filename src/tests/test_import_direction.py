@@ -92,8 +92,7 @@ KNOWN_VIOLATIONS: Dict[Tuple[str, str], str] = {}
 
 # Layered package -> unlayered top-level module. Debt, not violation: the target
 # has no layer yet, so no direction can be assigned to the edge.
-TOPLEVEL_DEBT: Dict[Tuple[str, str], str] = {
-}
+TOPLEVEL_DEBT: Dict[Tuple[str, str], str] = {}
 
 # Edges under `if TYPE_CHECKING:`. Not runtime dependencies -- the import never
 # executes -- but they still record a direction the table forbids, so they are
@@ -388,8 +387,7 @@ class ImportDirectionTests(unittest.TestCase):
         if offenders:
             self.fail(
                 "core/ must import nothing but stdlib and other core "
-                "modules:\n"
-                + "\n".join("  " + edge.describe() for edge in offenders)
+                "modules:\n" + "\n".join("  " + edge.describe() for edge in offenders)
             )
 
     def test_scan_reaches_the_whole_tree(self) -> None:
@@ -506,7 +504,9 @@ class ImportResolutionTests(unittest.TestCase):
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             for node in tree.body:
                 if isinstance(node, (ast.Import, ast.ImportFrom)):
-                    module_level_linenos.add((path.relative_to(SRC_DIR).as_posix(), node.lineno))
+                    module_level_linenos.add(
+                        (path.relative_to(SRC_DIR).as_posix(), node.lineno)
+                    )
 
         nested = [
             edge

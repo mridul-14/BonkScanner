@@ -145,7 +145,9 @@ def build_refresh_tasks(
         widget_refresh_active=widget_active,
         sync_overlay_state=lambda: world.overlay_syncs.append(1),
         sync_in_game_kps=lambda: world.in_game_kps_syncs.append(1),
-        refresh_session_tracked_items=lambda: world.session_tracked_item_refreshes.append(1),
+        refresh_session_tracked_items=lambda: (
+            world.session_tracked_item_refreshes.append(1)
+        ),
         refresh_required=_predicate(refresh_required),
         permanent_source_recovery_job_factory=permanent_source_recovery_job_factory,
     )

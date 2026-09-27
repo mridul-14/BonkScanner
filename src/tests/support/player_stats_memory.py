@@ -68,8 +68,12 @@ def build_player_stats_memory(
         twitch_bot_active=_predicate(twitch_bot_active),
         overlay_refresh_wanted=_predicate(overlay_refresh_wanted),
         read_disabled_items_cache=lambda: world.disabled_items_cache,
-        write_disabled_items_cache=lambda value: setattr(world, "disabled_items_cache", value),
-        read_disabled_items_refresh_pending=lambda: world.disabled_items_refresh_pending,
+        write_disabled_items_cache=lambda value: setattr(
+            world, "disabled_items_cache", value
+        ),
+        read_disabled_items_refresh_pending=lambda: (
+            world.disabled_items_refresh_pending
+        ),
         write_disabled_items_refresh_pending=lambda value: setattr(
             world, "disabled_items_refresh_pending", value
         ),

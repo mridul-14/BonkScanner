@@ -44,13 +44,34 @@ MAX_HP_LEGENDARY = _entry(4, 0, "Max HP", 30.0, PlayerStatFormat.FLAT, 2)
 class ChargeShrineTrackerTests(unittest.TestCase):
     def test_current_binary_fingerprint_contract_contains_all_28_stats(self):
         expected = {
-            0: (15.0, 2), 1: (20.0, 2), 2: (5.0, 2), 3: (5.0, 2),
-            4: (0.05, 2), 5: (0.05, 2), 9: (0.08, 0), 10: (0.08, 0),
-            11: (0.10, 0), 12: (0.12, 0), 15: (0.06, 0), 16: (1.0, 2),
-            17: (0.06, 2), 18: (0.05, 2), 19: (0.10, 0), 23: (0.10, 0),
-            24: (0.10, 0), 25: (0.08, 0), 26: (0.10, 0), 29: (0.20, 0),
-            30: (0.05, 2), 31: (0.075, 0), 32: (0.075, 0), 38: (0.08, 2),
-            39: (0.15, 0), 40: (0.10, 0), 41: (0.05, 0), 46: (1.0, 2),
+            0: (15.0, 2),
+            1: (20.0, 2),
+            2: (5.0, 2),
+            3: (5.0, 2),
+            4: (0.05, 2),
+            5: (0.05, 2),
+            9: (0.08, 0),
+            10: (0.08, 0),
+            11: (0.10, 0),
+            12: (0.12, 0),
+            15: (0.06, 0),
+            16: (1.0, 2),
+            17: (0.06, 2),
+            18: (0.05, 2),
+            19: (0.10, 0),
+            23: (0.10, 0),
+            24: (0.10, 0),
+            25: (0.08, 0),
+            26: (0.10, 0),
+            29: (0.20, 0),
+            30: (0.05, 2),
+            31: (0.075, 0),
+            32: (0.075, 0),
+            38: (0.08, 2),
+            39: (0.15, 0),
+            40: (0.10, 0),
+            41: (0.05, 0),
+            46: (1.0, 2),
         }
         actual = {
             stat_id: (rule.base_value, rule.modify_type)
@@ -149,7 +170,9 @@ class ChargeShrineTrackerTests(unittest.TestCase):
         self.assertEqual((match.rarity, match.wrench_stacks), ("Common", 2))
         self.assertIsNone(match_shrine_reward(entry, wrench_stacks=0))
 
-    def test_late_attach_reconstructs_fingerprinted_rewards_without_map_requirements(self):
+    def test_late_attach_reconstructs_fingerprinted_rewards_without_map_requirements(
+        self,
+    ):
         state = _ShrineState()
         update(
             state,
@@ -170,8 +193,8 @@ class ChargeShrineTrackerTests(unittest.TestCase):
         )
         service, world = build_refresh_tasks(stats_client=client)
         updates = []
-        world.tracker.update_charge_shrines = (
-            lambda current, **kwargs: updates.append((current, kwargs))
+        world.tracker.update_charge_shrines = lambda current, **kwargs: updates.append(
+            (current, kwargs)
         )
         context = RefreshTickContext(pass_id=1, started_at=1.0)
 
@@ -250,10 +273,7 @@ class ChargeShrineTrackerTests(unittest.TestCase):
                 state,
                 ChargeShrineReading(
                     charged_total=charged_total,
-                    shown_log=(
-                        mod_luck_entries
-                        + real_damage_entries[:charged_total]
-                    ),
+                    shown_log=(mod_luck_entries + real_damage_entries[:charged_total]),
                 ),
                 wrench_stacks=0,
             )
@@ -338,11 +358,11 @@ class ChargeShrineTrackerTests(unittest.TestCase):
             capture=capture,
             vod_recorder=recorder,
         )
-        world.tracker.update_charge_shrines = (
-            lambda _reading, **_kwargs: events.append("shrines")
+        world.tracker.update_charge_shrines = lambda _reading, **_kwargs: events.append(
+            "shrines"
         )
-        service._refresh_chaos_tome_task = (
-            lambda _context: events.append("permanent_sources") or True
+        service._refresh_chaos_tome_task = lambda _context: (
+            events.append("permanent_sources") or True
         )
 
         self.assertTrue(
@@ -368,7 +388,8 @@ class ChargeShrineTrackerTests(unittest.TestCase):
         client = PlayerStatsClient.__new__(PlayerStatsClient)
         client.memory = Memory()
         client._resolve_type_static_fields = lambda offset, label: (
-            events.append(("resolve", label)) or (0x1000 if label == "ShrineLogs" else 0x2000)
+            events.append(("resolve", label))
+            or (0x1000 if label == "ShrineLogs" else 0x2000)
         )
         client._read_shrine_log = lambda address: (
             events.append(("log", address)) or (DAMAGE,)

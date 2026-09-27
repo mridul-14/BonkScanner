@@ -96,7 +96,9 @@ class SupporterAccessControllerTests(unittest.TestCase):
         first.activate(RAW_KEY)
         self.credentials["key"] = RAW_KEY
         second = self.controller(
-            FakeClient([SupporterAccessError("The supporter service could not be reached.")])
+            FakeClient(
+                [SupporterAccessError("The supporter service could not be reached.")]
+            )
         )
 
         self.assertEqual(second.state.status, "cached_valid")

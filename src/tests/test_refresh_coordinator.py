@@ -8,12 +8,35 @@ from app.refresh_coordinator import RefreshCoordinator, RefreshTask, RefreshTick
 
 
 class RefreshCoordinatorTests(unittest.TestCase):
-    def test_dependencies_override_phase_and_preserve_stable_registration_order(self) -> None:
+    def test_dependencies_override_phase_and_preserve_stable_registration_order(
+        self,
+    ) -> None:
         calls = []
         coordinator = RefreshCoordinator(clock=lambda: 10.0)
-        coordinator.register(RefreshTask("second", 1, lambda: True, lambda _ctx: calls.append("second"), phase=0, after=("first",)))
-        coordinator.register(RefreshTask("peer", 1, lambda: True, lambda _ctx: calls.append("peer"), phase=0))
-        coordinator.register(RefreshTask("first", 1, lambda: False, lambda _ctx: self.fail("inactive predecessor must not run"), phase=10))
+        coordinator.register(
+            RefreshTask(
+                "second",
+                1,
+                lambda: True,
+                lambda _ctx: calls.append("second"),
+                phase=0,
+                after=("first",),
+            )
+        )
+        coordinator.register(
+            RefreshTask(
+                "peer", 1, lambda: True, lambda _ctx: calls.append("peer"), phase=0
+            )
+        )
+        coordinator.register(
+            RefreshTask(
+                "first",
+                1,
+                lambda: False,
+                lambda _ctx: self.fail("inactive predecessor must not run"),
+                phase=10,
+            )
+        )
 
         self.assertEqual(coordinator.tick(), ("peer", "second"))
         self.assertEqual(calls, ["peer", "second"])
@@ -21,15 +44,27 @@ class RefreshCoordinatorTests(unittest.TestCase):
     def test_unknown_dependency_is_rejected_before_any_task_runs(self) -> None:
         calls = []
         coordinator = RefreshCoordinator(clock=lambda: 10.0)
-        coordinator.register(RefreshTask("task", 1, lambda: True, lambda _ctx: calls.append(1), after=("missing",)))
+        coordinator.register(
+            RefreshTask(
+                "task",
+                1,
+                lambda: True,
+                lambda _ctx: calls.append(1),
+                after=("missing",),
+            )
+        )
         with self.assertRaisesRegex(ValueError, "Unknown refresh task dependencies"):
             coordinator.tick()
         self.assertEqual(calls, [])
 
     def test_dependency_cycle_is_rejected_before_any_task_runs(self) -> None:
         coordinator = RefreshCoordinator(clock=lambda: 10.0)
-        coordinator.register(RefreshTask("a", 1, lambda: True, lambda _ctx: None, after=("b",)))
-        coordinator.register(RefreshTask("b", 1, lambda: True, lambda _ctx: None, after=("a",)))
+        coordinator.register(
+            RefreshTask("a", 1, lambda: True, lambda _ctx: None, after=("b",))
+        )
+        coordinator.register(
+            RefreshTask("b", 1, lambda: True, lambda _ctx: None, after=("a",))
+        )
         with self.assertRaisesRegex(ValueError, "dependency cycle"):
             coordinator.tick()
 
@@ -37,8 +72,12 @@ class RefreshCoordinatorTests(unittest.TestCase):
         now = [10.0]
         events = []
         outcomes = [False, False, False, True]
-        coordinator = RefreshCoordinator(clock=lambda: now[0], health_event=events.append)
-        coordinator.register(RefreshTask("health", 1, lambda: True, lambda _ctx: outcomes.pop(0)))
+        coordinator = RefreshCoordinator(
+            clock=lambda: now[0], health_event=events.append
+        )
+        coordinator.register(
+            RefreshTask("health", 1, lambda: True, lambda _ctx: outcomes.pop(0))
+        )
 
         coordinator.tick()
         now[0] += 1.0
@@ -48,7 +87,9 @@ class RefreshCoordinatorTests(unittest.TestCase):
         now[0] += 1.0
         coordinator.tick()
 
-        self.assertEqual([event.state for event in events], ["failure", "failure", "recovery"])
+        self.assertEqual(
+            [event.state for event in events], ["failure", "failure", "recovery"]
+        )
         diagnostics = coordinator.diagnostics()[0]
         self.assertIsNotNone(diagnostics.last_duration_ms)
         self.assertEqual(diagnostics.state_changed_at, now[0])
@@ -58,7 +99,9 @@ class RefreshCoordinatorTests(unittest.TestCase):
         calls: list[str] = []
         coordinator = RefreshCoordinator(clock=lambda: now[0])
         coordinator.register(
-            RefreshTask("combat", 500, lambda: True, lambda _context: calls.append("combat"))
+            RefreshTask(
+                "combat", 500, lambda: True, lambda _context: calls.append("combat")
+            )
         )
 
         self.assertEqual(coordinator.tick(), ("combat",))
@@ -73,7 +116,12 @@ class RefreshCoordinatorTests(unittest.TestCase):
         calls: list[str] = []
         coordinator = RefreshCoordinator(clock=lambda: now[0])
         coordinator.register(
-            RefreshTask("chests", 10_000, lambda: active[0], lambda _context: calls.append("chests"))
+            RefreshTask(
+                "chests",
+                10_000,
+                lambda: active[0],
+                lambda _context: calls.append("chests"),
+            )
         )
 
         self.assertEqual(coordinator.tick(), ())
@@ -83,8 +131,12 @@ class RefreshCoordinatorTests(unittest.TestCase):
 
     def test_failure_is_reported_without_blocking_other_tasks(self) -> None:
         coordinator = RefreshCoordinator(clock=lambda: 10.0)
-        coordinator.register(RefreshTask("bad", 500, lambda: True, lambda _context: False))
-        coordinator.register(RefreshTask("good", 500, lambda: True, lambda _context: True))
+        coordinator.register(
+            RefreshTask("bad", 500, lambda: True, lambda _context: False)
+        )
+        coordinator.register(
+            RefreshTask("good", 500, lambda: True, lambda _context: True)
+        )
 
         self.assertEqual(coordinator.tick(), ("bad", "good"))
         diagnostics = {entry.task_id: entry for entry in coordinator.diagnostics()}
@@ -128,13 +180,17 @@ class RefreshCoordinatorTests(unittest.TestCase):
                 lambda _context: self.fail("task with failed demand must not run"),
             )
         )
-        coordinator.register(RefreshTask("good", 500, lambda: True, lambda _context: True))
+        coordinator.register(
+            RefreshTask("good", 500, lambda: True, lambda _context: True)
+        )
 
         self.assertEqual(coordinator.tick(), ("good",))
         diagnostics = {entry.task_id: entry for entry in coordinator.diagnostics()}
         self.assertFalse(diagnostics["bad_required"].active)
         self.assertEqual(diagnostics["bad_required"].failure_count, 1)
-        self.assertIn("required check failed", diagnostics["bad_required"].last_error or "")
+        self.assertIn(
+            "required check failed", diagnostics["bad_required"].last_error or ""
+        )
         self.assertTrue(diagnostics["good"].active)
 
     def test_tasks_share_a_tick_context(self) -> None:
@@ -143,7 +199,11 @@ class RefreshCoordinatorTests(unittest.TestCase):
         values: list[int] = []
 
         def read_owner(context):
-            values.append(context.get_or_create("owner", lambda: factory_calls.append("owner") or 42))
+            values.append(
+                context.get_or_create(
+                    "owner", lambda: factory_calls.append("owner") or 42
+                )
+            )
 
         coordinator.register(RefreshTask("powerups", 500, lambda: True, read_owner))
         coordinator.register(RefreshTask("chaos", 500, lambda: True, read_owner))
@@ -160,10 +220,14 @@ class PassIdentityTests(unittest.TestCase):
         seen_pass_ids: list[int] = []
         coordinator = RefreshCoordinator(clock=lambda: 10.0)
         coordinator.register(
-            RefreshTask("a", 500, lambda: True, lambda ctx: seen_pass_ids.append(ctx.pass_id))
+            RefreshTask(
+                "a", 500, lambda: True, lambda ctx: seen_pass_ids.append(ctx.pass_id)
+            )
         )
         coordinator.register(
-            RefreshTask("b", 500, lambda: True, lambda ctx: seen_pass_ids.append(ctx.pass_id))
+            RefreshTask(
+                "b", 500, lambda: True, lambda ctx: seen_pass_ids.append(ctx.pass_id)
+            )
         )
 
         coordinator.tick()
@@ -176,7 +240,11 @@ class PassIdentityTests(unittest.TestCase):
         now = [10.0]
         pass_ids: list[int] = []
         coordinator = RefreshCoordinator(clock=lambda: now[0])
-        coordinator.register(RefreshTask("a", 500, lambda: True, lambda ctx: pass_ids.append(ctx.pass_id)))
+        coordinator.register(
+            RefreshTask(
+                "a", 500, lambda: True, lambda ctx: pass_ids.append(ctx.pass_id)
+            )
+        )
 
         coordinator.tick()
         now[0] += 0.5
@@ -192,7 +260,9 @@ class PassIdentityTests(unittest.TestCase):
         started_ats: list[float] = []
         coordinator = RefreshCoordinator(clock=lambda: now[0])
         coordinator.register(
-            RefreshTask("a", 500, lambda: True, lambda ctx: started_ats.append(ctx.started_at))
+            RefreshTask(
+                "a", 500, lambda: True, lambda ctx: started_ats.append(ctx.started_at)
+            )
         )
 
         coordinator.tick()
@@ -201,7 +271,9 @@ class PassIdentityTests(unittest.TestCase):
 
         self.assertEqual(started_ats, [10.0, 10.5])
 
-    def test_rebuilding_the_coordinator_does_not_continue_the_old_numbering(self) -> None:
+    def test_rebuilding_the_coordinator_does_not_continue_the_old_numbering(
+        self,
+    ) -> None:
         """Ids are meaningless across a coordinator rebuild (section 12.3): a
         fresh coordinator is free to reuse ids a previous, discarded one used --
         there is nothing to compare them against.
@@ -212,7 +284,9 @@ class PassIdentityTests(unittest.TestCase):
         def make_coordinator() -> RefreshCoordinator:
             coordinator = RefreshCoordinator(clock=lambda: now[0])
             coordinator.register(
-                RefreshTask("a", 500, lambda: True, lambda ctx: pass_ids.append(ctx.pass_id))
+                RefreshTask(
+                    "a", 500, lambda: True, lambda ctx: pass_ids.append(ctx.pass_id)
+                )
             )
             return coordinator
 

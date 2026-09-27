@@ -70,7 +70,11 @@ class OwnershipTests(unittest.TestCase):
 
         # The two writes `gui_scanner` makes, unchanged in shape by step 22.
         self._set("active_templates", target, ["Alpha"])
-        self._set("template_stats", target, {"Alpha": {"rerolls_since_last": 0, "history": []}})
+        self._set(
+            "template_stats",
+            target,
+            {"Alpha": {"rerolls_since_last": 0, "history": []}},
+        )
 
         self.assertEqual(owner.active_templates, ["Alpha"])
         self.assertEqual(
@@ -79,10 +83,17 @@ class OwnershipTests(unittest.TestCase):
         )
         self.assertEqual(self._get("active_templates", target), ["Alpha"])
         # No second copy anywhere on the app.
-        for slot in ("active_templates", "template_stats", "_active_templates", "_template_stats"):
+        for slot in (
+            "active_templates",
+            "template_stats",
+            "_active_templates",
+            "_template_stats",
+        ):
             self.assertNotIn(slot, target.__dict__)
 
-    def test_the_getter_defaults_rather_than_raising_when_there_is_no_owner(self) -> None:
+    def test_the_getter_defaults_rather_than_raising_when_there_is_no_owner(
+        self,
+    ) -> None:
         """`MegabonkApp.__getattr__` forwards misses to `self.window`.
 
         A getter that raised AttributeError would be *caught* by that forwarding
@@ -122,7 +133,9 @@ class SyncTests(unittest.TestCase):
     """`sync` behaviour, preserved from `TemplatesMixin._sync_runtime_filters`."""
 
     def test_templates_mode_replaces_active_templates_from_the_selection(self) -> None:
-        filters = build_template_filters(selected_template_names=lambda: ["Alpha", "Gamma"])
+        filters = build_template_filters(
+            selected_template_names=lambda: ["Alpha", "Gamma"]
+        )
         filters.active_templates = ["Alpha"]
         filters.template_stats = {
             "Alpha": {"rerolls_since_last": 2, "history": [3]},
@@ -135,15 +148,17 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(filters.active_templates, ["Alpha", "Gamma"])
         # Existing stats survive; new names start at zero; dropped names are kept.
         self.assertEqual(filters.template_stats["Alpha"]["history"], [3])
-        self.assertEqual(filters.template_stats["Gamma"], {"rerolls_since_last": 0, "history": []})
-        self.assertEqual(filters.template_stats["Beta"], {"rerolls_since_last": 1, "history": [4]})
+        self.assertEqual(
+            filters.template_stats["Gamma"], {"rerolls_since_last": 0, "history": []}
+        )
+        self.assertEqual(
+            filters.template_stats["Beta"], {"rerolls_since_last": 1, "history": [4]}
+        )
 
     def test_snapshot_detaches_names_rows_and_histories(self) -> None:
         filters = build_template_filters()
         filters.active_templates = ["Alpha"]
-        filters.template_stats = {
-            "Alpha": {"rerolls_since_last": 2, "history": [3, 5]}
-        }
+        filters.template_stats = {"Alpha": {"rerolls_since_last": 2, "history": [3, 5]}}
 
         names, stats = filters.snapshot()
         names.append("Beta")
@@ -156,7 +171,9 @@ class SyncTests(unittest.TestCase):
             {"rerolls_since_last": 2, "history": [3, 5]},
         )
 
-    def test_scores_mode_uses_the_active_tiers_and_leaves_active_templates_alone(self) -> None:
+    def test_scores_mode_uses_the_active_tiers_and_leaves_active_templates_alone(
+        self,
+    ) -> None:
         filters = build_template_filters(selected_template_names=lambda: ["Alpha"])
         filters.active_templates = ["Alpha"]
 
@@ -207,8 +224,9 @@ class SyncTests(unittest.TestCase):
             {"name": "Alpha", "color": "GREEN"},
             {"name": "Gamma", "color": "LIGHTRED_EX"},
         ]
-        with patch.object(config, "EVALUATION_MODE", "templates"), patch.object(
-            config, "TEMPLATES", templates
+        with (
+            patch.object(config, "EVALUATION_MODE", "templates"),
+            patch.object(config, "TEMPLATES", templates),
         ):
             filters.sync(announce=True)
         self.assertEqual(
@@ -249,12 +267,14 @@ class SyncTests(unittest.TestCase):
         )
         templates = [{"name": "Light", "color": "BLUE"}]
         scores = {**config.SCORES_SYSTEM, "active_tiers": ["Light"]}
-        with patch.object(config, "TEMPLATES", templates), patch.object(
-            config, "EVALUATION_MODE", "templates"
+        with (
+            patch.object(config, "TEMPLATES", templates),
+            patch.object(config, "EVALUATION_MODE", "templates"),
         ):
             filters.sync()
-        with patch.object(config, "EVALUATION_MODE", "scores"), patch.object(
-            config, "SCORES_SYSTEM", scores
+        with (
+            patch.object(config, "EVALUATION_MODE", "scores"),
+            patch.object(config, "SCORES_SYSTEM", scores),
         ):
             filters.sync(announce=True)
 

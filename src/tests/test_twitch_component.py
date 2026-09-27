@@ -100,9 +100,10 @@ class TwitchSessionTests(unittest.TestCase):
         """Was `test_save_twitch_auto_connect_persists_checkbox_state`."""
         harness = build_session(tab=FakeTab(auto_connect=True))
 
-        with patch.dict(config.TWITCH_BOT, {"auto_connect": False}), patch.object(
-            config, "save_config"
-        ) as save_config:
+        with (
+            patch.dict(config.TWITCH_BOT, {"auto_connect": False}),
+            patch.object(config, "save_config") as save_config,
+        ):
             harness.session.save_auto_connect()
 
             self.assertTrue(config.TWITCH_BOT["auto_connect"])
@@ -177,9 +178,11 @@ class TwitchSessionTests(unittest.TestCase):
         seen = {}
         harness.session.validate_async = lambda **kwargs: seen.update(kwargs) or True
 
-        with patch.dict(config.TWITCH_BOT, {"auto_connect": True}), patch(
-            "app.twitch_session.set_twitch_oauth_token"
-        ), patch.object(config, "save_config"):
+        with (
+            patch.dict(config.TWITCH_BOT, {"auto_connect": True}),
+            patch("app.twitch_session.set_twitch_oauth_token"),
+            patch.object(config, "save_config"),
+        ):
             harness.session.on_auth_success("bonk", "token")
 
         self.assertEqual(
@@ -221,9 +224,11 @@ class TwitchSessionTests(unittest.TestCase):
         """Was `test_twitch_validation_success_starts_bot_when_requested`."""
         harness = build_session()
 
-        with patch.dict(config.TWITCH_BOT, {"username": "", "auto_connect": True}), patch(
-            "app.twitch_session.get_twitch_oauth_token", return_value="token"
-        ), patch.object(config, "save_config"):
+        with (
+            patch.dict(config.TWITCH_BOT, {"username": "", "auto_connect": True}),
+            patch("app.twitch_session.get_twitch_oauth_token", return_value="token"),
+            patch.object(config, "save_config"),
+        ):
             harness.session._on_validation_finished(
                 "token",
                 SimpleNamespace(valid=True, login="bonk"),
@@ -269,12 +274,17 @@ class TwitchSessionTests(unittest.TestCase):
         # changes nothing and the test passes either way. Measured: it did.
         harness.session._start_bot_after_validation = True
 
-        with patch(
-            "app.twitch_session.get_twitch_oauth_token", return_value="token"
-        ), patch.object(config, "save_config"):
+        with (
+            patch("app.twitch_session.get_twitch_oauth_token", return_value="token"),
+            patch.object(config, "save_config"),
+        ):
             harness.session._on_validation_finished(
-                "token", SimpleNamespace(valid=True, login="bonk"),
-                False, False, "", "periodic",
+                "token",
+                SimpleNamespace(valid=True, login="bonk"),
+                False,
+                False,
+                "",
+                "periodic",
             )
             self.assertFalse(harness.session._start_bot_after_validation)
             self.assertEqual(len(harness.calls["bot_workers"]), 1)
@@ -283,8 +293,12 @@ class TwitchSessionTests(unittest.TestCase):
             # suppressed by the "already running" guard and prove nothing.
             harness.session.stop_bot()
             harness.session._on_validation_finished(
-                "token", SimpleNamespace(valid=True, login="bonk"),
-                False, False, "", "periodic",
+                "token",
+                SimpleNamespace(valid=True, login="bonk"),
+                False,
+                False,
+                "",
+                "periodic",
             )
 
         self.assertEqual(len(harness.calls["bot_workers"]), 1)
@@ -292,12 +306,15 @@ class TwitchSessionTests(unittest.TestCase):
     def test_transient_validation_failure_keeps_the_token(self) -> None:
         harness = build_session()
 
-        with patch(
-            "app.twitch_session.get_twitch_oauth_token", return_value="token"
-        ), patch("app.twitch_session.delete_twitch_oauth_token") as delete_token:
+        with (
+            patch("app.twitch_session.get_twitch_oauth_token", return_value="token"),
+            patch("app.twitch_session.delete_twitch_oauth_token") as delete_token,
+        ):
             harness.session._on_validation_finished(
                 "token",
-                SimpleNamespace(valid=False, transient_error=True, error_message="down"),
+                SimpleNamespace(
+                    valid=False, transient_error=True, error_message="down"
+                ),
                 False,
                 False,
                 "",
@@ -318,11 +335,12 @@ class TwitchSessionTests(unittest.TestCase):
             )
         )
 
-        with patch.dict(config.TWITCH_BOT, {"username": "bonk"}), patch(
-            "app.twitch_session.get_twitch_oauth_token", return_value="token"
-        ), patch(
-            "app.twitch_session.delete_twitch_oauth_token"
-        ) as delete_token, patch.object(config, "save_config"):
+        with (
+            patch.dict(config.TWITCH_BOT, {"username": "bonk"}),
+            patch("app.twitch_session.get_twitch_oauth_token", return_value="token"),
+            patch("app.twitch_session.delete_twitch_oauth_token") as delete_token,
+            patch.object(config, "save_config"),
+        ):
             valid = harness.session.validate(log_on_success=False)
             self.assertEqual(config.TWITCH_BOT["username"], "")
 
@@ -345,9 +363,7 @@ class TwitchSessionTests(unittest.TestCase):
 
         with patch("app.twitch_session.get_twitch_oauth_token", return_value="token"):
             self.assertTrue(harness.session.validate_async())
-            self.assertTrue(
-                harness.session.validate_async(start_bot_on_success=True)
-            )
+            self.assertTrue(harness.session.validate_async(start_bot_on_success=True))
 
         self.assertEqual(len(harness.calls["validation"]), 1)
         self.assertTrue(harness.session._start_bot_after_validation)
@@ -369,11 +385,12 @@ class TwitchSessionTests(unittest.TestCase):
         """Was `test_disconnect_twitch_logs_revoke_warning_without_restoring_token`."""
         harness = build_session(revoke_outcome=(False, "timeout"))
 
-        with patch.dict(config.TWITCH_BOT, {"username": "bonk"}), patch(
-            "app.twitch_session.get_twitch_oauth_token", return_value="token"
-        ), patch(
-            "app.twitch_session.delete_twitch_oauth_token"
-        ) as delete_token, patch.object(config, "save_config"):
+        with (
+            patch.dict(config.TWITCH_BOT, {"username": "bonk"}),
+            patch("app.twitch_session.get_twitch_oauth_token", return_value="token"),
+            patch("app.twitch_session.delete_twitch_oauth_token") as delete_token,
+            patch.object(config, "save_config"),
+        ):
             harness.session.disconnect()
             self.assertEqual(config.TWITCH_BOT["username"], "")
 
@@ -387,10 +404,10 @@ class TwitchSessionTests(unittest.TestCase):
     def test_disconnect_without_a_token_revokes_nothing(self) -> None:
         harness = build_session()
 
-        with patch(
-            "app.twitch_session.get_twitch_oauth_token", return_value=""
-        ), patch("app.twitch_session.delete_twitch_oauth_token"), patch.object(
-            config, "save_config"
+        with (
+            patch("app.twitch_session.get_twitch_oauth_token", return_value=""),
+            patch("app.twitch_session.delete_twitch_oauth_token"),
+            patch.object(config, "save_config"),
         ):
             harness.session.disconnect()
 
@@ -399,10 +416,10 @@ class TwitchSessionTests(unittest.TestCase):
     def test_a_successful_revoke_logs_nothing(self) -> None:
         harness = build_session(revoke_outcome=(True, ""))
 
-        with patch(
-            "app.twitch_session.get_twitch_oauth_token", return_value="token"
-        ), patch("app.twitch_session.delete_twitch_oauth_token"), patch.object(
-            config, "save_config"
+        with (
+            patch("app.twitch_session.get_twitch_oauth_token", return_value="token"),
+            patch("app.twitch_session.delete_twitch_oauth_token"),
+            patch.object(config, "save_config"),
         ):
             harness.session.disconnect()
 
@@ -473,10 +490,14 @@ class TwitchSessionTests(unittest.TestCase):
         self.assertFalse(harness.session.is_bot_active())
         self.assertIn(("show_bot_status", "Stopping..."), harness.tab.calls)
 
-    def test_worker_status_is_explicitly_marshaled_before_touching_the_view(self) -> None:
+    def test_worker_status_is_explicitly_marshaled_before_touching_the_view(
+        self,
+    ) -> None:
         harness = build_session()
         callbacks = []
-        harness.session._marshal_to_ui = lambda callback: callbacks.append(callback) or True
+        harness.session._marshal_to_ui = lambda callback: (
+            callbacks.append(callback) or True
+        )
         harness.session._start_bot_worker()
         worker = harness.calls["bot_workers"][0]
         harness.tab.calls.clear()
@@ -491,7 +512,9 @@ class TwitchSessionTests(unittest.TestCase):
     def test_worker_log_severity_is_marshaled_to_the_logs_view(self) -> None:
         harness = build_session()
         callbacks = []
-        harness.session._marshal_to_ui = lambda callback: callbacks.append(callback) or True
+        harness.session._marshal_to_ui = lambda callback: (
+            callbacks.append(callback) or True
+        )
         harness.session._start_bot_worker()
         worker = harness.calls["bot_workers"][0]
 
@@ -515,7 +538,9 @@ class TwitchSessionTests(unittest.TestCase):
     def test_queued_status_from_replaced_worker_is_dropped(self) -> None:
         harness = build_session()
         callbacks = []
-        harness.session._marshal_to_ui = lambda callback: callbacks.append(callback) or True
+        harness.session._marshal_to_ui = lambda callback: (
+            callbacks.append(callback) or True
+        )
         harness.session._start_bot_worker()
         old_worker = harness.calls["bot_workers"][0]
         harness.tab.calls.clear()
@@ -555,7 +580,9 @@ class TwitchSessionTests(unittest.TestCase):
         self.assertIsNone(harness.session._bot_worker)
         self.assertEqual(worker.deleted, 1)
         self.assertIn(("show_bot_stopped",), harness.tab.calls)
-        self.assertIn(("show_bot_status", "Error: thread unavailable"), harness.tab.calls)
+        self.assertIn(
+            ("show_bot_status", "Error: thread unavailable"), harness.tab.calls
+        )
         self.assertEqual(harness.logs[-1][1], "error")
 
     def test_finished_bot_qthread_is_released(self) -> None:
@@ -573,7 +600,9 @@ class TwitchSessionTests(unittest.TestCase):
     def test_finished_worker_is_not_deleted_before_queued_cleanup(self) -> None:
         harness = build_session(tab=FakeTab(bot_status="Connected"))
         callbacks = []
-        harness.session._marshal_to_ui = lambda callback: callbacks.append(callback) or True
+        harness.session._marshal_to_ui = lambda callback: (
+            callbacks.append(callback) or True
+        )
         harness.session._start_bot_worker()
         worker = harness.calls["bot_workers"][0]
         worker.running = False
@@ -613,7 +642,9 @@ class TwitchSessionTests(unittest.TestCase):
         self.assertEqual(auth.deleted, 1)
         self.assertEqual(bot.deleted, 1)
 
-    def test_shutdown_extends_a_timed_out_worker_wait_before_window_teardown(self) -> None:
+    def test_shutdown_extends_a_timed_out_worker_wait_before_window_teardown(
+        self,
+    ) -> None:
         harness = build_session()
         validation = FakeValidationWorker("token", running=True)
         waits = []
@@ -829,7 +860,9 @@ class TwitchTabTests(unittest.TestCase):
         from ui.tabs.twitch.panel import command_checked
 
         self.assertFalse(command_checked({"commands": False}, "bonkhelp"))
-        self.assertTrue(command_checked({"commands": False, "bonkhelp": True}, "bonkhelp"))
+        self.assertTrue(
+            command_checked({"commands": False, "bonkhelp": True}, "bonkhelp")
+        )
         self.assertTrue(command_checked({}, "bonkhelp"))
 
     def test_the_opt_in_commands_start_unchecked(self) -> None:
@@ -888,9 +921,13 @@ class TwitchTabTests(unittest.TestCase):
         )
         fields.setdefault("_account_entry", SimpleNamespace(setText=lambda _v: None))
         fields.setdefault("_account_suffix", _Suffix())
-        fields.setdefault("_connect_btn", SimpleNamespace(setVisible=lambda _v: None,
-                                                          setEnabled=lambda _v: None))
-        fields.setdefault("_disconnect_btn", SimpleNamespace(setVisible=lambda _v: None))
+        fields.setdefault(
+            "_connect_btn",
+            SimpleNamespace(setVisible=lambda _v: None, setEnabled=lambda _v: None),
+        )
+        fields.setdefault(
+            "_disconnect_btn", SimpleNamespace(setVisible=lambda _v: None)
+        )
         fields.setdefault(
             "_target_channel_entry", SimpleNamespace(setPlaceholderText=lambda _v: None)
         )
@@ -943,7 +980,9 @@ class TwitchTabTests(unittest.TestCase):
         # written rather than not shown at all.
         self.assertEqual("Broken: {oops", _fill_sample_tags("Broken: {oops"))
 
-    def test_chat_preview_escapes_twitch_plain_text_before_using_rich_text(self) -> None:
+    def test_chat_preview_escapes_twitch_plain_text_before_using_rich_text(
+        self,
+    ) -> None:
         rendered = []
         checked = SimpleNamespace(isChecked=lambda: True)
         unchecked = SimpleNamespace(isChecked=lambda: False)
@@ -956,8 +995,9 @@ class TwitchTabTests(unittest.TestCase):
             "templates": {"build": "<b>{name}</b>"},
         }
 
-        with patch.object(config, "TWITCH_BOT", twitch_config), patch.object(
-            config, "DEFAULT_TWITCH_BOT", {"templates": {}}
+        with (
+            patch.object(config, "TWITCH_BOT", twitch_config),
+            patch.object(config, "DEFAULT_TWITCH_BOT", {"templates": {}}),
         ):
             tab.refresh_chat_preview()
 

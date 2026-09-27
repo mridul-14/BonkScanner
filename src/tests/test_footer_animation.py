@@ -436,9 +436,7 @@ class FooterAnimationTests(unittest.TestCase):
         _app.processEvents()
         resting_y = reminder.y()
         reminder._animation.setCurrentTime(
-            SUPPORT_REMINDER_SLIDE_IN_MS
-            + SUPPORT_REMINDER_BEAT_LEAD_IN_MS
-            + 50
+            SUPPORT_REMINDER_SLIDE_IN_MS + SUPPORT_REMINDER_BEAT_LEAD_IN_MS + 50
         )
         _app.processEvents()
 

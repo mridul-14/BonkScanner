@@ -82,9 +82,7 @@ def _overlay_config(*, master=True, widget=True, selected=None):
             "widgets": {
                 "weapon_tracker": {
                     "enabled": widget,
-                    "selected_stats": (
-                        ["damage"] if selected is None else selected
-                    ),
+                    "selected_stats": (["damage"] if selected is None else selected),
                 }
             },
         }
@@ -92,7 +90,9 @@ def _overlay_config(*, master=True, widget=True, selected=None):
 
 
 class PlayerStatsMemoryTests(unittest.TestCase):
-    def test_weapon_tracker_demand_requires_master_widget_and_nonempty_selection(self) -> None:
+    def test_weapon_tracker_demand_requires_master_widget_and_nonempty_selection(
+        self,
+    ) -> None:
         cases = (
             (False, True, ["damage"], False),
             (True, False, ["damage"], False),
@@ -100,23 +100,22 @@ class PlayerStatsMemoryTests(unittest.TestCase):
             (True, True, ["damage"], True),
         )
         for master, widget, selected, expected in cases:
-            with self.subTest(
-                master=master, widget=widget, selected=selected
-            ), patch.object(
-                config,
-                "IN_GAME_OVERLAY",
-                _overlay_config(
-                    master=master, widget=widget, selected=selected
+            with (
+                self.subTest(master=master, widget=widget, selected=selected),
+                patch.object(
+                    config,
+                    "IN_GAME_OVERLAY",
+                    _overlay_config(master=master, widget=widget, selected=selected),
                 ),
             ):
-                self.assertEqual(
-                    in_game_overlay_weapon_tracker_active(), expected
-                )
+                self.assertEqual(in_game_overlay_weapon_tracker_active(), expected)
                 self.assertEqual(
                     in_game_overlay_requires_player_stats_refresh(), expected
                 )
 
-    def test_weapon_tracker_only_full_sample_reads_one_weapon_walk_and_nothing_else(self) -> None:
+    def test_weapon_tracker_only_full_sample_reads_one_weapon_walk_and_nothing_else(
+        self,
+    ) -> None:
         weapon = SimpleNamespace(weapon_id=23, name="Katana")
         client = _FullSampleClient(weapons=(weapon,))
         game_data = SimpleNamespace(
@@ -157,9 +156,7 @@ class PlayerStatsMemoryTests(unittest.TestCase):
                 with patch.object(
                     config,
                     "IN_GAME_OVERLAY",
-                    _overlay_config(
-                        master=True, widget=widget, selected=selected
-                    ),
+                    _overlay_config(master=True, widget=widget, selected=selected),
                 ):
                     sample = service.read_full_sample()
 
@@ -282,7 +279,9 @@ class PlayerStatsMemoryTests(unittest.TestCase):
         for _ in range(3):
             # The tick's other game-data reads succeed, as they did live.
             service.record_game_data_success()
-            service.record_game_data_source_failure("map_activity", MemoryReadError("empty"))
+            service.record_game_data_source_failure(
+                "map_activity", MemoryReadError("empty")
+            )
 
         self.assertEqual(client.closed, 1)
         self.assertIsNone(world.game_data_client)
@@ -304,8 +303,12 @@ class PlayerStatsMemoryTests(unittest.TestCase):
         service, _ = build_player_stats_memory(game_data_client=client)
 
         for _ in range(2):
-            service.record_game_data_source_failure("map_activity", MemoryReadError("a"))
-            service.record_game_data_source_failure("runtime_state", MemoryReadError("b"))
+            service.record_game_data_source_failure(
+                "map_activity", MemoryReadError("a")
+            )
+            service.record_game_data_source_failure(
+                "runtime_state", MemoryReadError("b")
+            )
 
         self.assertEqual(client.closed, 0)
         self.assertEqual(service._game_data_source_error_streaks["map_activity"], 2)
@@ -329,7 +332,9 @@ class PlayerStatsMemoryTests(unittest.TestCase):
         self.assertIsNotNone(world.stats_client)
         self.assertEqual(service._player_stats_memory_error_streak, 0)
 
-    def test_close_stats_client_resets_match_metadata_but_keeps_last_items(self) -> None:
+    def test_close_stats_client_resets_match_metadata_but_keeps_last_items(
+        self,
+    ) -> None:
         store = LiveSnapshotStore()
         store.last_seed = 4242
         store.last_run_timer = 91.5
@@ -349,7 +354,9 @@ class PlayerStatsMemoryTests(unittest.TestCase):
         self.assertEqual(store.last_known_items, ("Key x1",))
 
     def test_close_swallows_a_raising_client(self) -> None:
-        raising = SimpleNamespace(close=lambda: (_ for _ in ()).throw(RuntimeError("gone")))
+        raising = SimpleNamespace(
+            close=lambda: (_ for _ in ()).throw(RuntimeError("gone"))
+        )
         service, world = build_player_stats_memory(game_data_client=raising)
         # Must not propagate; the client reference is still dropped.
         service.close_player_stats_game_data_client()

@@ -72,11 +72,15 @@ class AddButtonStateTests(unittest.TestCase):
 
     def test_a_rules_identity_is_its_items_and_its_condition(self) -> None:
         self.assertEqual(
-            rule_signature({"item_names": ["Kevin", "Electric Plug"], "mode": MODE_MAP_ONE}),
+            rule_signature(
+                {"item_names": ["Kevin", "Electric Plug"], "mode": MODE_MAP_ONE}
+            ),
             (("Kevin", "Electric Plug"), MODE_MAP_ONE),
         )
         # A rule persisted without a mode counts for the whole run.
-        self.assertEqual(rule_signature({"item_names": ["Anvil"]}), (("Anvil",), MODE_ALL_RUN))
+        self.assertEqual(
+            rule_signature({"item_names": ["Anvil"]}), (("Anvil",), MODE_ALL_RUN)
+        )
 
 
 class RarityGroupingTests(unittest.TestCase):
@@ -91,9 +95,7 @@ class RarityGroupingTests(unittest.TestCase):
     def test_groups_keep_the_order_they_were_given(self) -> None:
         groups = group_tracked_items_by_rarity(available_tracked_item_names())
         captions = [caption for caption, _names in groups]
-        self.assertEqual(
-            captions, ["Legendary", "Epic", "Rare", "Common", "Other"]
-        )
+        self.assertEqual(captions, ["Legendary", "Epic", "Rare", "Common", "Other"])
         self.assertNotIn("Uncommon", captions)
         for _caption, names in groups:
             self.assertEqual(list(names), sorted(names, key=names.index))

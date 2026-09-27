@@ -213,9 +213,7 @@ class TrackedItemSettingsTests(unittest.TestCase):
 
     def test_save_exception_without_text_is_still_a_failure(self) -> None:
         previous = config.TWITCH_BOT
-        save = MagicMock(
-            side_effect=[OSError(), config.ConfigSaveResult(True)]
-        )
+        save = MagicMock(side_effect=[OSError(), config.ConfigSaveResult(True)])
         settings = TrackedItemSettings(
             tracker=lambda: None,
             combined_rules=lambda: (),
@@ -246,7 +244,10 @@ class TrackedItemSettingsTests(unittest.TestCase):
             settings.set_rules(SESSION, [_rule(["Anvil"])])
 
         self.assertEqual(
-            [rule["item_names"] for rule in config.SESSION_TRACKED_ITEMS["tracked_items"]],
+            [
+                rule["item_names"]
+                for rule in config.SESSION_TRACKED_ITEMS["tracked_items"]
+            ],
             [["Anvil"]],
         )
         rows.assert_called_once_with()

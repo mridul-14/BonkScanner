@@ -7,6 +7,7 @@ of a cached outcome. The combat-pair (``RUN_TIMER``/``MOB_KILLS``) tests that
 exercise this through ``_refresh_combat_metrics_task`` live in
 ``test_combat_pair_pass.py`` (step 28b).
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401  -- puts `src/` on sys.path regardless of collection order
@@ -50,7 +51,9 @@ class ReadMemorySourceHealthTests(unittest.TestCase):
 
         self.assertEqual(len(successes), 1)
 
-    def test_one_failure_record_for_one_physical_failed_read_across_consumers(self) -> None:
+    def test_one_failure_record_for_one_physical_failed_read_across_consumers(
+        self,
+    ) -> None:
         """Two different task-level call sites reading the same key in one
         pass both hit the cached exception; the health failure must still be
         recorded exactly once, not once per consumer."""
@@ -73,7 +76,9 @@ class ReadMemorySourceHealthTests(unittest.TestCase):
 
         self.assertEqual(len(failures), 1)
 
-    def test_replaying_a_cached_exception_does_not_accelerate_the_reconnect_streak(self) -> None:
+    def test_replaying_a_cached_exception_does_not_accelerate_the_reconnect_streak(
+        self,
+    ) -> None:
         """Real ``PlayerStatsMemory``, not a fake counter: the streak policy
         itself is what must not double-count. See step_28_plan.md section
         12.9's explicit requirement."""

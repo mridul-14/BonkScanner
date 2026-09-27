@@ -1,4 +1,5 @@
 """Forwarding shim for tools/inspect_live/analyze_seeds.py."""
+
 from __future__ import annotations
 
 import runpy
@@ -12,5 +13,4 @@ if __name__ == "__main__":
 else:
     if str(TARGET.parent) not in sys.path:
         sys.path.insert(0, str(TARGET.parent))
-    from analyze_seeds import *
-
+    from analyze_seeds import *  # noqa: F403

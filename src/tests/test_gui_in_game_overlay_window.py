@@ -28,9 +28,27 @@ def _test_overlay_config() -> dict:
             "recording": {"enabled": True, "x": 0, "y": 0, "scale": 1.0},
             "kps": {"enabled": True, "x": 0, "y": 0, "scale": 1.0},
             "powerups": {"enabled": True, "x": 0, "y": 0, "scale": 1.0},
-            "luck_rarity": {"enabled": True, "x": 0, "y": 0, "scale": 1.0, "show_bar": True},
-            "stats": {"enabled": True, "x": 0, "y": 0, "scale": 1.0, "selected_stats": ["Damage", "Difficulty", "XP Gain", "Luck"]},
-            "event_timer": {"enabled": True, "x": 0, "y": 0, "scale": 1.0, "warning_seconds": 15},
+            "luck_rarity": {
+                "enabled": True,
+                "x": 0,
+                "y": 0,
+                "scale": 1.0,
+                "show_bar": True,
+            },
+            "stats": {
+                "enabled": True,
+                "x": 0,
+                "y": 0,
+                "scale": 1.0,
+                "selected_stats": ["Damage", "Difficulty", "XP Gain", "Luck"],
+            },
+            "event_timer": {
+                "enabled": True,
+                "x": 0,
+                "y": 0,
+                "scale": 1.0,
+                "warning_seconds": 15,
+            },
             "weapon_tracker": {
                 "enabled": True,
                 "x": 0,
@@ -58,9 +76,7 @@ class InGameOverlayWindowTests(unittest.TestCase):
                     map_open=True,
                     world_size=600,
                     viewport=viewport,
-                    markers=(
-                        WorldMapMarker("auto:1", "moai", 10, -20),
-                    ),
+                    markers=(WorldMapMarker("auto:1", "moai", 10, -20),),
                 ),
                 scale=1.0,
             )
@@ -130,8 +146,7 @@ class InGameOverlayWindowTests(unittest.TestCase):
                         256,
                     ).toImage()
                     matching_pixels = sum(
-                        image.pixelColor(x, y).name().upper()
-                        == background_color
+                        image.pixelColor(x, y).name().upper() == background_color
                         for y in range(image.height())
                         for x in range(image.width())
                     )
@@ -161,9 +176,7 @@ class InGameOverlayWindowTests(unittest.TestCase):
             map_open=True,
             world_size=600,
             viewport=viewport,
-            markers=(
-                WorldMapMarker("auto:classic", "shady_guy_white", 0, 0),
-            ),
+            markers=(WorldMapMarker("auto:classic", "shady_guy_white", 0, 0),),
         )
         layer.set_snapshot(snapshot, scale=1.0, style="classic")
         image = QImage(200, 200, QImage.Format_ARGB32_Premultiplied)
@@ -201,9 +214,7 @@ class InGameOverlayWindowTests(unittest.TestCase):
             map_open=True,
             world_size=600,
             viewport=viewport,
-            markers=(
-                WorldMapMarker("auto:1", "shady_guy_white", 0, 0),
-            ),
+            markers=(WorldMapMarker("auto:1", "shady_guy_white", 0, 0),),
         )
         image = QImage(200, 200, QImage.Format_ARGB32_Premultiplied)
         image.fill(Qt.transparent)
@@ -264,9 +275,7 @@ class InGameOverlayWindowTests(unittest.TestCase):
             map_open=True,
             world_size=100,
             viewport=viewport,
-            markers=(
-                WorldMapMarker("auto:edge", "shady_guy_white", -50, 50),
-            ),
+            markers=(WorldMapMarker("auto:edge", "shady_guy_white", -50, 50),),
         )
         image = QImage(160, 160, QImage.Format_ARGB32_Premultiplied)
         image.fill(Qt.transparent)
@@ -313,12 +322,8 @@ class InGameOverlayWindowTests(unittest.TestCase):
             try:
                 window.on_widget_moved("weapon_tracker", 123, 234)
 
-                self.assertEqual(
-                    overlay_config["widgets"]["weapon_tracker"]["x"], 123
-                )
-                self.assertEqual(
-                    overlay_config["widgets"]["weapon_tracker"]["y"], 234
-                )
+                self.assertEqual(overlay_config["widgets"]["weapon_tracker"]["x"], 123)
+                self.assertEqual(overlay_config["widgets"]["weapon_tracker"]["y"], 234)
             finally:
                 window.close()
 
@@ -374,9 +379,7 @@ class InGameOverlayWindowTests(unittest.TestCase):
             layer.set_snapshot(snapshot, scale=1.0)
             self.assertTrue(layer.isHidden())
 
-            layer.set_palette(
-                build_marker_palette(300, 300, viewport=viewport)
-            )
+            layer.set_palette(build_marker_palette(300, 300, viewport=viewport))
             self.assertFalse(layer.isHidden())
 
             layer.set_snapshot(MapMarkerSnapshot(), scale=1.0)
@@ -384,7 +387,9 @@ class InGameOverlayWindowTests(unittest.TestCase):
         finally:
             layer.close()
 
-    def test_unchanged_marker_snapshot_does_not_repeat_native_visibility_work(self) -> None:
+    def test_unchanged_marker_snapshot_does_not_repeat_native_visibility_work(
+        self,
+    ) -> None:
         class CountingLayer(MapMarkerLayer):
             def __init__(self) -> None:
                 self.visibility_calls = 0
@@ -451,7 +456,8 @@ class InGameOverlayWindowTests(unittest.TestCase):
                 self.assertEqual(window.save_btn.height(), 40)
                 self.assertEqual(
                     window.save_btn.x(),
-                    visible_rect.left() + (visible_rect.width() - window.save_btn.width()) // 2,
+                    visible_rect.left()
+                    + (visible_rect.width() - window.save_btn.width()) // 2,
                 )
                 self.assertEqual(
                     window.save_btn.y(),
@@ -460,7 +466,9 @@ class InGameOverlayWindowTests(unittest.TestCase):
             finally:
                 window.close()
 
-    def test_save_button_stays_inside_visible_screen_area_when_overlay_bottom_is_offscreen(self) -> None:
+    def test_save_button_stays_inside_visible_screen_area_when_overlay_bottom_is_offscreen(
+        self,
+    ) -> None:
         screen_rect = QApplication.primaryScreen().availableGeometry()
         target_rect = QRect(
             screen_rect.left() + 20,
@@ -485,7 +493,10 @@ class InGameOverlayWindowTests(unittest.TestCase):
                 window.sync_geometry_to_target()
 
                 visible_rect = window._visible_local_rect()
-                self.assertLessEqual(window.save_btn.y() + window.save_btn.height(), visible_rect.bottom() + 1)
+                self.assertLessEqual(
+                    window.save_btn.y() + window.save_btn.height(),
+                    visible_rect.bottom() + 1,
+                )
                 self.assertGreaterEqual(window.save_btn.y(), visible_rect.top())
             finally:
                 window.close()
@@ -500,9 +511,10 @@ class InGameOverlayWindowTests(unittest.TestCase):
         overlay_config["widgets"]["stats"]["x"] = 1500
         overlay_config["widgets"]["stats"]["y"] = 900
 
-        with patch.object(config, "IN_GAME_OVERLAY", overlay_config), patch.object(
-            config, "save_config"
-        ) as save_config:
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", overlay_config),
+            patch.object(config, "save_config") as save_config,
+        ):
             window = InGameOverlayWindow(parent_mixin)
             try:
                 window.sync_geometry_to_target()
@@ -539,8 +551,9 @@ class InGameOverlayWindowTests(unittest.TestCase):
         overlay_config["widgets"]["stats"]["x"] = 200
         overlay_config["widgets"]["stats"]["y"] = 180
 
-        with patch.object(config, "IN_GAME_OVERLAY", overlay_config), patch.object(
-            config, "save_config"
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", overlay_config),
+            patch.object(config, "save_config"),
         ):
             window = InGameOverlayWindow(parent_mixin)
             try:
@@ -572,8 +585,9 @@ class InGameOverlayWindowTests(unittest.TestCase):
         )
         overlay_config = _test_overlay_config()
 
-        with patch.object(config, "IN_GAME_OVERLAY", overlay_config), patch.object(
-            config, "save_config"
+        with (
+            patch.object(config, "IN_GAME_OVERLAY", overlay_config),
+            patch.object(config, "save_config"),
         ):
             window = InGameOverlayWindow(parent_mixin)
             try:
@@ -589,7 +603,9 @@ class InGameOverlayWindowTests(unittest.TestCase):
                 window.on_widget_moved("scanner", parked.x(), parked.y())
 
                 # The live text grows on the next tick.
-                scanner.set_text("<span>SCANNER ON &nbsp; REC &nbsp; 12345 kills</span>")
+                scanner.set_text(
+                    "<span>SCANNER ON &nbsp; REC &nbsp; 12345 kills</span>"
+                )
 
                 # Asserted as "the clamp was applied at the new size" rather
                 # than "the right edge is inside the parent". Font metrics differ
@@ -622,7 +638,9 @@ class InGameOverlayWindowTests(unittest.TestCase):
                 window.sync_geometry_to_target()
                 widget = window.widgets["stats"]
 
-                self.assertEqual(widget._clamp_to_parent(QPoint(-50, -20)), QPoint(0, 0))
+                self.assertEqual(
+                    widget._clamp_to_parent(QPoint(-50, -20)), QPoint(0, 0)
+                )
                 self.assertEqual(
                     widget._clamp_to_parent(QPoint(1000, 900)),
                     QPoint(
@@ -696,7 +714,9 @@ class LuckRarityExpectedFrameTests(unittest.TestCase):
             for show_expected in (True, False):
                 widget = self._widget(show_bar=show_bar, show_expected=show_expected)
                 widths[(show_bar, show_expected)] = widget.width()
-                self.assertNotEqual("", widget.label.text(), "the percentage row is always drawn")
+                self.assertNotEqual(
+                    "", widget.label.text(), "the percentage row is always drawn"
+                )
                 self.assertEqual(
                     show_expected,
                     widget.expected_label.isVisibleTo(widget),
@@ -793,7 +813,6 @@ class LuckRarityExpectedFrameTests(unittest.TestCase):
             widget.label.width(),
             "the block fits itself to the row rather than the other way round",
         )
-
 
 
 if __name__ == "__main__":

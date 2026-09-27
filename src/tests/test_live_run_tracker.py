@@ -35,7 +35,9 @@ def snapshot(
         stats={},
         items=tuple(items),
         game_time_seconds=time_seconds,
-        stage_time_seconds=stage_time_seconds if stage_time_seconds is not None else time_seconds,
+        stage_time_seconds=stage_time_seconds
+        if stage_time_seconds is not None
+        else time_seconds,
         mob_kills=mob_kills,
         map_seed=map_seed,
         stage_ptr=stage_ptr,
@@ -72,7 +74,9 @@ class LiveRunTrackerTests(unittest.TestCase):
             captured_at=1000.0,
         )
 
-    def test_vod_projection_keeps_last_known_optional_values_after_failed_read(self) -> None:
+    def test_vod_projection_keeps_last_known_optional_values_after_failed_read(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         weapon = SimpleNamespace(name="Bone")
         tome = SimpleNamespace(name="Damage")
@@ -126,9 +130,30 @@ class LiveRunTrackerTests(unittest.TestCase):
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update(snapshot(time_seconds=1.0))
         tracker.update(snapshot(time_seconds=20.0, items=("Anvil x1",)))
-        tracker.update(snapshot(time_seconds=180.0, items=("Anvil x1",), stage_ptr=2000, stage_time_seconds=1.0))
-        tracker.update(snapshot(time_seconds=190.0, items=("Anvil x2",), stage_ptr=2000, stage_time_seconds=10.0))
-        tracker.update(snapshot(time_seconds=200.0, items=("Anvil x2",), stage_ptr=2000, stage_time_seconds=20.0))
+        tracker.update(
+            snapshot(
+                time_seconds=180.0,
+                items=("Anvil x1",),
+                stage_ptr=2000,
+                stage_time_seconds=1.0,
+            )
+        )
+        tracker.update(
+            snapshot(
+                time_seconds=190.0,
+                items=("Anvil x2",),
+                stage_ptr=2000,
+                stage_time_seconds=10.0,
+            )
+        )
+        tracker.update(
+            snapshot(
+                time_seconds=200.0,
+                items=("Anvil x2",),
+                stage_ptr=2000,
+                stage_time_seconds=20.0,
+            )
+        )
 
         rows = {row["id"]: row for row in tracker.tracked_item_rows()}
         self.assertEqual(rows["anvils_map_1"]["count"], 1)
@@ -144,7 +169,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertEqual(rows["anvils_map_1"]["count"], 3)
         self.assertEqual(rows["anvils_total"]["count"], 3)
 
-    def test_tracker_waits_for_next_snapshot_before_counting_positive_increase(self) -> None:
+    def test_tracker_waits_for_next_snapshot_before_counting_positive_increase(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update(snapshot(time_seconds=1.0, items=("Anvil x1",)))
         tracker.update(snapshot(time_seconds=2.0, items=("Anvil x1",)))
@@ -191,7 +218,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         rows = {row["id"]: row for row in tracker.tracked_item_rows()}
         self.assertEqual(rows["anvils_total"]["count"], 2)
 
-    def test_tracker_counts_late_first_snapshot_for_map_one_counter_while_still_on_first_map(self) -> None:
+    def test_tracker_counts_late_first_snapshot_for_map_one_counter_while_still_on_first_map(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update(snapshot(time_seconds=30.0, items=("Anvil x2",)))
         tracker.update(snapshot(time_seconds=31.0, items=("Anvil x2",)))
@@ -200,7 +229,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertEqual(row["count"], 2)
         self.assertNotIn("unknown_starting_inventory", row)
 
-    def test_tracker_ignores_late_first_snapshot_for_map_one_counter_after_stage_transition(self) -> None:
+    def test_tracker_ignores_late_first_snapshot_for_map_one_counter_after_stage_transition(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update(
             snapshot(
@@ -231,11 +262,17 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertEqual(row["count"], 2)
         self.assertNotIn("unknown_starting_inventory", row)
 
-    def test_tracker_does_not_reset_on_seed_change_when_run_time_continues(self) -> None:
+    def test_tracker_does_not_reset_on_seed_change_when_run_time_continues(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update(snapshot(time_seconds=40.0, map_seed=1, stage_ptr=1000))
         run_id = tracker.run_id
-        tracker.update(snapshot(time_seconds=80.0, map_seed=2, stage_ptr=2000, stage_time_seconds=1.0))
+        tracker.update(
+            snapshot(
+                time_seconds=80.0, map_seed=2, stage_ptr=2000, stage_time_seconds=1.0
+            )
+        )
 
         self.assertEqual(tracker.run_id, run_id)
         self.assertEqual(len(tracker.snapshots), 2)
@@ -249,7 +286,12 @@ class LiveRunTrackerTests(unittest.TestCase):
 
         self.assertNotEqual(tracker.run_id, run_id)
         self.assertEqual(len(tracker.snapshots), 1)
-        self.assertEqual({row["id"]: row for row in tracker.tracked_item_rows()}["anvils_total"]["count"], 1)
+        self.assertEqual(
+            {row["id"]: row for row in tracker.tracked_item_rows()}["anvils_total"][
+                "count"
+            ],
+            1,
+        )
 
     def test_tracker_counts_new_run_items_into_session_total(self) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
@@ -289,8 +331,12 @@ class LiveRunTrackerTests(unittest.TestCase):
             clock=lambda: 1000.0,
             tracked_item_rules=(anvil_rule, soul_rule),
         )
-        tracker.update(snapshot(time_seconds=2.0, items=("Anvil x1", "Soul Harvester x2")))
-        tracker.update(snapshot(time_seconds=3.0, items=("Anvil x1", "Soul Harvester x2")))
+        tracker.update(
+            snapshot(time_seconds=2.0, items=("Anvil x1", "Soul Harvester x2"))
+        )
+        tracker.update(
+            snapshot(time_seconds=3.0, items=("Anvil x1", "Soul Harvester x2"))
+        )
 
         tracker.set_tracked_item_rules((soul_rule,))
 
@@ -298,8 +344,12 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertNotIn("anvil_map_1", rows)
         self.assertEqual(rows["soul_harvester_map_1"]["count"], 2)
 
-        tracker.update(snapshot(time_seconds=4.0, items=("Anvil x1", "Soul Harvester x3")))
-        tracker.update(snapshot(time_seconds=5.0, items=("Anvil x1", "Soul Harvester x3")))
+        tracker.update(
+            snapshot(time_seconds=4.0, items=("Anvil x1", "Soul Harvester x3"))
+        )
+        tracker.update(
+            snapshot(time_seconds=5.0, items=("Anvil x1", "Soul Harvester x3"))
+        )
         rows = {row["id"]: row for row in tracker.tracked_item_rows()}
         self.assertEqual(rows["soul_harvester_map_1"]["count"], 3)
 
@@ -356,8 +406,12 @@ class LiveRunTrackerTests(unittest.TestCase):
 
         self.assertEqual(runtime.current_stage_index, 1)
         self.assertEqual(runtime.latest_snapshot.mob_kills, 10)
-        self.assertEqual(runtime.feature_status["player"].availability, FeatureAvailability.FRESH)
-        self.assertEqual(runtime.feature_status["combat"].availability, FeatureAvailability.FRESH)
+        self.assertEqual(
+            runtime.feature_status["player"].availability, FeatureAvailability.FRESH
+        )
+        self.assertEqual(
+            runtime.feature_status["combat"].availability, FeatureAvailability.FRESH
+        )
 
     def test_completed_run_keeps_latest_snapshot_until_next_run(self) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
@@ -424,7 +478,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertEqual(len(tracker._recent_kills_history), 1)
         self.assertEqual(tracker._recent_kills_history[-1], (586.522217, 48_360))
 
-    def test_stage_summary_uses_latest_fast_combat_sample_for_time_and_kills(self) -> None:
+    def test_stage_summary_uses_latest_fast_combat_sample_for_time_and_kills(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update(snapshot(time_seconds=10.0, mob_kills=100, items=("Anvil x1",)))
         items_before_fast_sample = tracker.stage_summary_rows()[0]["items"]
@@ -439,7 +495,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertEqual(rows[0]["kills"], "275")
         self.assertEqual(rows[0]["items"], items_before_fast_sample)
 
-    def test_stage_summary_does_not_apply_fast_sample_from_before_full_snapshot(self) -> None:
+    def test_stage_summary_does_not_apply_fast_sample_from_before_full_snapshot(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update(snapshot(time_seconds=10.0, mob_kills=100))
         tracker.update_fast_run_timer(12.0)
@@ -516,7 +574,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertEqual(rows[0]["kills"], "11,730")
         self.assertEqual(rows[1]["kills"], "100")
 
-    def test_explicit_stage_index_transition_does_not_reconcile_gap_into_new_stage(self) -> None:
+    def test_explicit_stage_index_transition_does_not_reconcile_gap_into_new_stage(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update(
             snapshot(
@@ -733,7 +793,14 @@ class LiveRunTrackerTests(unittest.TestCase):
             ),
         )
         tracker.update(snapshot(time_seconds=2.0, items=("Wrench x1",)))
-        tracker.update(snapshot(time_seconds=180.0, items=("Wrench x2",), stage_ptr=2000, stage_time_seconds=1.0))
+        tracker.update(
+            snapshot(
+                time_seconds=180.0,
+                items=("Wrench x2",),
+                stage_ptr=2000,
+                stage_time_seconds=1.0,
+            )
+        )
 
         row = {row["id"]: row for row in tracker.tracked_item_rows()}["wrench_map_1"]
         self.assertEqual(row["count"], 1)
@@ -754,7 +821,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         tracker.update(snapshot(time_seconds=40.0, items=("Gloves Power x1",)))
         tracker.update(snapshot(time_seconds=41.0, items=("Gloves Power x1",)))
 
-        row = {row["id"]: row for row in tracker.tracked_item_rows()}["glove_power_map_1"]
+        row = {row["id"]: row for row in tracker.tracked_item_rows()}[
+            "glove_power_map_1"
+        ]
         self.assertEqual(row["count"], 1)
 
     def test_tracker_matches_known_item_aliases(self) -> None:
@@ -785,7 +854,9 @@ class LiveRunTrackerTests(unittest.TestCase):
                 tracker.update(snapshot(time_seconds=40.0, items=(f"{live_name} x1",)))
                 tracker.update(snapshot(time_seconds=41.0, items=(f"{live_name} x1",)))
 
-                row = {row["id"]: row for row in tracker.tracked_item_rows()}["tracked_item"]
+                row = {row["id"]: row for row in tracker.tracked_item_rows()}[
+                    "tracked_item"
+                ]
                 self.assertEqual(row["count"], 1)
 
     def test_tracker_counts_combo_rule_when_all_items_are_present(self) -> None:
@@ -802,9 +873,15 @@ class LiveRunTrackerTests(unittest.TestCase):
         )
 
         tracker.update(snapshot(time_seconds=20.0, items=("Kevin x1",)))
-        tracker.update(snapshot(time_seconds=40.0, items=("Kevin x1", "Electric Plug x1")))
-        tracker.update(snapshot(time_seconds=50.0, items=("Kevin x2", "Electric Plug x1")))
-        tracker.update(snapshot(time_seconds=60.0, items=("Kevin x2", "Electric Plug x2")))
+        tracker.update(
+            snapshot(time_seconds=40.0, items=("Kevin x1", "Electric Plug x1"))
+        )
+        tracker.update(
+            snapshot(time_seconds=50.0, items=("Kevin x2", "Electric Plug x1"))
+        )
+        tracker.update(
+            snapshot(time_seconds=60.0, items=("Kevin x2", "Electric Plug x2"))
+        )
 
         row = {row["id"]: row for row in tracker.tracked_item_rows()}["kevin_plug"]
         self.assertEqual(row["count"], 1)
@@ -832,7 +909,9 @@ class LiveRunTrackerTests(unittest.TestCase):
             )
         )
 
-        row = {row["id"]: row for row in tracker.tracked_item_rows()}["kevin_plug_map_1"]
+        row = {row["id"]: row for row in tracker.tracked_item_rows()}[
+            "kevin_plug_map_1"
+        ]
         self.assertEqual(row["count"], 0)
 
     def test_tracker_counts_combo_once_per_run_and_again_after_new_run(self) -> None:
@@ -848,18 +927,46 @@ class LiveRunTrackerTests(unittest.TestCase):
             ),
         )
 
-        tracker.update(snapshot(time_seconds=2.0, items=("Kevin x1", "Electric Plug x1"), map_seed=100))
-        tracker.update(snapshot(time_seconds=10.0, items=("Kevin x2", "Electric Plug x2"), map_seed=100))
-        tracker.update(snapshot(time_seconds=20.0, items=("Kevin x2", "Electric Plug x1"), map_seed=100))
-        tracker.update(snapshot(time_seconds=2.0, items=("Kevin x1", "Electric Plug x1"), map_seed=200))
-        tracker.update(snapshot(time_seconds=3.0, items=("Kevin x1", "Electric Plug x1"), map_seed=200))
+        tracker.update(
+            snapshot(
+                time_seconds=2.0, items=("Kevin x1", "Electric Plug x1"), map_seed=100
+            )
+        )
+        tracker.update(
+            snapshot(
+                time_seconds=10.0, items=("Kevin x2", "Electric Plug x2"), map_seed=100
+            )
+        )
+        tracker.update(
+            snapshot(
+                time_seconds=20.0, items=("Kevin x2", "Electric Plug x1"), map_seed=100
+            )
+        )
+        tracker.update(
+            snapshot(
+                time_seconds=2.0, items=("Kevin x1", "Electric Plug x1"), map_seed=200
+            )
+        )
+        tracker.update(
+            snapshot(
+                time_seconds=3.0, items=("Kevin x1", "Electric Plug x1"), map_seed=200
+            )
+        )
 
-        row = {row["id"]: row for row in tracker.tracked_item_rows()}["kevin_plug_map_1"]
+        row = {row["id"]: row for row in tracker.tracked_item_rows()}[
+            "kevin_plug_map_1"
+        ]
         self.assertEqual(row["count"], 2)
 
-    def test_tracker_does_not_retroactively_count_combo_when_rule_is_added_mid_run(self) -> None:
+    def test_tracker_does_not_retroactively_count_combo_when_rule_is_added_mid_run(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0, tracked_item_rules=())
-        tracker.update(snapshot(time_seconds=20.0, items=("Kevin x1", "Electric Plug x1"), map_seed=100))
+        tracker.update(
+            snapshot(
+                time_seconds=20.0, items=("Kevin x1", "Electric Plug x1"), map_seed=100
+            )
+        )
 
         tracker.set_tracked_item_rules(
             (
@@ -871,9 +978,21 @@ class LiveRunTrackerTests(unittest.TestCase):
                 ),
             )
         )
-        tracker.update(snapshot(time_seconds=30.0, items=("Kevin x1", "Electric Plug x1"), map_seed=100))
-        tracker.update(snapshot(time_seconds=40.0, items=("Kevin x2", "Electric Plug x1"), map_seed=100))
-        tracker.update(snapshot(time_seconds=50.0, items=("Kevin x2", "Electric Plug x2"), map_seed=100))
+        tracker.update(
+            snapshot(
+                time_seconds=30.0, items=("Kevin x1", "Electric Plug x1"), map_seed=100
+            )
+        )
+        tracker.update(
+            snapshot(
+                time_seconds=40.0, items=("Kevin x2", "Electric Plug x1"), map_seed=100
+            )
+        )
+        tracker.update(
+            snapshot(
+                time_seconds=50.0, items=("Kevin x2", "Electric Plug x2"), map_seed=100
+            )
+        )
 
         row = {row["id"]: row for row in tracker.tracked_item_rows()}["kevin_plug"]
         self.assertEqual(row["count"], 0)
@@ -924,7 +1043,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertEqual(tracker.chaos_tome_level(), 2)
         self.assertEqual(tracker.chaos_tome_summary_parts(), ["DMG +16.8%"])
 
-    def test_chaos_tracker_counts_initial_modifier_when_tome_is_first_seen(self) -> None:
+    def test_chaos_tracker_counts_initial_modifier_when_tome_is_first_seen(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update_chaos_tome(
             chaos_level=1,
@@ -944,7 +1065,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertEqual(tracker.chaos_tome_summary_parts(), ["DMG +16.8%"])
         self.assertEqual(tracker.chaos_tome_snapshot().stats[0].rolls, 1)
 
-    def test_chaos_tracker_counts_initial_modifier_after_delayed_first_write(self) -> None:
+    def test_chaos_tracker_counts_initial_modifier_after_delayed_first_write(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         modifier = SimpleNamespace(
             stat_id=30,
@@ -969,7 +1092,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         )
 
         for _ in range(5):
-            tracker.update_chaos_tome(chaos_level=0, permanent_modifiers={3: (modifier,)})
+            tracker.update_chaos_tome(
+                chaos_level=0, permanent_modifiers={3: (modifier,)}
+            )
 
         self.assertIsNone(tracker.chaos_tome_level())
         self.assertEqual(tracker.chaos_tome_summary_parts(), [])
@@ -989,7 +1114,9 @@ class LiveRunTrackerTests(unittest.TestCase):
             value_format=PlayerStatFormat.MULTIPLIER,
         )
         tracker.update_chaos_tome(chaos_level=1, permanent_modifiers={12: ()})
-        tracker.update_chaos_tome(chaos_level=1, permanent_modifiers={12: (damage_small,)})
+        tracker.update_chaos_tome(
+            chaos_level=1, permanent_modifiers={12: (damage_small,)}
+        )
         tracker.update_chaos_tome(
             chaos_level=2,
             permanent_modifiers={
@@ -1023,7 +1150,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         )
         tracker.update_chaos_tome(chaos_level=1, permanent_modifiers={30: ()})
         tracker.update_chaos_tome(chaos_level=2, permanent_modifiers={30: (first,)})
-        tracker.update_chaos_tome(chaos_level=3, permanent_modifiers={30: (first, second)})
+        tracker.update_chaos_tome(
+            chaos_level=3, permanent_modifiers={30: (first, second)}
+        )
 
         self.assertEqual(tracker.chaos_tome_summary_parts(), ["Luck +14%"])
 
@@ -1071,7 +1200,9 @@ class LiveRunTrackerTests(unittest.TestCase):
             value_format=PlayerStatFormat.MULTIPLIER,
         )
         tracker.update_chaos_tome(chaos_level=1, permanent_modifiers={})
-        tracker.update_chaos_tome(chaos_level=2, permanent_modifiers={19: (crit_damage,)})
+        tracker.update_chaos_tome(
+            chaos_level=2, permanent_modifiers={19: (crit_damage,)}
+        )
 
         self.assertEqual(tracker.chaos_tome_summary_parts(), ["CritDMG +28%"])
 
@@ -1212,7 +1343,7 @@ class LiveRunTrackerTests(unittest.TestCase):
                         value=0.07,
                         value_format=PlayerStatFormat.PERCENT,
                     ),
-                )
+                ),
             },
         )
         # Should sum to 2x DMG (1st tick + 2nd tick) and 1x Luck
@@ -1250,11 +1381,13 @@ class LiveRunTrackerTests(unittest.TestCase):
                         value=0.07,
                         value_format=PlayerStatFormat.PERCENT,
                     ),
-                )
+                ),
             },
         )
 
-        self.assertEqual(tracker.chaos_tome_summary_parts(), ["DMG +33.6%", "Luck +14%"])
+        self.assertEqual(
+            tracker.chaos_tome_summary_parts(), ["DMG +33.6%", "Luck +14%"]
+        )
 
     def test_chaos_tracker_keeps_state_across_transient_missing_tome_read(self) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
@@ -1265,16 +1398,24 @@ class LiveRunTrackerTests(unittest.TestCase):
             value_format=PlayerStatFormat.MULTIPLIER,
         )
 
-        tracker.update_chaos_tome(chaos_level=1, permanent_modifiers={40: (powerup(0.0),)})
-        tracker.update_chaos_tome(chaos_level=2, permanent_modifiers={40: (powerup(0.224),)})
+        tracker.update_chaos_tome(
+            chaos_level=1, permanent_modifiers={40: (powerup(0.0),)}
+        )
+        tracker.update_chaos_tome(
+            chaos_level=2, permanent_modifiers={40: (powerup(0.224),)}
+        )
         tracker.update_chaos_tome(chaos_level=None, permanent_modifiers={})
-        tracker.update_chaos_tome(chaos_level=5, permanent_modifiers={40: (powerup(1.568),)})
+        tracker.update_chaos_tome(
+            chaos_level=5, permanent_modifiers={40: (powerup(1.568),)}
+        )
 
         self.assertEqual(tracker.chaos_tome_level(), 5)
         self.assertEqual(tracker.chaos_tome_summary_parts(), ["PM +156.8%"])
         self.assertEqual(tracker.chaos_tome_snapshot().stats[0].rolls, 4)
 
-    def test_chaos_tracker_keeps_state_across_prolonged_missing_tome_reads(self) -> None:
+    def test_chaos_tracker_keeps_state_across_prolonged_missing_tome_reads(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         powerup = lambda value: SimpleNamespace(
             stat_id=40,
@@ -1307,16 +1448,22 @@ class LiveRunTrackerTests(unittest.TestCase):
         )
 
         tracker.update_chaos_tome(chaos_level=1, permanent_modifiers={40: ()})
-        tracker.update_chaos_tome(chaos_level=2, permanent_modifiers={40: (powerup(0.448),)})
+        tracker.update_chaos_tome(
+            chaos_level=2, permanent_modifiers={40: (powerup(0.448),)}
+        )
         tracker.update_chaos_tome(chaos_level=None, permanent_modifiers={})
         tracker.update_chaos_tome(chaos_level=1, permanent_modifiers={40: ()})
-        tracker.update_chaos_tome(chaos_level=3, permanent_modifiers={40: (powerup(0.672),)})
+        tracker.update_chaos_tome(
+            chaos_level=3, permanent_modifiers={40: (powerup(0.672),)}
+        )
 
         self.assertEqual(tracker.chaos_tome_level(), 3)
         self.assertEqual(tracker.chaos_tome_summary_parts(), ["PM +67.2%"])
         self.assertEqual(tracker.chaos_tome_snapshot().stats[0].rolls, 2)
 
-    def test_chaos_tracker_expires_unbudgeted_fingerprint_before_future_roll(self) -> None:
+    def test_chaos_tracker_expires_unbudgeted_fingerprint_before_future_roll(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         damage = SimpleNamespace(
             stat_id=12,
@@ -1333,16 +1480,22 @@ class LiveRunTrackerTests(unittest.TestCase):
 
         tracker.update_chaos_tome(chaos_level=1, permanent_modifiers={12: (), 40: ()})
         for _ in range(4):
-            tracker.update_chaos_tome(chaos_level=1, permanent_modifiers={12: (damage,), 40: ()})
+            tracker.update_chaos_tome(
+                chaos_level=1, permanent_modifiers={12: (damage,), 40: ()}
+            )
 
         tracker.update_chaos_tome(
             chaos_level=2,
             permanent_modifiers={12: (damage,), 40: (powerup,)},
         )
 
-        self.assertEqual(tracker.chaos_tome_summary_parts(), ["DMG +16.8%", "PM +44.8%"])
+        self.assertEqual(
+            tracker.chaos_tome_summary_parts(), ["DMG +16.8%", "PM +44.8%"]
+        )
 
-    def test_chaos_tracker_allows_modifier_to_arrive_one_tick_before_level(self) -> None:
+    def test_chaos_tracker_allows_modifier_to_arrive_one_tick_before_level(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         powerup = SimpleNamespace(
             stat_id=40,
@@ -1406,7 +1559,9 @@ class LiveRunTrackerTests(unittest.TestCase):
 
     def test_chests_midrun_start_marks_missing_prior_stage_unknown(self) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
-        tracker.update(snapshot(time_seconds=120.0, map_seed=100, stage_ptr=2000, stage_index=1))
+        tracker.update(
+            snapshot(time_seconds=120.0, map_seed=100, stage_ptr=2000, stage_index=1)
+        )
         tracker.update_chests_and_keys(20, 46, 0)
         self.assertTrue(tracker.update_chest_counters(51, 17))
         self.assertTrue(tracker.update_chest_counters(51, 17))
@@ -1417,7 +1572,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertEqual(stats.total_chests, 92)
         self.assertEqual(stats.opened_by_stage, {1: -1, 2: 20})
         self.assertEqual(stats.total_by_stage, {1: 46, 2: 46})
-        self.assertEqual((stats.paid, stats.key_procs, stats.free_chests), (17, 34, None))
+        self.assertEqual(
+            (stats.paid, stats.key_procs, stats.free_chests), (17, 34, None)
+        )
 
     def test_paid_chest_torn_pair_is_not_published_as_key_proc(self) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
@@ -1453,7 +1610,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertTrue(stats.counters_available)
         self.assertEqual((stats.paid, stats.key_procs, stats.free_chests), (0, 1, 0))
 
-    def test_confirmed_pair_recomputes_free_chests_when_map_progress_changes(self) -> None:
+    def test_confirmed_pair_recomputes_free_chests_when_map_progress_changes(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update(snapshot(time_seconds=1.0, map_seed=100, stage_ptr=1000))
         tracker.update_chests_and_keys(1, 46, 0)
@@ -1485,15 +1644,35 @@ class LiveRunTrackerTests(unittest.TestCase):
     def test_run_identity_starts_from_raw_stage_index_on_late_attach(self) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
 
-        tracker.update(snapshot(time_seconds=120.0, map_seed=100, stage_ptr=2000, stage_index=1))
+        tracker.update(
+            snapshot(time_seconds=120.0, map_seed=100, stage_ptr=2000, stage_index=1)
+        )
 
         _, stage_index = tracker.run_identity()
         self.assertEqual(stage_index, 2)
 
     def test_stage_summary_late_attach_starts_at_raw_stage_three(self) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
-        tracker.update(snapshot(time_seconds=240.0, map_seed=100, stage_ptr=3000, stage_index=2, stage_time_seconds=80.0, mob_kills=2_000))
-        tracker.update(snapshot(time_seconds=300.0, map_seed=100, stage_ptr=3000, stage_index=2, stage_time_seconds=140.0, mob_kills=2_600))
+        tracker.update(
+            snapshot(
+                time_seconds=240.0,
+                map_seed=100,
+                stage_ptr=3000,
+                stage_index=2,
+                stage_time_seconds=80.0,
+                mob_kills=2_000,
+            )
+        )
+        tracker.update(
+            snapshot(
+                time_seconds=300.0,
+                map_seed=100,
+                stage_ptr=3000,
+                stage_index=2,
+                stage_time_seconds=140.0,
+                mob_kills=2_600,
+            )
+        )
 
         rows = tracker.stage_summary_rows()
 
@@ -1541,7 +1720,9 @@ class LiveRunTrackerTests(unittest.TestCase):
 
         self.assertEqual(rows[2]["time"], "00:03")
 
-    def test_stage_summary_late_attach_on_first_map_includes_current_items(self) -> None:
+    def test_stage_summary_late_attach_on_first_map_includes_current_items(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
 
         tracker.update(
@@ -1561,7 +1742,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertIn(">2</span>", rows[0]["items"])
         self.assertIn(">1</span>", rows[0]["items"])
 
-    def test_stage_summary_late_attach_on_second_map_does_not_include_current_items(self) -> None:
+    def test_stage_summary_late_attach_on_second_map_does_not_include_current_items(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
 
         tracker.update(
@@ -1634,7 +1817,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertEqual(rows[2]["kills"], "0")
         self.assertEqual(rows[3]["kills"], "100")
 
-    def test_stage_two_to_three_raw_transition_ignores_stage_four_timer_heuristic(self) -> None:
+    def test_stage_two_to_three_raw_transition_ignores_stage_four_timer_heuristic(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update(
             snapshot(
@@ -1664,7 +1849,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertEqual(rows[2]["kills"], "0")
         self.assertEqual(rows[3]["kills"], "--")
 
-    def test_run_identity_promotes_raw_stage_three_attach_to_stage_four_from_chest_total(self) -> None:
+    def test_run_identity_promotes_raw_stage_three_attach_to_stage_four_from_chest_total(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
 
         tracker.update(
@@ -1682,7 +1869,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         _, stage_index = tracker.run_identity()
         self.assertEqual(stage_index, 4)
 
-    def test_run_identity_promotes_raw_stage_three_attach_to_stage_four_from_zero_chest_total(self) -> None:
+    def test_run_identity_promotes_raw_stage_three_attach_to_stage_four_from_zero_chest_total(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
 
         tracker.update(
@@ -1700,7 +1889,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         _, stage_index = tracker.run_identity()
         self.assertEqual(stage_index, 4)
 
-    def test_stage_summary_starts_at_stage_four_when_attach_snapshot_has_collapsed_pots_total(self) -> None:
+    def test_stage_summary_starts_at_stage_four_when_attach_snapshot_has_collapsed_pots_total(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update(
             snapshot(
@@ -1732,7 +1923,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertEqual(rows[2]["kills"], "--")
         self.assertEqual(rows[3]["kills"], "600")
 
-    def test_fast_two_to_three_does_not_flip_to_stage_four_from_stale_map_two_interactables(self) -> None:
+    def test_fast_two_to_three_does_not_flip_to_stage_four_from_stale_map_two_interactables(
+        self,
+    ) -> None:
         # Regression: after a raw 1 -> 2 (Stage 2 -> Stage 3) transition confirmed
         # via update_fast_stage_timer, the fast_snapshot used to inherit the
         # previous map's ``chests_total``/``pots_total`` from the latest
@@ -1837,7 +2030,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         )
         self.assertEqual(run_summary.resolve_initial_stage_index(attach), 3)
         self.assertEqual(
-            run_summary.resolve_initial_stage_index(replace(attach, is_final_boss_stage=True)),
+            run_summary.resolve_initial_stage_index(
+                replace(attach, is_final_boss_stage=True)
+            ),
             4,
         )
 
@@ -1912,9 +2107,7 @@ class LiveRunTrackerTests(unittest.TestCase):
             stage_index=2,
             stage_time_seconds=0.0,
         )
-        self.assertTrue(
-            run_summary.looks_like_stage_four_transition(previous, current)
-        )
+        self.assertTrue(run_summary.looks_like_stage_four_transition(previous, current))
 
     def test_stage_four_transition_still_rejects_new_run_clock_reset(self) -> None:
         # Tolerating the fractional dip above must not tolerate a real new run,
@@ -1933,7 +2126,9 @@ class LiveRunTrackerTests(unittest.TestCase):
             run_summary.looks_like_stage_four_transition(previous, current)
         )
 
-    def test_fast_two_to_three_with_lagging_timer_reset_does_not_flip_to_stage_four(self) -> None:
+    def test_fast_two_to_three_with_lagging_timer_reset_does_not_flip_to_stage_four(
+        self,
+    ) -> None:
         # Regression for the second propagation path of the same live bug: the
         # game advances its raw stage index ~1 s before it resets the stage
         # timer (map_monitor_log.jsonl: stage_index_changed at :28.84,
@@ -1989,7 +2184,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         _, stage_index = tracker.run_identity()
         self.assertEqual(stage_index, 3)
 
-    def test_slow_two_to_three_with_lagging_timer_reset_does_not_flip_to_stage_four(self) -> None:
+    def test_slow_two_to_three_with_lagging_timer_reset_does_not_flip_to_stage_four(
+        self,
+    ) -> None:
         # Third propagation path of the same live bug, and the one the two 8b
         # fixes left open: they both guarded the fast tick, but ``update``
         # stores every slow-tick read verbatim.  A sample landing inside the
@@ -2036,7 +2233,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         _, stage_index = tracker.run_identity()
         self.assertEqual(stage_index, 3)
 
-    def test_slow_stage_desync_spanning_two_ticks_still_reaches_stage_four_later(self) -> None:
+    def test_slow_stage_desync_spanning_two_ticks_still_reaches_stage_four_later(
+        self,
+    ) -> None:
         # The hold must survive a desync that spans more than one slow tick (at
         # a 500 ms cadence the ~1 s window covers two), and must clear once the
         # reset is observed so a genuine stage 4 -- virtual: same ptr, same raw
@@ -2160,7 +2359,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertTrue(stats.expected_complete)
         self.assertEqual(stats.expected_status, "complete")
 
-    def test_expected_key_procs_are_unavailable_when_tracking_starts_mid_run(self) -> None:
+    def test_expected_key_procs_are_unavailable_when_tracking_starts_mid_run(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
 
         tracker.track_expected_key_procs(12, 10)
@@ -2184,7 +2385,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertEqual(stats.expected_tracked_opens, 1)
         self.assertAlmostEqual(stats.expected_key_procs, 1.0 / 6.0)
 
-    def test_full_run_reset_preserves_expected_data_after_fast_counter_reset(self) -> None:
+    def test_full_run_reset_preserves_expected_data_after_fast_counter_reset(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.track_expected_key_procs(20, 10)
         tracker.track_expected_key_procs(0, 4)
@@ -2214,19 +2417,23 @@ class LiveRunTrackerTests(unittest.TestCase):
 
     def test_disabled_items_cache_survives_unavailable_snapshots(self) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
-        tracker.update(LiveRunSnapshot(
-            captured_at=1.0,
-            stats={},
-            game_time_seconds=1.0,
-            disabled_items=("Battery",),
-            disabled_items_available=True,
-        ))
-        tracker.update(LiveRunSnapshot(
-            captured_at=2.0,
-            stats={},
-            game_time_seconds=2.0,
-            disabled_items_available=False,
-        ))
+        tracker.update(
+            LiveRunSnapshot(
+                captured_at=1.0,
+                stats={},
+                game_time_seconds=1.0,
+                disabled_items=("Battery",),
+                disabled_items_available=True,
+            )
+        )
+        tracker.update(
+            LiveRunSnapshot(
+                captured_at=2.0,
+                stats={},
+                game_time_seconds=2.0,
+                disabled_items_available=False,
+            )
+        )
 
         result = tracker.get_disabled_items()
 
@@ -2236,12 +2443,16 @@ class LiveRunTrackerTests(unittest.TestCase):
     def test_chests_stage_transition_residual_filtered(self) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         # Stage 1: opened 28 chests
-        tracker.update(snapshot(time_seconds=1.0, stage_ptr=1000, stage_time_seconds=10.0))
+        tracker.update(
+            snapshot(time_seconds=1.0, stage_ptr=1000, stage_time_seconds=10.0)
+        )
         tracker.update_chests_and_keys(28, 46, 0)
 
         # Transition to Stage 2 (time resets, pointer changes)
         # Snapshot for stage 2 with low stage time
-        tracker.update(snapshot(time_seconds=20.0, stage_ptr=2000, stage_time_seconds=1.0))
+        tracker.update(
+            snapshot(time_seconds=20.0, stage_ptr=2000, stage_time_seconds=1.0)
+        )
 
         # Suppose game data client reads residual chests_opened = 28
         tracker.update_chests_and_keys(28, 46, 0)
@@ -2252,11 +2463,15 @@ class LiveRunTrackerTests(unittest.TestCase):
     def test_chests_stage_transition_residual_filtered_high_stage_time(self) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         # Stage 1: opened 28 chests
-        tracker.update(snapshot(time_seconds=1.0, stage_ptr=1000, stage_time_seconds=10.0))
+        tracker.update(
+            snapshot(time_seconds=1.0, stage_ptr=1000, stage_time_seconds=10.0)
+        )
         tracker.update_chests_and_keys(28, 46, 0)
 
         # Transition to Stage 2 (pointer changes, but first refresh happens late at 8.0s)
-        tracker.update(snapshot(time_seconds=20.0, stage_ptr=2000, stage_time_seconds=8.0))
+        tracker.update(
+            snapshot(time_seconds=20.0, stage_ptr=2000, stage_time_seconds=8.0)
+        )
 
         # Suppose game data client reads residual chests_opened = 28
         tracker.update_chests_and_keys(28, 46, 0)
@@ -2268,11 +2483,15 @@ class LiveRunTrackerTests(unittest.TestCase):
     def test_chests_stage_four_same_ptr_shares_stage_three_stats(self) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         # Stage 3: opened 15 chests, stage_ptr = 3000
-        tracker.update(snapshot(time_seconds=1.0, stage_ptr=3000, stage_time_seconds=10.0))
+        tracker.update(
+            snapshot(time_seconds=1.0, stage_ptr=3000, stage_time_seconds=10.0)
+        )
         tracker.update_chests_and_keys(15, 46, 0)
 
         # Transition to Stage 4 (virtual stage transition, pointer remains 3000)
-        tracker.update(snapshot(time_seconds=20.0, stage_ptr=3000, stage_time_seconds=1.0))
+        tracker.update(
+            snapshot(time_seconds=20.0, stage_ptr=3000, stage_time_seconds=1.0)
+        )
         # Boss room reports max chests = 15 instead of 46
         tracker.update_chests_and_keys(15, 15, 0)
 
@@ -2341,7 +2560,9 @@ class LiveRunTrackerTests(unittest.TestCase):
             ),
         )
 
-    def test_powerups_pickup_mark_survives_repeated_pickups_of_the_same_buff(self) -> None:
+    def test_powerups_pickup_mark_survives_repeated_pickups_of_the_same_buff(
+        self,
+    ) -> None:
         """Re-picking an active buff must not move where it says it started.
 
         The game refreshes ``expiration_time`` but leaves ``added_time`` at the
@@ -2456,7 +2677,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         # the exact grant value is kept rather than rounded to the bound.
         self.assertAlmostEqual(run(7.456), 111.84, places=2)
 
-    def test_powerups_recent_snapshot_separates_a_late_read_from_an_empty_one(self) -> None:
+    def test_powerups_recent_snapshot_separates_a_late_read_from_an_empty_one(
+        self,
+    ) -> None:
         """Past the strict TTL the read is still quotable, and says so.
 
         ``powerups`` empties on the first missed tick, and an empty snapshot is
@@ -2504,7 +2727,9 @@ class LiveRunTrackerTests(unittest.TestCase):
             "Powerups: none active | Durations: standard 22s, clock 18s (PM 1.5x)",
         )
 
-    def test_powerups_snapshot_stays_available_within_ttl_after_last_good_read(self) -> None:
+    def test_powerups_snapshot_stays_available_within_ttl_after_last_good_read(
+        self,
+    ) -> None:
         current_time = 1000.0
         tracker = LiveRunTracker(clock=lambda: current_time)
         tracker.update_powerups(
@@ -2561,10 +2786,14 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertFalse(tracker.powerups_snapshot().available)
         self.assertEqual(tracker.format_powerups_summary(), "Powerups: --")
 
-    def test_powerups_reject_partial_snapshot_without_clearing_last_good_state(self) -> None:
+    def test_powerups_reject_partial_snapshot_without_clearing_last_good_state(
+        self,
+    ) -> None:
         current_time = 1000.0
         tracker = LiveRunTracker(clock=lambda: current_time)
-        complete_health = SimpleNamespace(available=True, complete=True, failure_reason=None)
+        complete_health = SimpleNamespace(
+            available=True, complete=True, failure_reason=None
+        )
         partial_health = SimpleNamespace(
             available=True,
             complete=False,
@@ -2615,7 +2844,9 @@ class LiveRunTrackerTests(unittest.TestCase):
 
     def test_powerups_reject_snapshot_when_multiplier_read_is_unavailable(self) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
-        complete_health = SimpleNamespace(available=True, complete=True, failure_reason=None)
+        complete_health = SimpleNamespace(
+            available=True, complete=True, failure_reason=None
+        )
         partial_health = SimpleNamespace(
             available=False,
             complete=False,
@@ -2644,7 +2875,9 @@ class LiveRunTrackerTests(unittest.TestCase):
 
         active_snapshot.multiplier_health = partial_health
         self.assertFalse(tracker.update_powerups(active_snapshot))
-        self.assertEqual([effect.name for effect in tracker.powerups_snapshot().active], ["Clock"])
+        self.assertEqual(
+            [effect.name for effect in tracker.powerups_snapshot().active], ["Clock"]
+        )
 
         empty_snapshot = SimpleNamespace(
             my_time_seconds=1002.0,
@@ -2715,7 +2948,9 @@ class LiveRunTrackerTests(unittest.TestCase):
             "Powerups: Shield 01:45 -> 01:25 (15s left) | Durations: standard 45s, clock 36s (PM 3x)",
         )
 
-    def test_powerups_summary_ignores_stale_added_time_from_previous_timer_epoch(self) -> None:
+    def test_powerups_summary_ignores_stale_added_time_from_previous_timer_epoch(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update(
             snapshot(
@@ -2783,7 +3018,9 @@ class LiveRunTrackerTests(unittest.TestCase):
             "Powerups: Clock 01:40 -> 01:22 (18s left) | Durations: standard 22s, clock 18s (PM 1.5x)",
         )
 
-    def test_powerups_summary_uses_final_swarm_clock_in_graveyard_post_boss_outdoors(self) -> None:
+    def test_powerups_summary_uses_final_swarm_clock_in_graveyard_post_boss_outdoors(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update(
             snapshot(
@@ -2820,7 +3057,9 @@ class LiveRunTrackerTests(unittest.TestCase):
             "Powerups: Shield +02:40 -> +03:05 (15s left) | Durations: standard 15s, clock 12s (PM 1x)",
         )
 
-    def test_powerups_summary_uses_graveyard_stage_limit_before_final_swarm(self) -> None:
+    def test_powerups_summary_uses_graveyard_stage_limit_before_final_swarm(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 1000.0)
         tracker.update(
             snapshot(
@@ -2886,7 +3125,9 @@ class LiveRunTrackerTests(unittest.TestCase):
             "Powerups: Shield (15s left) | Durations: standard 15s, clock 12s (PM 1x)",
         )
 
-    def test_powerups_summary_uses_seconds_in_crypt_for_effect_picked_up_before_entering(self) -> None:
+    def test_powerups_summary_uses_seconds_in_crypt_for_effect_picked_up_before_entering(
+        self,
+    ) -> None:
         # A crypt has no meaningful stage clock (the stage timer is frozen near
         # zero), so an effect picked up before entering used to be rendered
         # against it and came out as nonsense -- "Shield 17:00 -> 15:05" for an
@@ -2922,7 +3163,9 @@ class LiveRunTrackerTests(unittest.TestCase):
             "Powerups: Shield (15s left) | Durations: standard 114s, clock 91s (PM 7.61x)",
         )
 
-    def test_powerups_summary_keeps_stage_times_outside_crypt_while_crypt_timer_lingers(self) -> None:
+    def test_powerups_summary_keeps_stage_times_outside_crypt_while_crypt_timer_lingers(
+        self,
+    ) -> None:
         # Guards the other side of the fix above: `crypt_timer` stays non-zero
         # after leaving a crypt, so it cannot mean "in a crypt" by itself. With
         # the stage timer running again the stage-limit format must come back,
@@ -2979,7 +3222,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         base.update(overrides)
         return SimpleNamespace(**base)
 
-    def test_powerups_fallback_in_forest_boss_room_from_is_final_boss_stage(self) -> None:
+    def test_powerups_fallback_in_forest_boss_room_from_is_final_boss_stage(
+        self,
+    ) -> None:
         # Forest/Desert boss room: MapController.isFinalBossStage is the game's
         # own flag. Without it a non-graveyard map shows stage marks; the flag
         # alone must switch to seconds-only. Tamper guard: the negative case
@@ -2995,7 +3240,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertNotIn("->", run(True))
         self.assertIn("->", run(False))
 
-    def test_powerups_fallback_from_crypt_timer_delta_before_activity_dict_updates(self) -> None:
+    def test_powerups_fallback_from_crypt_timer_delta_before_activity_dict_updates(
+        self,
+    ) -> None:
         # Entering a crypt, the activity dictionary still reads outdoor for up
         # to its 10 s slow tick, but crypt_timer advances every fast tick. The
         # delta must switch to seconds-only immediately, without the dict.
@@ -3038,7 +3285,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         push()
         self.assertIn("->", push())
 
-    def test_powerups_fallback_in_graveyard_boss_room_from_is_fighting_boss(self) -> None:
+    def test_powerups_fallback_in_graveyard_boss_room_from_is_fighting_boss(
+        self,
+    ) -> None:
         # The Graveyard boss room keeps the full outdoor activity set, so the
         # dictionary cannot tell it from the main map; only the RSG flag can.
         # isFinalBossStage reads False here, so this is the Graveyard-only path.
@@ -3183,7 +3432,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         self.assertIn("->", summary)
         self.assertIn("+", summary)
 
-    def test_powerups_summary_uses_seconds_when_stage_timer_outran_the_run_timer(self) -> None:
+    def test_powerups_summary_uses_seconds_when_stage_timer_outran_the_run_timer(
+        self,
+    ) -> None:
         # The boss room replaces outdoor activity with unmarked entries and
         # temporarily fast-forwards the stage clock. The stored Graveyard
         # identity tells us this is a boss room, not a normal map.
@@ -3217,7 +3468,9 @@ class LiveRunTrackerTests(unittest.TestCase):
             "Powerups: Shield (15s left) | Durations: standard 15s, clock 12s (PM 1x)",
         )
 
-    def test_powerups_summary_keeps_stage_times_on_normal_map_after_fast_stage_clock(self) -> None:
+    def test_powerups_summary_keeps_stage_times_on_normal_map_after_fast_stage_clock(
+        self,
+    ) -> None:
         # A fast stage clock alone is not a reason to discard exact times:
         # only the identified Graveyard boss room has that exceptional clock.
         tracker = LiveRunTracker(clock=lambda: 1000.0)
@@ -3277,7 +3530,9 @@ class LiveRunTrackerTests(unittest.TestCase):
             "Powerups: Shield +19:50 -> +20:15 (15s left) | Durations: standard 15s, clock 12s (PM 1x)",
         )
 
-    def test_powerups_summary_keeps_stage_times_while_stage_timer_trails_the_run(self) -> None:
+    def test_powerups_summary_keeps_stage_times_while_stage_timer_trails_the_run(
+        self,
+    ) -> None:
         # The other side of the guard: on the graveyard main map the stage timer
         # legitimately trails the run timer (94.66 vs 115.44 as captured), and
         # the 16-minute stage format must survive.
@@ -3337,12 +3592,24 @@ class LiveRunTrackerTests(unittest.TestCase):
         )
 
     def test_powerup_map_context_detects_graveyard_from_strong_markers(self) -> None:
-        self.assertTrue(PowerupMapContext.from_activity_max({"Pumpkin": 105}).is_graveyard)
-        self.assertTrue(PowerupMapContext.from_activity_max({"Gravestones": 22}).is_graveyard)
-        self.assertTrue(PowerupMapContext.from_activity_max({"Crypt Chests": 6}).is_graveyard)
-        self.assertTrue(PowerupMapContext.from_activity_max({"Crypt Pots": 25}).is_graveyard)
-        self.assertTrue(PowerupMapContext.from_activity_max({"Chests": 69}).is_graveyard)
-        self.assertFalse(PowerupMapContext.from_activity_max({"Chests": 46}).is_graveyard)
+        self.assertTrue(
+            PowerupMapContext.from_activity_max({"Pumpkin": 105}).is_graveyard
+        )
+        self.assertTrue(
+            PowerupMapContext.from_activity_max({"Gravestones": 22}).is_graveyard
+        )
+        self.assertTrue(
+            PowerupMapContext.from_activity_max({"Crypt Chests": 6}).is_graveyard
+        )
+        self.assertTrue(
+            PowerupMapContext.from_activity_max({"Crypt Pots": 25}).is_graveyard
+        )
+        self.assertTrue(
+            PowerupMapContext.from_activity_max({"Chests": 69}).is_graveyard
+        )
+        self.assertFalse(
+            PowerupMapContext.from_activity_max({"Chests": 46}).is_graveyard
+        )
         self.assertFalse(PowerupMapContext.from_activity_max({"Pots": 55}).is_graveyard)
 
     def test_powerup_map_context_accessor_respects_ttl(self) -> None:
@@ -3359,8 +3626,9 @@ class LiveRunTrackerTests(unittest.TestCase):
         now += 16.0
         self.assertIsNone(tracker.powerup_map_context())
 
-
-    def test_graveyard_event_timer_uses_activity_dictionary_and_final_swarm(self) -> None:
+    def test_graveyard_event_timer_uses_activity_dictionary_and_final_swarm(
+        self,
+    ) -> None:
         tracker = LiveRunTracker()
         context_gy = PowerupMapContext.from_activity_max({"Chests": 69})
         snap = SimpleNamespace(

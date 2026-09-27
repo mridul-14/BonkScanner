@@ -81,7 +81,9 @@ def snapshot(time_label: str, game_time: float, **extra):
 
 def fake_vod(name: str, times: tuple[float, ...]):
     return SimpleNamespace(
-        metadata=SimpleNamespace(name=name, path=f"/{name}", duration_seconds=times[-1]),
+        metadata=SimpleNamespace(
+            name=name, path=f"/{name}", duration_seconds=times[-1]
+        ),
         snapshots=tuple(snapshot(f"{int(t):02d}s", t) for t in times),
     )
 
@@ -183,9 +185,11 @@ class CompareRunsScrubTests(unittest.TestCase):
         # Every tick moved the captions -- both sides, because moving one
         # slider time-syncs the other.
         self.assertEqual(
-            ["Timeline: 00s - 30s | Selected: 10s",
-             "Timeline: 00s - 30s | Selected: 20s",
-             "Timeline: 00s - 30s | Selected: 30s"],
+            [
+                "Timeline: 00s - 30s | Selected: 10s",
+                "Timeline: 00s - 30s | Selected: 20s",
+                "Timeline: 00s - 30s | Selected: 30s",
+            ],
             tab._run_a_timeline_label.writes,
         )
         self.assertEqual(3, len(tab._run_b_timeline_label.writes))
@@ -198,7 +202,9 @@ class CompareRunsScrubTests(unittest.TestCase):
 
         self.assertEqual(2, tab.refresh_compare_runs_ui.call_count)
 
-    def test_the_coalesced_frame_renders_the_snapshot_the_slider_stopped_on(self) -> None:
+    def test_the_coalesced_frame_renders_the_snapshot_the_slider_stopped_on(
+        self,
+    ) -> None:
         throttle, scheduler = paused_throttle()
         tab = build_scrubbable_compare_tab(throttle)
         for value in (1, 2, 3):
@@ -548,7 +554,9 @@ class CompareRunsDiffCardDirtyCheckTests(unittest.TestCase):
         tab._set_compare_runs_diff_cards("overview", show_weapons=False)
         tab._set_compare_runs_diff_cards("overview", show_weapons=True)
 
-        self.assertEqual(["overview", "overview"], labels["_diff_overview_label"].writes)
+        self.assertEqual(
+            ["overview", "overview"], labels["_diff_overview_label"].writes
+        )
 
     def test_an_unchanged_metric_table_is_not_rewritten(self) -> None:
         """The widget cards go through the same dirty check as the labels.
@@ -622,9 +630,13 @@ class RecordingsScrubTests(unittest.TestCase):
         )
         self.assertIn("Game</span> <b", tab._legend_label.writes[-1])
         self.assertIn(">00:30</b>", tab._legend_label.writes[-1])
-        self.assertEqual([((1,), {})], [
-            (call.args, call.kwargs) for call in tab.display_loaded_vod_snapshot.call_args_list
-        ])
+        self.assertEqual(
+            [((1,), {})],
+            [
+                (call.args, call.kwargs)
+                for call in tab.display_loaded_vod_snapshot.call_args_list
+            ],
+        )
 
         scheduler.fire()
 

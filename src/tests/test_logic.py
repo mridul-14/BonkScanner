@@ -36,7 +36,9 @@ class LogicTests(unittest.TestCase):
             "active_tiers": ["Perfect"],
         }
 
-    def make_scores_config(self, *, thresholds: dict[str, float], active_tiers: list[str]) -> dict:
+    def make_scores_config(
+        self, *, thresholds: dict[str, float], active_tiers: list[str]
+    ) -> dict:
         return {
             "weights": self.scores_config["weights"],
             "multipliers": self.scores_config["multipliers"],
@@ -62,7 +64,9 @@ class LogicTests(unittest.TestCase):
         self.assertEqual(logic.raw_microwaves(0), 0)
         self.assertEqual(logic.raw_microwaves(None), 0)
 
-    def test_score_microwaves_keeps_legacy_score_buckets_on_high_total_map(self) -> None:
+    def test_score_microwaves_keeps_legacy_score_buckets_on_high_total_map(
+        self,
+    ) -> None:
         stats = {
             "Chests": 69,
             "Microwaves": 7,
@@ -70,7 +74,9 @@ class LogicTests(unittest.TestCase):
 
         self.assertEqual(logic.score_microwaves(stats), 2)
 
-    def test_score_uses_default_weights_and_multipliers_when_config_is_empty(self) -> None:
+    def test_score_uses_default_weights_and_multipliers_when_config_is_empty(
+        self,
+    ) -> None:
         stats = {
             "Shady Guy": 2,
             "Moais": 3,
@@ -163,7 +169,9 @@ class LogicTests(unittest.TestCase):
 
         self.assertEqual(score, 7.5)
 
-    def test_score_uses_one_microwave_multiplier_when_microwaves_are_missing_or_zero(self) -> None:
+    def test_score_uses_one_microwave_multiplier_when_microwaves_are_missing_or_zero(
+        self,
+    ) -> None:
         stats = {
             "Shady Guy": 2,
             "Moais": 1,
@@ -208,7 +216,9 @@ class LogicTests(unittest.TestCase):
 
         self.assertEqual(score, 54.0)
 
-    def test_template_with_one_microwave_requirement_matches_zero_or_missing_microwaves(self) -> None:
+    def test_template_with_one_microwave_requirement_matches_zero_or_missing_microwaves(
+        self,
+    ) -> None:
         stats = {
             "Shady Guy": 10,
             "Moais": 0,
@@ -222,12 +232,16 @@ class LogicTests(unittest.TestCase):
         }
 
         zero_result = logic.find_matching_template(stats, ["MICRO"], [self.template])
-        missing_result = logic.find_matching_template(missing_microwave_stats, ["MICRO"], [self.template])
+        missing_result = logic.find_matching_template(
+            missing_microwave_stats, ["MICRO"], [self.template]
+        )
 
         self.assertEqual(zero_result, self.template)
         self.assertEqual(missing_result, self.template)
 
-    def test_template_with_one_microwave_requirement_matches_one_microwave(self) -> None:
+    def test_template_with_one_microwave_requirement_matches_one_microwave(
+        self,
+    ) -> None:
         stats = {
             "Shady Guy": 10,
             "Moais": 0,
@@ -239,7 +253,9 @@ class LogicTests(unittest.TestCase):
 
         self.assertEqual(result, self.template)
 
-    def test_scores_perfect_treats_zero_microwaves_as_one_with_required_stats(self) -> None:
+    def test_scores_perfect_treats_zero_microwaves_as_one_with_required_stats(
+        self,
+    ) -> None:
         stats = {
             "Shady Guy": 8,
             "Moais": 2,
@@ -253,7 +269,9 @@ class LogicTests(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result["name"], "Perfect")
 
-    def test_scores_perfect_zero_microwaves_still_needs_one_microwave_special_stats(self) -> None:
+    def test_scores_perfect_zero_microwaves_still_needs_one_microwave_special_stats(
+        self,
+    ) -> None:
         stats = {
             "Shady Guy": 10,
             "Moais": 10,
@@ -379,7 +397,9 @@ class LogicTests(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result["name"], "Perfect+")
 
-    def test_scores_perfect_with_two_microwaves_does_not_require_extra_stats(self) -> None:
+    def test_scores_perfect_with_two_microwaves_does_not_require_extra_stats(
+        self,
+    ) -> None:
         stats = {
             "Shady Guy": 1,
             "Moais": 1,
@@ -439,12 +459,16 @@ class LogicTests(unittest.TestCase):
         }
 
         score = logic.calculate_score(stats, self.scores_config)
-        two_microwave_score = logic.calculate_score(two_microwave_stats, self.scores_config)
+        two_microwave_score = logic.calculate_score(
+            two_microwave_stats, self.scores_config
+        )
 
         self.assertEqual(score, 8.75)
         self.assertEqual(score, two_microwave_score)
 
-    def test_template_with_two_microwave_requirement_matches_more_than_two_microwaves(self) -> None:
+    def test_template_with_two_microwave_requirement_matches_more_than_two_microwaves(
+        self,
+    ) -> None:
         template = {
             "id": 1,
             "name": "TWO_MICRO",
@@ -473,7 +497,9 @@ class LogicTests(unittest.TestCase):
 
         self.assertEqual(result, template)
 
-    def test_high_total_chest_family_does_not_treat_zero_microwaves_as_one(self) -> None:
+    def test_high_total_chest_family_does_not_treat_zero_microwaves_as_one(
+        self,
+    ) -> None:
         template = {
             "id": 1,
             "name": "ONE_MICRO",
@@ -531,7 +557,9 @@ class LogicTests(unittest.TestCase):
 
         for template in blocking_templates:
             with self.subTest(template=template["name"]):
-                result = logic.find_matching_template(base_stats, [template["name"]], [template])
+                result = logic.find_matching_template(
+                    base_stats, [template["name"]], [template]
+                )
                 self.assertIsNone(result)
 
     def test_template_without_requirements_matches_any_active_template(self) -> None:
@@ -617,9 +645,7 @@ class LogicTests(unittest.TestCase):
         for template in blocking_templates:
             with self.subTest(template=template["name"]):
                 self.assertIsNone(
-                    logic.find_matching_template(
-                        stats, [template["name"]], [template]
-                    )
+                    logic.find_matching_template(stats, [template["name"]], [template])
                 )
 
     def test_active_templates_keep_or_semantics_with_maximums(self) -> None:
@@ -637,9 +663,7 @@ class LogicTests(unittest.TestCase):
     def test_missing_maximum_keeps_legacy_template_unbounded(self) -> None:
         template = {"id": 1, "name": "LEGACY", "moai": 2}
 
-        result = logic.find_matching_template(
-            {"Moais": 99}, ["LEGACY"], [template]
-        )
+        result = logic.find_matching_template({"Moais": 99}, ["LEGACY"], [template])
 
         self.assertEqual(result, template)
 
@@ -656,8 +680,12 @@ class LogicTests(unittest.TestCase):
             "Boss Curses": 1,
         }
 
-        self.assertTrue(logic.conditions_met(matching_stats, ["MICRO"], [self.template]))
-        self.assertFalse(logic.conditions_met(failing_stats, ["MICRO"], [self.template]))
+        self.assertTrue(
+            logic.conditions_met(matching_stats, ["MICRO"], [self.template])
+        )
+        self.assertFalse(
+            logic.conditions_met(failing_stats, ["MICRO"], [self.template])
+        )
 
     def test_bald_heads_template_does_not_match_on_normal_chest_family(self) -> None:
         template = {"id": 1, "name": "BALD", "bald_heads": 3}
@@ -681,7 +709,9 @@ class LogicTests(unittest.TestCase):
 
         self.assertEqual(result, template)
 
-    def test_bald_heads_template_requires_minimum_count_on_high_total_chest_family(self) -> None:
+    def test_bald_heads_template_requires_minimum_count_on_high_total_chest_family(
+        self,
+    ) -> None:
         template = {"id": 1, "name": "BALD", "bald_heads": 3}
         stats = {
             "Chests": 69,

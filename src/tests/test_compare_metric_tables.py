@@ -149,8 +149,12 @@ class CompareDirectionTests(unittest.TestCase):
             tomes=(),
             chaos_tome=None,
         )
-        vod_a = SimpleNamespace(metadata=SimpleNamespace(name="A"), snapshots=(snapshot_a,))
-        vod_b = SimpleNamespace(metadata=SimpleNamespace(name="B"), snapshots=(snapshot_b,))
+        vod_a = SimpleNamespace(
+            metadata=SimpleNamespace(name="A"), snapshots=(snapshot_a,)
+        )
+        vod_b = SimpleNamespace(
+            metadata=SimpleNamespace(name="B"), snapshots=(snapshot_b,)
+        )
 
         stats = formatting.build_compare_runs_stats_table(
             snapshot_a, snapshot_b, stat_labels=("Damage",)
@@ -162,7 +166,9 @@ class CompareDirectionTests(unittest.TestCase):
         snapshots = formatting.build_compare_runs_snapshot_table(
             vod_a, 0, snapshot_a, vod_b, 0, snapshot_b
         )
-        rows = {row.label: row for section in snapshots.sections for row in section.rows}
+        rows = {
+            row.label: row for section in snapshots.sections for row in section.rows
+        }
 
         self.assertEqual("+0.25", stats.sections[0].rows[0].delta, "stat")
         self.assertEqual("+2", weapons.sections[0].rows[0].delta, "weapon level")
@@ -198,8 +204,12 @@ class MetricTableShapeTests(unittest.TestCase):
     def test_equal_tables_compare_equal(self) -> None:
         """The diff-card dirty check is a `==` on this; it has to hold."""
         rows = (MetricRow("Level", "3", "5", "+2"),)
-        first = MetricTable(sections=(formatting.MetricSection(("", "A", "B", "Diff"), rows, "Sword"),))
-        second = MetricTable(sections=(formatting.MetricSection(("", "A", "B", "Diff"), rows, "Sword"),))
+        first = MetricTable(
+            sections=(formatting.MetricSection(("", "A", "B", "Diff"), rows, "Sword"),)
+        )
+        second = MetricTable(
+            sections=(formatting.MetricSection(("", "A", "B", "Diff"), rows, "Sword"),)
+        )
 
         self.assertEqual(first, second)
 
@@ -208,13 +218,21 @@ class WeaponsTableTests(unittest.TestCase):
     def _snapshots(self):
         snapshot_a = snapshot(
             weapons=(
-                weapon("Sword", 3, {1: stat("Damage", 10.0, "10"), 2: stat("Area", 1.0, "1.00x")}),
+                weapon(
+                    "Sword",
+                    3,
+                    {1: stat("Damage", 10.0, "10"), 2: stat("Area", 1.0, "1.00x")},
+                ),
                 weapon("Bow", 1, {1: stat("Damage", 4.0, "4")}),
             )
         )
         snapshot_b = snapshot(
             weapons=(
-                weapon("Sword", 5, {1: stat("Damage", 14.0, "14"), 2: stat("Area", 1.0, "1.00x")}),
+                weapon(
+                    "Sword",
+                    5,
+                    {1: stat("Damage", 14.0, "14"), 2: stat("Area", 1.0, "1.00x")},
+                ),
             )
         )
         return snapshot_a, snapshot_b
@@ -222,7 +240,9 @@ class WeaponsTableTests(unittest.TestCase):
     def test_one_section_per_weapon_in_name_order(self) -> None:
         table = formatting.build_compare_runs_weapons_table(*self._snapshots())
 
-        self.assertEqual(["Bow", "Sword"], [section.title for section in table.sections])
+        self.assertEqual(
+            ["Bow", "Sword"], [section.title for section in table.sections]
+        )
 
     def test_the_section_subtitle_is_the_level_transition(self) -> None:
         table = formatting.build_compare_runs_weapons_table(*self._snapshots())
@@ -251,7 +271,9 @@ class WeaponsTableTests(unittest.TestCase):
             self.assertIn(html.escape(section.title), rendered)
             for row in section.rows:
                 for cell in (row.label, row.value_a, row.value_b, row.delta):
-                    self.assertIn(html.escape(cell), rendered, f"{section.title}/{row.label}")
+                    self.assertIn(
+                        html.escape(cell), rendered, f"{section.title}/{row.label}"
+                    )
 
     def test_no_weapons_yields_the_same_caption_the_html_shows(self) -> None:
         table = formatting.build_compare_runs_weapons_table(snapshot(), snapshot())
@@ -290,14 +312,19 @@ class TomesTableTests(unittest.TestCase):
     def test_chaos_shows_its_level_instead(self) -> None:
         """Chaos has no single stat value, so its card compares levels."""
         table = formatting.build_compare_runs_tomes_table(*self._snapshots())
-        chaos_section = next(section for section in table.sections if section.title == "Chaos")
+        chaos_section = next(
+            section for section in table.sections if section.title == "Chaos"
+        )
 
         self.assertEqual(["Level"], [row.label for row in chaos_section.rows])
-        self.assertEqual(("4", "7", "-3"), (
-            chaos_section.rows[0].value_a,
-            chaos_section.rows[0].value_b,
-            chaos_section.rows[0].delta,
-        ))
+        self.assertEqual(
+            ("4", "7", "-3"),
+            (
+                chaos_section.rows[0].value_a,
+                chaos_section.rows[0].value_b,
+                chaos_section.rows[0].delta,
+            ),
+        )
 
     def test_every_row_also_appears_in_the_html_the_formatter_builds(self) -> None:
         snapshot_a, snapshot_b = self._snapshots()
@@ -308,7 +335,9 @@ class TomesTableTests(unittest.TestCase):
             self.assertIn(html.escape(section.title), rendered)
             for row in section.rows:
                 for cell in (row.label, row.value_a, row.value_b, row.delta):
-                    self.assertIn(html.escape(cell), rendered, f"{section.title}/{row.label}")
+                    self.assertIn(
+                        html.escape(cell), rendered, f"{section.title}/{row.label}"
+                    )
 
     def test_no_tomes_yields_the_same_caption_the_html_shows(self) -> None:
         table = formatting.build_compare_runs_tomes_table(snapshot(), snapshot())
@@ -337,24 +366,39 @@ class ItemsTableTests(unittest.TestCase):
         )
 
     def test_expanded_lists_one_row_per_changed_item(self) -> None:
-        table = formatting.build_compare_runs_items_table(*self._snapshots(), details_expanded=True)
+        table = formatting.build_compare_runs_items_table(
+            *self._snapshots(), details_expanded=True
+        )
         rows = {row.label: row for row in table.sections[0].rows}
 
         self.assertEqual(("Name", "A", "B", "Diff"), table.sections[0].headers)
-        self.assertEqual({"Key", "Za Warudo", "Magnet"}, set(rows), "unchanged items are omitted")
-        self.assertEqual(("2", "5", "-3"), (rows["Key"].value_a, rows["Key"].value_b, rows["Key"].delta))
-        self.assertEqual(("1", "0", "+1"), (
-            rows["Za Warudo"].value_a,
-            rows["Za Warudo"].value_b,
-            rows["Za Warudo"].delta,
-        ), "A holds the only Za Warudo, so its delta is positive")
+        self.assertEqual(
+            {"Key", "Za Warudo", "Magnet"}, set(rows), "unchanged items are omitted"
+        )
+        self.assertEqual(
+            ("2", "5", "-3"),
+            (rows["Key"].value_a, rows["Key"].value_b, rows["Key"].delta),
+        )
+        self.assertEqual(
+            ("1", "0", "+1"),
+            (
+                rows["Za Warudo"].value_a,
+                rows["Za Warudo"].value_b,
+                rows["Za Warudo"].delta,
+            ),
+            "A holds the only Za Warudo, so its delta is positive",
+        )
 
     def test_each_row_carries_the_item_colour_the_html_used(self) -> None:
-        table = formatting.build_compare_runs_items_table(*self._snapshots(), details_expanded=True)
+        table = formatting.build_compare_runs_items_table(
+            *self._snapshots(), details_expanded=True
+        )
 
         for row in table.sections[0].rows:
             self.assertTrue(row.label_color.startswith("#"), row.label)
-            self.assertIn(row.label_color, formatting._format_item_delta_name(row.label))
+            self.assertIn(
+                row.label_color, formatting._format_item_delta_name(row.label)
+            )
 
     def test_the_summary_keeps_the_inline_lists_only_while_collapsed(self) -> None:
         snapshot_a, snapshot_b = self._snapshots()
@@ -365,14 +409,20 @@ class ItemsTableTests(unittest.TestCase):
         )
 
         self.assertIn("B has more", collapsed)
-        self.assertNotIn("B has more", expanded, "the table below replaces the inline list")
+        self.assertNotIn(
+            "B has more", expanded, "the table below replaces the inline list"
+        )
         self.assertIn("Rarity Delta", expanded)
 
     def test_identical_inventories_say_so_and_show_no_table(self) -> None:
         same = snapshot(items=("Key x2",))
 
-        summary = formatting.build_compare_runs_items_summary(same, same, details_expanded=True)
-        table = formatting.build_compare_runs_items_table(same, same, details_expanded=True)
+        summary = formatting.build_compare_runs_items_summary(
+            same, same, details_expanded=True
+        )
+        table = formatting.build_compare_runs_items_table(
+            same, same, details_expanded=True
+        )
 
         self.assertIn("No item count differences", summary)
         self.assertEqual((), table.sections)
@@ -425,17 +475,25 @@ class ChaosTableTests(unittest.TestCase):
         table = formatting.build_compare_runs_chaos_table(*self._snapshots())
         overview = table.sections[0]
 
-        self.assertEqual(["Level", "Tracked Rolls", "Stats"], [row.label for row in overview.rows])
-        self.assertEqual(("30", "37", "-7"), (
-            overview.rows[0].value_a,
-            overview.rows[0].value_b,
-            overview.rows[0].delta,
-        ))
-        self.assertEqual(("4", "9", "-5"), (
-            overview.rows[1].value_a,
-            overview.rows[1].value_b,
-            overview.rows[1].delta,
-        ))
+        self.assertEqual(
+            ["Level", "Tracked Rolls", "Stats"], [row.label for row in overview.rows]
+        )
+        self.assertEqual(
+            ("30", "37", "-7"),
+            (
+                overview.rows[0].value_a,
+                overview.rows[0].value_b,
+                overview.rows[0].delta,
+            ),
+        )
+        self.assertEqual(
+            ("4", "9", "-5"),
+            (
+                overview.rows[1].value_a,
+                overview.rows[1].value_b,
+                overview.rows[1].delta,
+            ),
+        )
 
     def test_a_stat_only_run_b_rolled_still_gets_a_row(self) -> None:
         table = formatting.build_compare_runs_chaos_table(*self._snapshots())
@@ -501,37 +559,55 @@ class CharacterPassiveTableTests(unittest.TestCase):
 
         self.assertEqual(2, len(table.sections))
         overview = {row.label: row for row in table.sections[0].rows}
-        self.assertEqual(("Dice", "Dice", "--"), (
-            overview["Character"].value_a,
-            overview["Character"].value_b,
-            overview["Character"].delta,
-        ))
-        self.assertEqual(("30", "37", "-7"), (
-            overview["Level"].value_a,
-            overview["Level"].value_b,
-            overview["Level"].delta,
-        ))
-        self.assertEqual(("4", "9", "-5"), (
-            overview["Tracked Rolls"].value_a,
-            overview["Tracked Rolls"].value_b,
-            overview["Tracked Rolls"].delta,
-        ))
-        self.assertEqual(("Complete", "Partial"), (
-            overview["Tracking"].value_a,
-            overview["Tracking"].value_b,
-        ))
+        self.assertEqual(
+            ("Dice", "Dice", "--"),
+            (
+                overview["Character"].value_a,
+                overview["Character"].value_b,
+                overview["Character"].delta,
+            ),
+        )
+        self.assertEqual(
+            ("30", "37", "-7"),
+            (
+                overview["Level"].value_a,
+                overview["Level"].value_b,
+                overview["Level"].delta,
+            ),
+        )
+        self.assertEqual(
+            ("4", "9", "-5"),
+            (
+                overview["Tracked Rolls"].value_a,
+                overview["Tracked Rolls"].value_b,
+                overview["Tracked Rolls"].delta,
+            ),
+        )
+        self.assertEqual(
+            ("Complete", "Partial"),
+            (
+                overview["Tracking"].value_a,
+                overview["Tracking"].value_b,
+            ),
+        )
 
         stats = {row.label: row for row in table.sections[1].rows}
-        self.assertEqual(("+24%", "+40%", "-16%"), (
-            stats["Damage"].value_a,
-            stats["Damage"].value_b,
-            stats["Damage"].delta,
-        ))
-        self.assertEqual(("--", "+7%", "--"), (
-            stats["Luck"].value_a,
-            stats["Luck"].value_b,
-            stats["Luck"].delta,
-        ))
+        self.assertEqual(
+            ("+24%", "+40%", "-16%"),
+            (
+                stats["Damage"].value_a,
+                stats["Damage"].value_b,
+                stats["Damage"].delta,
+            ),
+        )
+        self.assertEqual(
+            ("--", "+7%", "--"),
+            (
+                stats["Luck"].value_a,
+                stats["Luck"].value_b,
+                stats["Luck"].delta,
+            ),
+        )
 
     def test_linear_passives_do_not_invent_a_roll_count(self) -> None:
         fox = passive(
@@ -547,9 +623,9 @@ class CharacterPassiveTableTests(unittest.TestCase):
             row for row in table.sections[0].rows if row.label == "Tracked Rolls"
         )
 
-        self.assertEqual(("--", "--", "--"), (
-            rolls.value_a, rolls.value_b, rolls.delta
-        ))
+        self.assertEqual(
+            ("--", "--", "--"), (rolls.value_a, rolls.value_b, rolls.delta)
+        )
 
     def test_old_recordings_without_passive_data_use_the_empty_state(self) -> None:
         table = formatting.build_compare_runs_passives_table(snapshot(), snapshot())

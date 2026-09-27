@@ -269,9 +269,7 @@ class FakeBotWorker:
 
 def _explodes(name):
     def factory(*_args, **_kwargs):
-        raise AssertionError(
-            f"{name} was opened but this test did not arrange for it"
-        )
+        raise AssertionError(f"{name} was opened but this test did not arrange for it")
 
     return factory
 
@@ -303,7 +301,14 @@ def build_session(
     tab = tab if tab is not None else FakeTab()
     timer = FakeTimer()
     logs: list = []
-    calls: dict = {"auth_threads": [], "bot_workers": [], "validation": [], "revoke": [], "primed": 0, "refreshed": 0}
+    calls: dict = {
+        "auth_threads": [],
+        "bot_workers": [],
+        "validation": [],
+        "revoke": [],
+        "primed": 0,
+        "refreshed": 0,
+    }
 
     def auth_thread_factory():
         thread = FakeAuthThread()
@@ -344,8 +349,10 @@ def build_session(
         validation_worker_factory=validation_worker_factory,
         revoke_worker_factory=revoke_worker_factory,
         validate_token=validate_token or _explodes("validate_token"),
-        commands_help_dialog=commands_help_dialog or _explodes("TwitchCommandsHelpDialog"),
-        command_settings_dialog=command_settings_dialog or _explodes("TwitchCommandSettingsDialog"),
+        commands_help_dialog=commands_help_dialog
+        or _explodes("TwitchCommandsHelpDialog"),
+        command_settings_dialog=command_settings_dialog
+        or _explodes("TwitchCommandSettingsDialog"),
         prime_disabled_items=prime,
         refresh_player_stats=refresh,
     )

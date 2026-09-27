@@ -50,7 +50,10 @@ class LogEntryParsingTests(unittest.TestCase):
         for tag in ("warning", "success", "error"):
             self.assertNotIn(tag.upper(), COLOR_MAP)
         self.assertEqual(
-            {parse_log_entry("x", tag).severity for tag in ("warning", "success", "error")},
+            {
+                parse_log_entry("x", tag).severity
+                for tag in ("warning", "success", "error")
+            },
             {"warning", "success", "error"},
         )
 
@@ -111,9 +114,13 @@ class LogEntryParsingTests(unittest.TestCase):
 
     def test_markup_in_a_message_cannot_reach_the_document(self) -> None:
         record = parse_log_entry("<b>not bold</b> & co")
-        self.assertIn("&lt;b&gt;not bold&lt;/b&gt; &amp; co", render_record_html(record))
+        self.assertIn(
+            "&lt;b&gt;not bold&lt;/b&gt; &amp; co", render_record_html(record)
+        )
 
-    def test_map_stats_hide_the_repeat_badge_without_affecting_other_lines(self) -> None:
+    def test_map_stats_hide_the_repeat_badge_without_affecting_other_lines(
+        self,
+    ) -> None:
         for text in (
             "Stats: Shady: 2, Moai: 3, Score: 22.5",
             "Map Stats: Shady: 2, Moai: 3, Score: 22.5",
@@ -130,12 +137,16 @@ class LogEntryParsingTests(unittest.TestCase):
 
 class LogFilterTests(unittest.TestCase):
     def _record(self, text, severity="info"):
-        return LogRecord(timestamp="00:00:00", severity=severity, segments=((text, None),))
+        return LogRecord(
+            timestamp="00:00:00", severity=severity, segments=((text, None),)
+        )
 
     def test_the_level_filter_and_the_search_both_apply(self) -> None:
         record = self._record("Lost connection to the game", "error")
         self.assertTrue(record_matches(record, severities=set(), search=""))
-        self.assertTrue(record_matches(record, severities={"error"}, search="connection"))
+        self.assertTrue(
+            record_matches(record, severities={"error"}, search="connection")
+        )
         self.assertFalse(record_matches(record, severities={"warning"}, search=""))
         self.assertFalse(record_matches(record, severities=set(), search="banana"))
 

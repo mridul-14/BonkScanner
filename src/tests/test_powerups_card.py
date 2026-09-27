@@ -15,6 +15,7 @@ Step 19 converted the subject: these ran class-qualified against
 bound. Two of the three assertions below are unchanged; only the construction
 moved, which is the point of the builder.
 """
+
 from __future__ import annotations
 
 import unittest
@@ -76,7 +77,9 @@ def tracker_with_snapshot(**kwargs):
 
 class FormatLivePowerupsCardTests(unittest.TestCase):
     def test_no_snapshot_and_no_stats_leaves_every_effect_dashed(self) -> None:
-        title, values = owner_with(tracker_without_snapshot()).format_live_powerups_card({})
+        title, values = owner_with(
+            tracker_without_snapshot()
+        ).format_live_powerups_card({})
         self.assertEqual(title, "Powerups")
         self.assertEqual(values, {name: "--" for name in EFFECTS})
 
@@ -90,7 +93,9 @@ class FormatLivePowerupsCardTests(unittest.TestCase):
             "Powerup Multiplier": SimpleNamespace(value=2.0, display_value="2.00x")
         }
 
-        title, values = owner_with(tracker_without_snapshot()).format_live_powerups_card(stats)
+        title, values = owner_with(
+            tracker_without_snapshot()
+        ).format_live_powerups_card(stats)
 
         self.assertEqual(title, "Powerups (PM 2.00x)")
         self.assertEqual(values["Clock"], "-- (24s)")
@@ -99,15 +104,21 @@ class FormatLivePowerupsCardTests(unittest.TestCase):
 
     def test_a_non_numeric_multiplier_is_ignored(self) -> None:
         stats = {"Powerup Multiplier": SimpleNamespace(value=None, display_value="--")}
-        title, values = owner_with(tracker_without_snapshot()).format_live_powerups_card(stats)
+        title, values = owner_with(
+            tracker_without_snapshot()
+        ).format_live_powerups_card(stats)
         self.assertEqual(title, "Powerups")
         self.assertEqual(values["Rage"], "--")
 
     def test_an_infinite_multiplier_is_ignored(self) -> None:
         stats = {
-            "Powerup Multiplier": SimpleNamespace(value=float("inf"), display_value="inf")
+            "Powerup Multiplier": SimpleNamespace(
+                value=float("inf"), display_value="inf"
+            )
         }
-        title, values = owner_with(tracker_without_snapshot()).format_live_powerups_card(stats)
+        title, values = owner_with(
+            tracker_without_snapshot()
+        ).format_live_powerups_card(stats)
         self.assertEqual(title, "Powerups")
         self.assertEqual(values["Rage"], "--")
 
@@ -165,7 +176,9 @@ class FormatLivePowerupsCardTests(unittest.TestCase):
 
         title, values = owner_with(tracker).format_live_powerups_card({})
 
-        self.assertEqual(title, "Powerups", "a '--' multiplier must not reach the title")
+        self.assertEqual(
+            title, "Powerups", "a '--' multiplier must not reach the title"
+        )
         self.assertEqual(values["Shield"], "(3s)")
 
 
@@ -186,8 +199,12 @@ class ApplyLivePowerupsCardTests(unittest.TestCase):
 
     def test_missing_widgets_are_a_no_op(self) -> None:
         """The tab is not built yet during early refresh ticks."""
-        owner_with(tracker_without_snapshot(), group=None, labels=None)._apply_live_powerups_card({})
-        owner_with(tracker_without_snapshot(), group=FakeGroup(), labels=None)._apply_live_powerups_card({})
+        owner_with(
+            tracker_without_snapshot(), group=None, labels=None
+        )._apply_live_powerups_card({})
+        owner_with(
+            tracker_without_snapshot(), group=FakeGroup(), labels=None
+        )._apply_live_powerups_card({})
 
 
 class RefreshPowerupsCardPortTests(unittest.TestCase):

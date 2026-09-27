@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ctypes
-from ctypes import wintypes
 import glob
 import json
 import math
@@ -11,6 +10,7 @@ import os
 import struct
 import sys
 import time
+from ctypes import wintypes
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -27,15 +27,15 @@ ARTIFACTS_DIR = TOOL_DIR / "artifacts"
 if str(DEPS_DIR) not in sys.path:
     sys.path.insert(0, str(DEPS_DIR))
 
-from core.item_metadata import (
+from core.item_metadata import (  # noqa: E402
     ITEM_DISPLAY_NAME_BY_RAW_VALUE,
     ITEM_ENUM_NAMES_BY_ID,
     ITEMS,
     normalize_item_name_for_rarity,
 )
-from infra.memory.game_data_client import GameDataClient
-from infra.memory.map_marker_client import MapMarkerMemoryClient
-from infra.memory.reader import ProcessMemory
+from infra.memory.game_data_client import GameDataClient  # noqa: E402
+from infra.memory.map_marker_client import MapMarkerMemoryClient  # noqa: E402
+from infra.memory.reader import ProcessMemory  # noqa: E402
 
 try:
     import keyboard
@@ -53,6 +53,7 @@ try:
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
+
     console = Console()
 except ImportError:
     Console = None
@@ -96,6 +97,7 @@ MICROWAVE_USES_LEFT_OFFSET = 0x84
 
 MOAI_TYPE_INFO_OFFSET = 0x2FB5D18
 BOSS_CURSE_TYPE_INFO_OFFSET = 0x2FB5B20
+SHRINE_DONE_OFFSET = 0x68
 
 PLAYER_STATS_TYPE_INFO_OFFSET = 0x02F6A4B8
 PLAYER_STATS_ROOT_OFFSET = 0x0
@@ -175,7 +177,7 @@ MICROWAVE_COLORS = {
 # ==============================================================================
 # Stage 1 Seed Filter Thresholds (Editable)
 # ==============================================================================
-THRESHOLD_SHADY_PLUS_MOAI = 0
+THRESHOLD_SHADY_PLUS_MOAI = 8
 THRESHOLD_MICROWAVES = 2
 THRESHOLD_BOSS_CURSES = 1
 THRESHOLD_MAGNET_CURSES = 2
@@ -198,12 +200,15 @@ TARGET_SHADY_ITEMS = {
 # Required Shady Guy Items Filter (Editable)
 # ==============================================================================
 # Configure items that MUST appear among Shady Guy offerings for a seed to match on Stage 1.
-# - REQUIRED_ALL_ITEM_IDS (AND / Must-Have): ALL items in this list MUST appear on the map.
-# - REQUIRED_ANY_ITEM_IDS (OR / Any-Of):    At least ONE item in this list MUST appear on the map.
+# - REQUIRED_ALL_ITEM_IDS (AND / Must-Have): ALL items or item combinations in this list MUST appear on the map.
+# - REQUIRED_ANY_ITEM_IDS (OR / Any-Of):    At least ONE item or item combination in this list MUST appear on the map.
 #
+# Nested lists represent item COMBINATIONS that must be present together:
 # Examples:
-# - REQUIRED_ALL_ITEM_IDS = [41, 57], REQUIRED_ANY_ITEM_IDS = [47, 22]
-#   -> Map must have BOTH Anvil (41) AND Kevin (57) AND at least ONE of [Soul Harvester (47), Dragonfire (22)].
+# - REQUIRED_ALL_ITEM_IDS = [41, [22, 47]]
+#   -> Map must have BOTH Anvil (41) AND the combination [Dragonfire (22) + Soul Harvester (47)].
+# - REQUIRED_ANY_ITEM_IDS = [22, [41, 47]]
+#   -> Map must have EITHER Dragonfire (22) OR the combination [Anvil (41) + Soul Harvester (47)].
 # - If both lists are empty, no specific items are required (shrine & curse thresholds only).
 #
 # ------------------------------------------------------------------------------
@@ -301,8 +306,12 @@ TARGET_SHADY_ITEMS = {
 #  81 | Crypt Key                 | Crypt key                 | -
 #  50 | Weeb Headset              | Weeb Headset              | -
 # ------------------------------------------------------------------------------
-REQUIRED_ALL_ITEM_IDS: list[int] = [41]  # Must-have items: ALL must be present on map (AND)
-REQUIRED_ANY_ITEM_IDS: list[int] = []#47, 22, 49, 15, 76, 17]      # Any-of items: At least ONE must be present on map (OR)
+REQUIRED_ALL_ITEM_IDS: list[Any] = [
+    41
+]  # Must-have items / combinations: ALL must be present on map (AND)
+REQUIRED_ANY_ITEM_IDS: list[
+    Any
+] = []  # Any-of items / combinations: At least ONE must be present on map (OR)
 
 
 # ==============================================================================
@@ -321,9 +330,11 @@ HIGHLIGHTED_SHADY_ITEMS = {
     0: "Key",
     21: "Beefy Ring",
 }
-HIGHLIGHTED_ITEM_MARKER = "+"                  # Visual marker for secondary highlighted items
-TARGET_ITEM_COLOR = "bold bright_red"          # Target items color (bright red)
-REGULAR_ITEM_COLOR = "bold bright_white"       # Regular filler items (Common/Rare/Epic) (bright white)
+HIGHLIGHTED_ITEM_MARKER = "+"  # Visual marker for secondary highlighted items
+TARGET_ITEM_COLOR = "bold bright_red"  # Target items color (bright red)
+REGULAR_ITEM_COLOR = (
+    "bold bright_white"  # Regular filler items (Common/Rare/Epic) (bright white)
+)
 
 # ==============================================================================
 # Tier & Rarity Color Palette Configuration
@@ -374,29 +385,41 @@ for _item in ITEMS:
 # ==============================================================================
 # Seed Offerings Data Tracker (Records seed -> [items] into JSON)
 # ==============================================================================
-TRACK_SEED_OFFERINGS = True        # If True, saves seed -> [shady items] in JSON file
+TRACK_SEED_OFFERINGS = False  # If True, saves seed -> [shady items] in JSON file
 SEED_TRACKER_FILE = ARTIFACTS_DIR / "shady_seed_data.json"
 
 # ==============================================================================
 # Auto-Restart / Reroll Settings (Editable)
 # ==============================================================================
-AUTO_RESTART_ON_FAIL = True        # Automatically restart Stage 1 if criteria not met
-PAUSE_GAME_ON_MATCH = True         # Automatically pause Megabonk (Escape) when criteria are met
-FAST_EVALUATION = True             # Skip 0.8s Shady heap scan if shrine counts fail and tracking is off
-READ_SETTINGS_FROM_GAME = True     # Automatically read Quick Reset key & hold duration from Megabonk
-MANUAL_RESET_HOTKEY = None         # Set to string (e.g. 'p' or 'r') to override game settings, or None
-MANUAL_HOLD_DURATION = None        # Set to float (e.g. 0.3) to override game settings, or None
-REQUIRE_GAME_WINDOW_FOCUS = True   # Pause auto-restart if Megabonk is not focused
-HOTKEY_TOGGLE_AUTORESTART = "f6"   # Global hotkey to toggle auto-restart ON/OFF
-MAX_REROLLS = 0                    # Maximum rerolls (0 = unlimited until match)
+AUTO_RESTART_ON_FAIL = True  # Automatically restart Stage 1 if criteria not met
+PAUSE_GAME_ON_MATCH = (
+    True  # Automatically pause Megabonk (Escape) when criteria are met
+)
+FAST_EVALUATION = (
+    True  # Skip 0.8s Shady heap scan if shrine counts fail and tracking is off
+)
+READ_SETTINGS_FROM_GAME = (
+    True  # Automatically read Quick Reset key & hold duration from Megabonk
+)
+MANUAL_RESET_HOTKEY = (
+    None  # Set to string (e.g. 'p' or 'r') to override game settings, or None
+)
+MANUAL_HOLD_DURATION = (
+    None  # Set to float (e.g. 0.3) to override game settings, or None
+)
+REQUIRE_GAME_WINDOW_FOCUS = True  # Pause auto-restart if Megabonk is not focused
+HOTKEY_TOGGLE_AUTORESTART = "f6"  # Global hotkey to toggle auto-restart ON/OFF
+MAX_REROLLS = 0  # Maximum rerolls (0 = unlimited until match)
 # ==============================================================================
 # Console Display Settings (Editable)
 # ==============================================================================
-CLEAR_CONSOLE_ON_OUTPUT = True      # Always clear old console output before displaying a new scan/evaluation report
+CLEAR_CONSOLE_ON_OUTPUT = True  # Always clear old console output before displaying a new scan/evaluation report
 # ==============================================================================
 # Power-Up & Za Warudo Tracking Settings (Editable)
 # ==============================================================================
-ENABLE_POWERUP_TRACKING = False     # Set to True to track active power-ups, buffs & held Za Warudo
+ENABLE_POWERUP_TRACKING = (
+    False  # Set to True to track active power-ups, buffs & held Za Warudo
+)
 # ==============================================================================
 
 _RARITIES = ["COMMON", "RARE", "EPIC", "LEGENDARY"]
@@ -509,11 +532,17 @@ def read_active_powerups(memory: ProcessMemory, module_base: int) -> dict:
                 s_idx = memory.read_i32(mc_static + MAP_CONTROLLER_STAGE_INDEX_OFFSET)
                 if 0 <= s_idx <= 10:
                     stage_idx = s_idx
-                current_stage = memory.read_ptr(mc_static + MAP_CONTROLLER_CURRENT_STAGE_OFFSET)
+                current_stage = memory.read_ptr(
+                    mc_static + MAP_CONTROLLER_CURRENT_STAGE_OFFSET
+                )
                 if current_stage and current_stage > 0x10000:
-                    timeline = memory.read_ptr(current_stage + STAGE_DATA_TIMELINE_OFFSET)
+                    timeline = memory.read_ptr(
+                        current_stage + STAGE_DATA_TIMELINE_OFFSET
+                    )
                     if timeline and timeline > 0x10000:
-                        st = memory.read_float(timeline + STAGE_TIMELINE_STAGE_TIME_OFFSET)
+                        st = memory.read_float(
+                            timeline + STAGE_TIMELINE_STAGE_TIME_OFFSET
+                        )
                         if st and math.isfinite(st) and 0 < st <= 1800:
                             stage_time = st
     except Exception:
@@ -530,12 +559,20 @@ def read_active_powerups(memory: ProcessMemory, module_base: int) -> dict:
         if my_time_type and is_valid_class_ptr(my_time_type):
             my_time_static = memory.read_ptr(my_time_type + CLASS_STATIC_FIELDS_OFFSET)
             if my_time_static and my_time_static > 0x10000:
-                my_time_seconds = memory.read_float(my_time_static + MY_TIME_TIME_OFFSET)
-                stage_timer_seconds = memory.read_float(my_time_static + STAGE_TIMER_OFFSET)
+                my_time_seconds = memory.read_float(
+                    my_time_static + MY_TIME_TIME_OFFSET
+                )
+                stage_timer_seconds = memory.read_float(
+                    my_time_static + STAGE_TIMER_OFFSET
+                )
     except Exception:
         pass
 
-    if my_time_seconds is None or stage_timer_seconds is None or not math.isfinite(my_time_seconds):
+    if (
+        my_time_seconds is None
+        or stage_timer_seconds is None
+        or not math.isfinite(my_time_seconds)
+    ):
         return res
 
     res["my_time"] = my_time_seconds
@@ -594,26 +631,41 @@ def read_active_powerups(memory: ProcessMemory, module_base: int) -> dict:
 
             for items_dict in dict.fromkeys(item_dicts):
                 i_entries = memory.read_ptr(items_dict + DICT_ENTRIES_OFFSET)
-                i_cap = memory.read_i32(i_entries + ARRAY_LENGTH_OFFSET) if i_entries else 0
+                i_cap = (
+                    memory.read_i32(i_entries + ARRAY_LENGTH_OFFSET) if i_entries else 0
+                )
                 if 0 < i_cap <= 256 and hasattr(memory, "read_bytes"):
                     tot_len = i_cap * DICT_ENTRY_SIZE
-                    i_buf = memory.read_bytes(i_entries + DICT_ENTRY_START_OFFSET, tot_len)
+                    i_buf = memory.read_bytes(
+                        i_entries + DICT_ENTRY_START_OFFSET, tot_len
+                    )
                     if i_buf and len(i_buf) >= tot_len:
                         for i in range(i_cap):
                             off = i * DICT_ENTRY_SIZE
-                            h_code, _, iid, item_obj = struct.unpack_from("<iii4xQ", i_buf, off)
+                            h_code, _, iid, item_obj = struct.unpack_from(
+                                "<iii4xQ", i_buf, off
+                            )
                             if h_code >= 0 and iid == 25:
-                                cnt = memory.read_i32(item_obj + 0x18) if item_obj else 1
+                                cnt = (
+                                    memory.read_i32(item_obj + 0x18) if item_obj else 1
+                                )
                                 res["za_warudo_held"] = max(1, cnt)
                                 break
                 elif 0 < i_cap <= 256:
                     for i in range(i_cap):
-                        entry_addr = i_entries + DICT_ENTRY_START_OFFSET + (i * DICT_ENTRY_SIZE)
-                        if memory.read_i32(entry_addr + DICT_ENTRY_HASH_CODE_OFFSET) < 0:
+                        entry_addr = (
+                            i_entries + DICT_ENTRY_START_OFFSET + (i * DICT_ENTRY_SIZE)
+                        )
+                        if (
+                            memory.read_i32(entry_addr + DICT_ENTRY_HASH_CODE_OFFSET)
+                            < 0
+                        ):
                             continue
                         iid = memory.read_i32(entry_addr + DICT_ENTRY_KEY_OFFSET)
                         if iid == 25:  # Za Warudo
-                            item_obj = memory.read_ptr(entry_addr + DICT_ENTRY_VALUE_OFFSET)
+                            item_obj = memory.read_ptr(
+                                entry_addr + DICT_ENTRY_VALUE_OFFSET
+                            )
                             cnt = memory.read_i32(item_obj + 0x18) if item_obj else 1
                             res["za_warudo_held"] = max(1, cnt)
                             break
@@ -622,10 +674,14 @@ def read_active_powerups(memory: ProcessMemory, module_base: int) -> dict:
         except Exception:
             pass
 
-        status_effects = memory.read_ptr(player_inventory + PLAYER_STATUS_EFFECTS_OFFSET)
+        status_effects = memory.read_ptr(
+            player_inventory + PLAYER_STATUS_EFFECTS_OFFSET
+        )
         if not status_effects or status_effects < 0x10000:
             return res
-        dictionary_address = memory.read_ptr(status_effects + PLAYER_STATUS_EFFECTS_DICT_OFFSET)
+        dictionary_address = memory.read_ptr(
+            status_effects + PLAYER_STATUS_EFFECTS_DICT_OFFSET
+        )
         if not dictionary_address or dictionary_address < 0x10000:
             return res
         entries = memory.read_ptr(dictionary_address + DICT_ENTRIES_OFFSET)
@@ -640,31 +696,55 @@ def read_active_powerups(memory: ProcessMemory, module_base: int) -> dict:
 
         active_effects = []
         tot_bytes = capacity * DICT_ENTRY_SIZE
-        dict_buf = memory.read_bytes(entries + DICT_ENTRY_START_OFFSET, tot_bytes) if hasattr(memory, "read_bytes") else None
+        dict_buf = (
+            memory.read_bytes(entries + DICT_ENTRY_START_OFFSET, tot_bytes)
+            if hasattr(memory, "read_bytes")
+            else None
+        )
 
         if dict_buf and len(dict_buf) >= tot_bytes:
             for index in range(capacity):
                 off = index * DICT_ENTRY_SIZE
-                hash_code, _, effect_id, effect_ptr = struct.unpack_from("<iii4xQ", dict_buf, off)
-                if hash_code < 0 or effect_id not in POWERUP_EFFECT_NAMES or effect_ptr < 0x10000:
+                hash_code, _, effect_id, effect_ptr = struct.unpack_from(
+                    "<iii4xQ", dict_buf, off
+                )
+                if (
+                    hash_code < 0
+                    or effect_id not in POWERUP_EFFECT_NAMES
+                    or effect_ptr < 0x10000
+                ):
                     continue
                 try:
-                    eff_buf = memory.read_bytes(effect_ptr + STATUS_EFFECT_EXPIRATION_OFFSET, 8) if hasattr(memory, "read_bytes") else None
+                    eff_buf = (
+                        memory.read_bytes(
+                            effect_ptr + STATUS_EFFECT_EXPIRATION_OFFSET, 8
+                        )
+                        if hasattr(memory, "read_bytes")
+                        else None
+                    )
                     if eff_buf and len(eff_buf) >= 8:
                         expiration_time, added_time = struct.unpack("<ff", eff_buf)
                     else:
-                        expiration_time = memory.read_float(effect_ptr + STATUS_EFFECT_EXPIRATION_OFFSET)
-                        added_time = memory.read_float(effect_ptr + STATUS_EFFECT_ADDED_OFFSET)
+                        expiration_time = memory.read_float(
+                            effect_ptr + STATUS_EFFECT_EXPIRATION_OFFSET
+                        )
+                        added_time = memory.read_float(
+                            effect_ptr + STATUS_EFFECT_ADDED_OFFSET
+                        )
                     remaining = expiration_time - my_time_seconds
                     if remaining <= 0 or not math.isfinite(remaining):
                         continue
 
                     if not is_overtime:
                         end_clock_seconds = max(0.0, stage_clock_remaining - remaining)
-                        end_clock_str = format_clock_time(end_clock_seconds, is_overtime=False)
+                        end_clock_str = format_clock_time(
+                            end_clock_seconds, is_overtime=False
+                        )
                     else:
                         end_clock_seconds = stage_clock_overtime + remaining
-                        end_clock_str = format_clock_time(end_clock_seconds, is_overtime=True)
+                        end_clock_str = format_clock_time(
+                            end_clock_seconds, is_overtime=True
+                        )
 
                     duration = (
                         expiration_time - added_time
@@ -672,15 +752,17 @@ def read_active_powerups(memory: ProcessMemory, module_base: int) -> dict:
                         else remaining
                     )
 
-                    active_effects.append({
-                        "effect_id": effect_id,
-                        "name": POWERUP_EFFECT_NAMES[effect_id],
-                        "remaining_seconds": round(remaining, 1),
-                        "duration_seconds": round(duration, 1),
-                        "end_clock": end_clock_str,
-                        "added_time": added_time,
-                        "expiration_time": expiration_time,
-                    })
+                    active_effects.append(
+                        {
+                            "effect_id": effect_id,
+                            "name": POWERUP_EFFECT_NAMES[effect_id],
+                            "remaining_seconds": round(remaining, 1),
+                            "duration_seconds": round(duration, 1),
+                            "end_clock": end_clock_str,
+                            "added_time": added_time,
+                            "expiration_time": expiration_time,
+                        }
+                    )
                 except Exception:
                     continue
         else:
@@ -696,18 +778,26 @@ def read_active_powerups(memory: ProcessMemory, module_base: int) -> dict:
                     effect_ptr = memory.read_ptr(entry + DICT_ENTRY_VALUE_OFFSET)
                     if not effect_ptr or effect_ptr < 0x10000:
                         continue
-                    expiration_time = memory.read_float(effect_ptr + STATUS_EFFECT_EXPIRATION_OFFSET)
-                    added_time = memory.read_float(effect_ptr + STATUS_EFFECT_ADDED_OFFSET)
+                    expiration_time = memory.read_float(
+                        effect_ptr + STATUS_EFFECT_EXPIRATION_OFFSET
+                    )
+                    added_time = memory.read_float(
+                        effect_ptr + STATUS_EFFECT_ADDED_OFFSET
+                    )
                     remaining = expiration_time - my_time_seconds
                     if remaining <= 0 or not math.isfinite(remaining):
                         continue
 
                     if not is_overtime:
                         end_clock_seconds = max(0.0, stage_clock_remaining - remaining)
-                        end_clock_str = format_clock_time(end_clock_seconds, is_overtime=False)
+                        end_clock_str = format_clock_time(
+                            end_clock_seconds, is_overtime=False
+                        )
                     else:
                         end_clock_seconds = stage_clock_overtime + remaining
-                        end_clock_str = format_clock_time(end_clock_seconds, is_overtime=True)
+                        end_clock_str = format_clock_time(
+                            end_clock_seconds, is_overtime=True
+                        )
 
                     duration = (
                         expiration_time - added_time
@@ -715,15 +805,17 @@ def read_active_powerups(memory: ProcessMemory, module_base: int) -> dict:
                         else remaining
                     )
 
-                    active_effects.append({
-                        "effect_id": effect_id,
-                        "name": POWERUP_EFFECT_NAMES[effect_id],
-                        "remaining_seconds": round(remaining, 1),
-                        "duration_seconds": round(duration, 1),
-                        "end_clock": end_clock_str,
-                        "added_time": added_time,
-                        "expiration_time": expiration_time,
-                    })
+                    active_effects.append(
+                        {
+                            "effect_id": effect_id,
+                            "name": POWERUP_EFFECT_NAMES[effect_id],
+                            "remaining_seconds": round(remaining, 1),
+                            "duration_seconds": round(duration, 1),
+                            "end_clock": end_clock_str,
+                            "added_time": added_time,
+                            "expiration_time": expiration_time,
+                        }
+                    )
                 except Exception:
                     continue
 
@@ -735,9 +827,9 @@ def read_active_powerups(memory: ProcessMemory, module_base: int) -> dict:
     return res
 
 
-
-
-def render_active_powerups_block(powerup_data: dict | None, use_rich: bool = True) -> None:
+def render_active_powerups_block(
+    powerup_data: dict | None, use_rich: bool = True
+) -> None:
     """Render Active Power-ups and Za Warudo table/section in stage report."""
     if not powerup_data:
         return
@@ -755,7 +847,9 @@ def render_active_powerups_block(powerup_data: dict | None, use_rich: bool = Tru
         )
         pu_table.add_column("Power-Up / Buff", style="bold")
         pu_table.add_column("Status / Time Left", justify="right")
-        pu_table.add_column("Expires At (Stage Clock)", justify="center", style="bold bright_yellow")
+        pu_table.add_column(
+            "Expires At (Stage Clock)", justify="center", style="bold bright_yellow"
+        )
         pu_table.add_column("Stage Clock", justify="center", style="dim")
 
         if za_held > 0:
@@ -793,12 +887,18 @@ def render_active_powerups_block(powerup_data: dict | None, use_rich: bool = Tru
         print("-" * 80, flush=True)
         print(f"⚡ ACTIVE POWER-UPS & BUFFS (Stage Clock: {stage_clock}):", flush=True)
         if za_held > 0:
-            print(f"  * Za Warudo (Held Item x{za_held}): Active Protection (Triggers on lethal damage)", flush=True)
+            print(
+                f"  * Za Warudo (Held Item x{za_held}): Active Protection (Triggers on lethal damage)",
+                flush=True,
+            )
         for eff in effects:
             name = eff.get("name", "Unknown")
             rem = eff.get("remaining_seconds", 0.0)
             end_clock = eff.get("end_clock", "--:--")
-            print(f"  * {name}: {rem:.1f}s remaining -> Ends at {end_clock} (Stage Clock: {stage_clock})", flush=True)
+            print(
+                f"  * {name}: {rem:.1f}s remaining -> Ends at {end_clock} (Stage Clock: {stage_clock})",
+                flush=True,
+            )
 
 
 def format_single_powerup_line(
@@ -826,7 +926,10 @@ def format_single_powerup_line(
             name_tag = f"[bold bright_green]{name}[/]"
         else:
             name_tag = f"[bold bright_magenta]{name}[/]"
-        return f"⚡ [bold yellow][POWER-UP][/] {name_tag}: Active until [bold bright_yellow]{end_clock}[/] [dim](Clock: {stage_clock})[/]"
+        return (
+            f"⚡ [bold yellow][POWER-UP][/] {name_tag}: Active until "
+            f"[bold bright_yellow]{end_clock}[/] [dim](Clock: {stage_clock})[/]"
+        )
 
     return plain
 
@@ -852,7 +955,9 @@ class PowerupDisplayTracker:
 
     def on_console_cleared(self) -> None:
         """Called when clear_console() is invoked."""
-        active_entries = [entry for entry in self.displayed_lines if entry["status"] == "active"]
+        active_entries = [
+            entry for entry in self.displayed_lines if entry["status"] == "active"
+        ]
         self.displayed_lines.clear()
         self.intervening_prints = False
         if active_entries:
@@ -903,33 +1008,36 @@ class PowerupDisplayTracker:
                 f"⚡ [bold yellow][HELD ITEM][/] [bold bright_yellow]Za Warudo[/] (x{current_za_held}): "
                 f"[green]Active Protection (Freezes time on lethal damage)[/] [dim](Clock: {stage_clock})[/]"
             )
-            line_plain = f"⚡ [HELD ITEM] Za Warudo (x{current_za_held}): Active Protection (Freezes time on lethal damage) (Clock: {stage_clock})"
-            line_ended_rich = (
-                f"[dim strike]⚡ [HELD ITEM] Za Warudo: Consumed / Broken (Clock: {stage_clock})[/]"
+            line_plain = (
+                f"⚡ [HELD ITEM] Za Warudo (x{current_za_held}): "
+                f"Active Protection (Freezes time on lethal damage) (Clock: {stage_clock})"
             )
-            line_ended_plain = (
-                f"\033[2;9m⚡ [HELD ITEM] Za Warudo: Consumed / Broken (Clock: {stage_clock})\033[0m"
-            )
+            line_ended_rich = f"[dim strike]⚡ [HELD ITEM] Za Warudo: Consumed / Broken (Clock: {stage_clock})[/]"
+            line_ended_plain = f"\033[2;9m⚡ [HELD ITEM] Za Warudo: Consumed / Broken (Clock: {stage_clock})\033[0m"
 
             self._print_line(line_rich, line_plain)
 
-            self.displayed_lines.append({
-                "effect_id": -25,
-                "name": "Za Warudo (Held)",
-                "end_clock": "--:--",
-                "stage_clock": stage_clock,
-                "expiration_time": None,
-                "line_rich": line_rich,
-                "line_plain": line_plain,
-                "line_ended_rich": line_ended_rich,
-                "line_ended_plain": line_ended_plain,
-                "status": "active",
-            })
+            self.displayed_lines.append(
+                {
+                    "effect_id": -25,
+                    "name": "Za Warudo (Held)",
+                    "end_clock": "--:--",
+                    "stage_clock": stage_clock,
+                    "expiration_time": None,
+                    "line_rich": line_rich,
+                    "line_plain": line_plain,
+                    "line_ended_rich": line_ended_rich,
+                    "line_ended_plain": line_ended_plain,
+                    "status": "active",
+                }
+            )
         elif current_za_held > 0 and current_za_held != self.last_seen_za_warudo_held:
             diff = current_za_held - self.last_seen_za_warudo_held
             if diff > 0:
                 msg_rich = f"[green]Active Protection (Added +{diff}, total x{current_za_held})[/]"
-                msg_plain = f"Active Protection (Added +{diff}, total x{current_za_held})"
+                msg_plain = (
+                    f"Active Protection (Added +{diff}, total x{current_za_held})"
+                )
             else:
                 msg_rich = f"[yellow]Active Protection ({abs(diff)} consumed, x{current_za_held} remaining)[/]"
                 msg_plain = f"Active Protection ({abs(diff)} consumed, x{current_za_held} remaining)"
@@ -969,12 +1077,23 @@ class PowerupDisplayTracker:
                 if exp_time is not None and last.get("expiration_time") is not None:
                     if exp_time > last["expiration_time"] + 0.1:
                         is_renewed = True
-                if not is_renewed and added_time is not None and last.get("added_time") is not None:
+                if (
+                    not is_renewed
+                    and added_time is not None
+                    and last.get("added_time") is not None
+                ):
                     if added_time > last["added_time"] + 0.1:
                         is_renewed = True
-                if not is_renewed and rem_sec > last.get("remaining_seconds", 0.0) + 1.0:
+                if (
+                    not is_renewed
+                    and rem_sec > last.get("remaining_seconds", 0.0) + 1.0
+                ):
                     is_renewed = True
-                if not is_renewed and end_clock != last.get("end_clock") and rem_sec >= last.get("remaining_seconds", 0.0):
+                if (
+                    not is_renewed
+                    and end_clock != last.get("end_clock")
+                    and rem_sec >= last.get("remaining_seconds", 0.0)
+                ):
                     is_renewed = True
 
                 if is_renewed:
@@ -1002,31 +1121,45 @@ class PowerupDisplayTracker:
             if exp_time is None and current_my_time is not None:
                 exp_time = current_my_time + nb.get("remaining_seconds", 0.0)
 
-            line_rich = format_single_powerup_line(name, end_clock, stage_clock, is_ended=False, use_rich=True)
-            line_plain = format_single_powerup_line(name, end_clock, stage_clock, is_ended=False, use_rich=False)
-            line_ended_rich = format_single_powerup_line(name, end_clock, stage_clock, is_ended=True, use_rich=True)
-            line_ended_plain = format_single_powerup_line(name, end_clock, stage_clock, is_ended=True, use_rich=False)
+            line_rich = format_single_powerup_line(
+                name, end_clock, stage_clock, is_ended=False, use_rich=True
+            )
+            line_plain = format_single_powerup_line(
+                name, end_clock, stage_clock, is_ended=False, use_rich=False
+            )
+            line_ended_rich = format_single_powerup_line(
+                name, end_clock, stage_clock, is_ended=True, use_rich=True
+            )
+            line_ended_plain = format_single_powerup_line(
+                name, end_clock, stage_clock, is_ended=True, use_rich=False
+            )
 
             self._print_line(line_rich, line_plain)
 
-            self.displayed_lines.append({
-                "effect_id": eid,
-                "name": name,
-                "end_clock": end_clock,
-                "stage_clock": stage_clock,
-                "expiration_time": exp_time,
-                "line_rich": line_rich,
-                "line_plain": line_plain,
-                "line_ended_rich": line_ended_rich,
-                "line_ended_plain": line_ended_plain,
-                "status": "active",
-            })
+            self.displayed_lines.append(
+                {
+                    "effect_id": eid,
+                    "name": name,
+                    "end_clock": end_clock,
+                    "stage_clock": stage_clock,
+                    "expiration_time": exp_time,
+                    "line_rich": line_rich,
+                    "line_plain": line_plain,
+                    "line_ended_rich": line_ended_rich,
+                    "line_ended_plain": line_ended_plain,
+                    "status": "active",
+                }
+            )
 
         # 2. Check for expired power-up entries in displayed_lines
         # A line expires if:
         #  a) Its effect_id is no longer present in current_effects (completely disappeared/wiped)
         #  b) current_time (my_time or stage_timer) has reached or passed this entry's expiration_time
-        current_time = current_my_time if current_my_time is not None else pu_data.get("stage_timer")
+        current_time = (
+            current_my_time
+            if current_my_time is not None
+            else pu_data.get("stage_timer")
+        )
         for idx, entry in enumerate(self.displayed_lines):
             if entry["status"] != "active":
                 continue
@@ -1062,9 +1195,125 @@ def get_item_name(item_id: int) -> str:
     return f"UnknownItem({item_id})"
 
 
+def get_item_id_by_name(name_or_id: Any) -> int | None:
+    """Resolve an item ID from an integer, string ID, or item display/enum name."""
+    if isinstance(name_or_id, int):
+        return name_or_id
+    if isinstance(name_or_id, str):
+        val = name_or_id.strip()
+        if not val:
+            return None
+        val_clean = val.strip("\"' ")
+        if val_clean.isdigit() or (
+            val_clean.startswith("-") and val_clean[1:].isdigit()
+        ):
+            return int(val_clean)
+        val_lower = val_clean.lower()
+        for iid, raw_enum in ITEM_ENUM_NAMES_BY_ID.items():
+            disp_name = ITEM_DISPLAY_NAME_BY_RAW_VALUE.get(raw_enum, raw_enum)
+            if disp_name.lower() == val_lower or raw_enum.lower() == val_lower:
+                return iid
+        for iid, dname in TARGET_SHADY_ITEMS.items():
+            if dname.lower() == val_lower:
+                return iid
+    return None
+
+
+def normalize_required_item_combos(req_input: Any) -> list[list[int]]:
+    """Normalize required items configuration into a list of item combinations (list[list[int]]).
+
+    Supports:
+      - Plain integer IDs: 41 -> [[41]]
+      - Flat lists of IDs: [41, 47] -> [[41], [47]]
+      - Nested combinations: [41, [22, 47]] -> [[41], [22, 47]]
+      - Combinations of 3+ items: [[41, 47, 22]] -> [[41, 47, 22]]
+      - Strings / item names: ["Anvil", [22, "47"]] -> [[41], [22, 47]]
+    Handles edge cases:
+      - Empty lists/tuples are omitted.
+      - None is converted to an empty list [].
+      - Invalid/unresolvable item entries are safely skipped.
+    """
+    if req_input is None:
+        return []
+    if isinstance(req_input, (int, str)):
+        resolved = get_item_id_by_name(req_input)
+        return [[resolved]] if resolved is not None else []
+
+    combos: list[list[int]] = []
+    for entry in req_input:
+        if isinstance(entry, (list, tuple, set)):
+            sub_combo: list[int] = []
+            for item in entry:
+                resolved = get_item_id_by_name(item)
+                if resolved is not None:
+                    sub_combo.append(resolved)
+            if sub_combo:
+                combos.append(sub_combo)
+        else:
+            resolved = get_item_id_by_name(entry)
+            if resolved is not None:
+                combos.append([resolved])
+    return combos
+
+
+def flatten_item_combos(combos: list[list[int]]) -> list[int]:
+    """Flatten all combinations into a flat list of item IDs."""
+    flat: list[int] = []
+    for combo in combos:
+        flat.extend(combo)
+    return flat
+
+
+def format_item_combo_name(combo: list[int]) -> str:
+    """Format a combination of item IDs into a readable string (e.g. 'Dragonfire + Soul Harvester')."""
+    if not combo:
+        return "None"
+    names = [get_item_name(i) for i in combo]
+    if len(names) == 1:
+        return names[0]
+    return " + ".join(names)
+
+
+def parse_cli_item_specs(raw_str: str) -> list[Any]:
+    """Parse comma and bracket separated item IDs or nested combinations from CLI or env strings.
+
+    Examples:
+      "41, [22, 47]" -> [41, [22, 47]]
+      "[41, [22, 47]]" -> [41, [22, 47]]
+      "41, 47" -> [41, 47]
+    """
+    raw_str = raw_str.strip()
+    if not raw_str:
+        return []
+    try:
+        loaded = json.loads(raw_str if raw_str.startswith("[") else f"[{raw_str}]")
+        if isinstance(loaded, list):
+            return loaded
+    except Exception:
+        pass
+    import ast
+
+    try:
+        evaluated = ast.literal_eval(
+            raw_str if raw_str.startswith("[") else f"[{raw_str}]"
+        )
+        if isinstance(evaluated, (list, tuple)):
+            return list(evaluated)
+    except Exception:
+        pass
+    cleaned = (
+        raw_str.replace("[", "").replace("]", "").replace("(", "").replace(")", "")
+    )
+    return [int(x.strip()) for x in cleaned.split(",") if x.strip().isdigit()]
+
+
 def is_target_item(item_id: int | None, item_name: str | None = None) -> bool:
     """Check if an item is one of the primary target or required items."""
-    req_ids_set = set(REQUIRED_ALL_ITEM_IDS) | set(REQUIRED_ANY_ITEM_IDS)
+    req_all_combos = normalize_required_item_combos(REQUIRED_ALL_ITEM_IDS)
+    req_any_combos = normalize_required_item_combos(REQUIRED_ANY_ITEM_IDS)
+    req_ids_set = set(flatten_item_combos(req_all_combos)) | set(
+        flatten_item_combos(req_any_combos)
+    )
     if item_id is not None:
         if item_id in TARGET_SHADY_ITEMS or item_id in req_ids_set:
             return True
@@ -1118,7 +1367,9 @@ def format_item_display(
     cost_info: str = "",
     use_rich: bool = True,
 ) -> str:
-    """Format item name with color styling: target (bright red), highlighted (tier-colored), other legendary (yellow), rest (bright white)."""
+    """Format item name with color styling: target (bright red), highlighted (tier-colored),
+    other legendary (yellow), rest (bright white).
+    """
     name = item_name or (get_item_name(item_id) if item_id is not None else "Unknown")
     is_tgt = is_target_item(item_id, name)
     is_hl = is_highlighted_item(item_id, name)
@@ -1162,7 +1413,9 @@ def format_shady_rarity(rarity: str | int | None, use_rich: bool = True) -> str:
     return f"[{st}]{r_str}[/]"
 
 
-def format_vendor_display(shady_num: int | Any, rarity: str | int | None, use_rich: bool = True) -> str:
+def format_vendor_display(
+    shady_num: int | Any, rarity: str | int | None, use_rich: bool = True
+) -> str:
     """Format vendor display string with tier-colored rarity tag."""
     if rarity is None or rarity == "-":
         r_str = "COMMON"
@@ -1181,7 +1434,7 @@ def format_vendor_display(shady_num: int | Any, rarity: str | int | None, use_ri
 
 def is_valid_class_ptr(val: int | None) -> bool:
     """Check if a memory value is a valid 64-bit runtime class pointer.
-    
+
     Valid runtime class pointers in Windows 64-bit user address space are 8-byte aligned
     and reside strictly between 0x100000000 (4GB) and 0x7FFFFFFF0000 (128TB user limit).
     This safely excludes null pointers, 32-bit IL2CPP metadata tokens (<= 0xFFFFFFFF),
@@ -1194,7 +1447,9 @@ def is_valid_class_ptr(val: int | None) -> bool:
     return True
 
 
-def get_character_identity(memory: ProcessMemory, module_base: int) -> tuple[int, str] | None:
+def get_character_identity(
+    memory: ProcessMemory, module_base: int
+) -> tuple[int, str] | None:
     """Read current player character ID and friendly name from PlayerStats in memory."""
     try:
         type_info = memory.read_ptr(module_base + PLAYER_STATS_TYPE_INFO_OFFSET)
@@ -1224,12 +1479,23 @@ def get_character_identity(memory: ProcessMemory, module_base: int) -> tuple[int
     return None
 
 
-
 COMPASS_16 = [
-    "North", "NNE", "North-East", "ENE",
-    "East", "ESE", "South-East", "SSE",
-    "South", "SSW", "South-West", "WSW",
-    "West", "WNW", "North-West", "NNW",
+    "North",
+    "NNE",
+    "North-East",
+    "ENE",
+    "East",
+    "ESE",
+    "South-East",
+    "SSE",
+    "South",
+    "SSW",
+    "South-West",
+    "WSW",
+    "West",
+    "WNW",
+    "North-West",
+    "NNW",
 ]
 
 
@@ -1248,9 +1514,13 @@ def get_map_sector(pos: tuple[float, float] | None, world_size: float = 600.0) -
 
     if v_part and h_part:
         compass = f"{v_part}-{h_part}"
-        visual = "Top-Right" if v_part == "North" and h_part == "East" else (
-            "Top-Left" if v_part == "North" else (
-                "Bottom-Right" if h_part == "East" else "Bottom-Left"
+        visual = (
+            "Top-Right"
+            if v_part == "North" and h_part == "East"
+            else (
+                "Top-Left"
+                if v_part == "North"
+                else ("Bottom-Right" if h_part == "East" else "Bottom-Left")
             )
         )
         return f"{compass} ({visual})"
@@ -1322,11 +1592,15 @@ def is_shady_guy_done(
                 native_comp = struct.unpack_from("<Q", hdr_buf, NATIVE_COMP_OFFSET)[0]
                 if not native_comp or native_comp < 0x10000:
                     return True
-                done_shady = bool(struct.unpack_from("<B", hdr_buf, SHADY_DONE_OFFSET)[0])
+                done_shady = bool(
+                    struct.unpack_from("<B", hdr_buf, SHADY_DONE_OFFSET)[0]
+                )
                 if done_shady:
                     return True
                 initial_items = len(sg_dict.get("items", [])) if sg_dict else 3
-                items_ptr = struct.unpack_from("<Q", hdr_buf, SHADY_ITEMS_LIST_OFFSET)[0]
+                items_ptr = struct.unpack_from("<Q", hdr_buf, SHADY_ITEMS_LIST_OFFSET)[
+                    0
+                ]
                 if items_ptr and items_ptr > 0x10000:
                     item_count = memory.read_i32(items_ptr + 0x18)
                     if initial_items > 0 and 0 <= item_count < initial_items:
@@ -1384,27 +1658,35 @@ def get_all_shady_items_ranked(shady_guys: list[dict]) -> list[dict]:
         shady_num = sg.get("shady_num", rank)
         for it_idx, it in enumerate(sg.get("items", [])):
             item_id = it.get("item_id")
-            name = it.get("item_name") or get_item_name(item_id if item_id is not None else -1)
+            name = it.get("item_name") or get_item_name(
+                item_id if item_id is not None else -1
+            )
             gold = prices[it_idx] if it_idx < len(prices) else None
             mult = mults[it_idx] if it_idx < len(mults) else None
-            items_ranked.append({
-                "shady_rank": rank,
-                "shady_num": shady_num,
-                "shady_rarity": sg.get("rarity", "COMMON"),
-                "shady_done": is_done,
-                "slot": it_idx + 1,
-                "item_id": item_id,
-                "item_name": name,
-                "gold": gold,
-                "multiplier": mult,
-                "dist": dist,
-                "dist_val": dist_val,
-                "direction": rel[0] if rel else None,
-                "bearing_deg": rel[1] if rel else None,
-                "rel_str": f"{rel[2]}m {rel[0]}" if rel else (f"{dist}m" if dist is not None else "-"),
-                "bearing_str": f"({rel[1]}°)" if (rel and rel[1] is not None) else "",
-                "map_sector": sec,
-            })
+            items_ranked.append(
+                {
+                    "shady_rank": rank,
+                    "shady_num": shady_num,
+                    "shady_rarity": sg.get("rarity", "COMMON"),
+                    "shady_done": is_done,
+                    "slot": it_idx + 1,
+                    "item_id": item_id,
+                    "item_name": name,
+                    "gold": gold,
+                    "multiplier": mult,
+                    "dist": dist,
+                    "dist_val": dist_val,
+                    "direction": rel[0] if rel else None,
+                    "bearing_deg": rel[1] if rel else None,
+                    "rel_str": f"{rel[2]}m {rel[0]}"
+                    if rel
+                    else (f"{dist}m" if dist is not None else "-"),
+                    "bearing_str": f"({rel[1]}°)"
+                    if (rel and rel[1] is not None)
+                    else "",
+                    "map_sector": sec,
+                }
+            )
     items_ranked.sort(key=lambda x: (x["dist_val"], x["slot"]))
     return items_ranked
 
@@ -1448,7 +1730,11 @@ def decode_il2cpp_list_items(memory: ProcessMemory, list_ptr: int) -> list[dict]
                         except Exception:
                             pass
 
-                    if "item_name" not in item_info and 0 <= elem_i32 <= 90 and elem_i32 in ITEM_ENUM_NAMES_BY_ID:
+                    if (
+                        "item_name" not in item_info
+                        and 0 <= elem_i32 <= 90
+                        and elem_i32 in ITEM_ENUM_NAMES_BY_ID
+                    ):
                         item_info["item_id"] = elem_i32
                         item_info["item_name"] = get_item_name(elem_i32)
 
@@ -1475,7 +1761,11 @@ def decode_il2cpp_list_items(memory: ProcessMemory, list_ptr: int) -> list[dict]
                 except Exception:
                     pass
 
-            if "item_name" not in item_info and 0 <= elem_i32 <= 90 and elem_i32 in ITEM_ENUM_NAMES_BY_ID:
+            if (
+                "item_name" not in item_info
+                and 0 <= elem_i32 <= 90
+                and elem_i32 in ITEM_ENUM_NAMES_BY_ID
+            ):
                 item_info["item_id"] = elem_i32
                 item_info["item_name"] = get_item_name(elem_i32)
 
@@ -1528,18 +1818,15 @@ def decode_il2cpp_int_list(memory: ProcessMemory, list_ptr: int) -> list[int]:
     return values
 
 
-
-
-
-
-
 def get_stage_index(memory: ProcessMemory, module_base: int) -> int:
     try:
         type_info = memory.read_ptr(module_base + MAP_CONTROLLER_TYPE_INFO_OFFSET)
         if type_info:
             static_fields = memory.read_ptr(type_info + CLASS_STATIC_FIELDS_OFFSET)
             if static_fields:
-                return memory.read_i32(static_fields + MAP_CONTROLLER_STAGE_INDEX_OFFSET)
+                return memory.read_i32(
+                    static_fields + MAP_CONTROLLER_STAGE_INDEX_OFFSET
+                )
     except Exception:
         pass
     return -1
@@ -1555,6 +1842,7 @@ def get_map_interactable_counts(
         try:
             activities = gdc.get_map_activity_values()
             if activities:
+
                 def get_max(key: str) -> int:
                     sv = activities.get(key)
                     return sv.max if sv else 0
@@ -1596,6 +1884,7 @@ def scan_heap_interactables(
     Uses NumPy AVX2 SIMD scanning if available, with automatic multi-pass retry
     and fallback for maximum speed and zero race conditions during live scene loading.
     """
+
     def _get_type_info(offset: int) -> int | None:
         cached = _TYPE_INFO_CACHE.get(offset)
         if cached is not None and is_valid_class_ptr(cached):
@@ -1643,7 +1932,9 @@ def scan_heap_interactables(
         try:
             full_map = marker_client._resolve_full_map()
             if full_map:
-                ws = memory.read_float(full_map + marker_client.FULL_MAP_WORLD_SIZE_OFFSET)
+                ws = memory.read_float(
+                    full_map + marker_client.FULL_MAP_WORLD_SIZE_OFFSET
+                )
                 if ws and math.isfinite(ws) and ws > 0:
                     world_size = float(ws)
         except Exception:
@@ -1673,10 +1964,18 @@ def scan_heap_interactables(
 
         addr = 0x10000
         while addr < max_addr:
-            need_shady = (shady_class_ptr is not None) and (target_shady <= 0 or len(shady_guys) < target_shady)
-            need_micro = (micro_class_ptr is not None) and (target_micro <= 0 or len(microwaves) < target_micro)
-            need_moai = (moai_class_ptr is not None) and (target_moai <= 0 or len(moais) < target_moai)
-            need_boss = (boss_class_ptr is not None) and (target_boss <= 0 or len(boss_curses) < target_boss)
+            need_shady = (shady_class_ptr is not None) and (
+                target_shady <= 0 or len(shady_guys) < target_shady
+            )
+            need_micro = (micro_class_ptr is not None) and (
+                target_micro <= 0 or len(microwaves) < target_micro
+            )
+            need_moai = (moai_class_ptr is not None) and (
+                target_moai <= 0 or len(moais) < target_moai
+            )
+            need_boss = (boss_class_ptr is not None) and (
+                target_boss <= 0 or len(boss_curses) < target_boss
+            )
 
             if not (need_shady or need_micro or need_moai or need_boss):
                 break
@@ -1694,51 +1993,130 @@ def scan_heap_interactables(
             size = mbi.RegionSize
 
             # Scan committed private PAGE_READWRITE memory regions (GC heap chunks)
-            if mbi.State == MEM_COMMIT and mbi.Type == MEM_PRIVATE and mbi.Protect == 0x04:
+            if (
+                mbi.State == MEM_COMMIT
+                and mbi.Type == MEM_PRIVATE
+                and mbi.Protect == 0x04
+            ):
                 if size <= max_buf_size:
                     try:
-                        if rpm(handle, ctypes.c_void_p(region_base), read_buf, size, ctypes.byref(bytes_read_val)):
+                        if rpm(
+                            handle,
+                            ctypes.c_void_p(region_base),
+                            read_buf,
+                            size,
+                            ctypes.byref(bytes_read_val),
+                        ):
                             n_bytes = bytes_read_val.value
                             n_words = n_bytes // 8
                             if n_words > 0:
                                 if np is not None:
                                     # Ultra-fast SIMD AVX2 search with NumPy (10+ GB/s)
-                                    arr = np.frombuffer(read_buf, dtype=np.uint64, count=n_words)
+                                    arr = np.frombuffer(
+                                        read_buf, dtype=np.uint64, count=n_words
+                                    )
                                     if need_shady:
                                         s_indices = np.where(arr == shady_class_ptr)[0]
                                         for idx in s_indices:
                                             cand = region_base + int(idx) * 8
                                             if cand not in seen_addresses:
                                                 try:
-                                                    cand_buf = memory.read_bytes(cand, 0xC0) if hasattr(memory, "read_bytes") else None
-                                                    if cand_buf and len(cand_buf) >= 0xC0:
-                                                        native_comp = struct.unpack_from("<Q", cand_buf, 0x10)[0]
-                                                        if not native_comp or native_comp < 0x10000:
+                                                    cand_buf = (
+                                                        memory.read_bytes(cand, 0xC0)
+                                                        if hasattr(memory, "read_bytes")
+                                                        else None
+                                                    )
+                                                    if (
+                                                        cand_buf
+                                                        and len(cand_buf) >= 0xC0
+                                                    ):
+                                                        native_comp = (
+                                                            struct.unpack_from(
+                                                                "<Q", cand_buf, 0x10
+                                                            )[0]
+                                                        )
+                                                        if (
+                                                            not native_comp
+                                                            or native_comp < 0x10000
+                                                        ):
                                                             continue
-                                                        multipliers_ptr = struct.unpack_from("<Q", cand_buf, SHADY_PRICES_ARRAY_OFFSET)[0]
-                                                        items_ptr = struct.unpack_from("<Q", cand_buf, SHADY_ITEMS_LIST_OFFSET)[0]
-                                                        rarity = struct.unpack_from("<i", cand_buf, SHADY_RARITY_OFFSET)[0]
-                                                        done_shady = struct.unpack_from("<B", cand_buf, SHADY_DONE_OFFSET)[0]
-                                                        gold_prices_ptr = struct.unpack_from("<Q", cand_buf, SHADY_SECONDARY_LIST_OFFSET)[0]
+                                                        multipliers_ptr = struct.unpack_from(
+                                                            "<Q",
+                                                            cand_buf,
+                                                            SHADY_PRICES_ARRAY_OFFSET,
+                                                        )[0]
+                                                        items_ptr = struct.unpack_from(
+                                                            "<Q",
+                                                            cand_buf,
+                                                            SHADY_ITEMS_LIST_OFFSET,
+                                                        )[0]
+                                                        rarity = struct.unpack_from(
+                                                            "<i",
+                                                            cand_buf,
+                                                            SHADY_RARITY_OFFSET,
+                                                        )[0]
+                                                        done_shady = struct.unpack_from(
+                                                            "<B",
+                                                            cand_buf,
+                                                            SHADY_DONE_OFFSET,
+                                                        )[0]
+                                                        gold_prices_ptr = struct.unpack_from(
+                                                            "<Q",
+                                                            cand_buf,
+                                                            SHADY_SECONDARY_LIST_OFFSET,
+                                                        )[0]
                                                         is_done = bool(done_shady)
                                                     else:
-                                                        native_comp = memory.read_ptr(cand + 0x10)
-                                                        if not native_comp or native_comp < 0x10000:
+                                                        native_comp = memory.read_ptr(
+                                                            cand + 0x10
+                                                        )
+                                                        if (
+                                                            not native_comp
+                                                            or native_comp < 0x10000
+                                                        ):
                                                             continue
-                                                        items_ptr = memory.read_ptr(cand + SHADY_ITEMS_LIST_OFFSET)
-                                                        rarity = memory.read_i32(cand + SHADY_RARITY_OFFSET)
-                                                        done_shady = memory.read_u8(cand + SHADY_DONE_OFFSET)
+                                                        items_ptr = memory.read_ptr(
+                                                            cand
+                                                            + SHADY_ITEMS_LIST_OFFSET
+                                                        )
+                                                        rarity = memory.read_i32(
+                                                            cand + SHADY_RARITY_OFFSET
+                                                        )
+                                                        done_shady = memory.read_u8(
+                                                            cand + SHADY_DONE_OFFSET
+                                                        )
                                                         is_done = bool(done_shady)
-                                                        gold_prices_ptr = memory.read_ptr(cand + SHADY_SECONDARY_LIST_OFFSET)
-                                                        multipliers_ptr = memory.read_ptr(cand + SHADY_PRICES_ARRAY_OFFSET)
+                                                        gold_prices_ptr = memory.read_ptr(
+                                                            cand
+                                                            + SHADY_SECONDARY_LIST_OFFSET
+                                                        )
+                                                        multipliers_ptr = memory.read_ptr(
+                                                            cand
+                                                            + SHADY_PRICES_ARRAY_OFFSET
+                                                        )
 
-                                                    if items_ptr > 0x10000 and 0 <= rarity <= 4:
-                                                        items = decode_il2cpp_list_items(memory, items_ptr)
+                                                    if (
+                                                        items_ptr > 0x10000
+                                                        and 0 <= rarity <= 4
+                                                    ):
+                                                        items = (
+                                                            decode_il2cpp_list_items(
+                                                                memory, items_ptr
+                                                            )
+                                                        )
                                                         if not items:
                                                             continue
                                                         seen_addresses.add(cand)
-                                                        gold_prices = decode_il2cpp_int_list(memory, gold_prices_ptr)
-                                                        multipliers = decode_float_array(memory, multipliers_ptr)
+                                                        gold_prices = (
+                                                            decode_il2cpp_int_list(
+                                                                memory, gold_prices_ptr
+                                                            )
+                                                        )
+                                                        multipliers = (
+                                                            decode_float_array(
+                                                                memory, multipliers_ptr
+                                                            )
+                                                        )
 
                                                         world_pos = None
                                                         distance = None
@@ -1746,22 +2124,44 @@ def scan_heap_interactables(
                                                         rel_dir = None
                                                         if marker_client:
                                                             try:
-                                                                s_trans = marker_client._component_transform(cand)
-                                                                sx, _, sz = marker_client._transform_point(
-                                                                    s_trans, (0.0, 0.0, 0.0)
+                                                                s_trans = marker_client._component_transform(
+                                                                    cand
                                                                 )
-                                                                world_pos = (round(sx, 1), round(sz, 1))
-                                                                map_sector = get_map_sector(world_pos, world_size)
-                                                                distance = round(math.hypot(sx, sz), 1)
-                                                                rel_dir = get_player_relative_direction((0.0, 0.0), (sx, sz))
+                                                                sx, _, sz = (
+                                                                    marker_client._transform_point(
+                                                                        s_trans,
+                                                                        (0.0, 0.0, 0.0),
+                                                                    )
+                                                                )
+                                                                world_pos = (
+                                                                    round(sx, 1),
+                                                                    round(sz, 1),
+                                                                )
+                                                                map_sector = (
+                                                                    get_map_sector(
+                                                                        world_pos,
+                                                                        world_size,
+                                                                    )
+                                                                )
+                                                                distance = round(
+                                                                    math.hypot(sx, sz),
+                                                                    1,
+                                                                )
+                                                                rel_dir = get_player_relative_direction(
+                                                                    (0.0, 0.0), (sx, sz)
+                                                                )
                                                             except Exception:
                                                                 pass
 
                                                         shady_guys.append(
                                                             {
                                                                 "ptr": cand,
-                                                                "rarity": _RARITIES[rarity]
-                                                                if 0 <= rarity < len(_RARITIES)
+                                                                "rarity": _RARITIES[
+                                                                    rarity
+                                                                ]
+                                                                if 0
+                                                                <= rarity
+                                                                < len(_RARITIES)
                                                                 else f"Tier {rarity}",
                                                                 "done": is_done,
                                                                 "items": items,
@@ -1782,18 +2182,49 @@ def scan_heap_interactables(
                                             cand = region_base + int(idx) * 8
                                             if cand not in seen_addresses:
                                                 try:
-                                                    cand_buf = memory.read_bytes(cand, 0x90) if hasattr(memory, "read_bytes") else None
-                                                    if cand_buf and len(cand_buf) >= 0x90:
-                                                        native_comp = struct.unpack_from("<Q", cand_buf, 0x10)[0]
-                                                        if not native_comp or native_comp < 0x10000:
+                                                    cand_buf = (
+                                                        memory.read_bytes(cand, 0x90)
+                                                        if hasattr(memory, "read_bytes")
+                                                        else None
+                                                    )
+                                                    if (
+                                                        cand_buf
+                                                        and len(cand_buf) >= 0x90
+                                                    ):
+                                                        native_comp = (
+                                                            struct.unpack_from(
+                                                                "<Q", cand_buf, 0x10
+                                                            )[0]
+                                                        )
+                                                        if (
+                                                            not native_comp
+                                                            or native_comp < 0x10000
+                                                        ):
                                                             continue
-                                                        rarity, uses = struct.unpack_from("<ii", cand_buf, MICROWAVE_RARITY_OFFSET)
+                                                        rarity, uses = (
+                                                            struct.unpack_from(
+                                                                "<ii",
+                                                                cand_buf,
+                                                                MICROWAVE_RARITY_OFFSET,
+                                                            )
+                                                        )
                                                     else:
-                                                        native_comp = memory.read_ptr(cand + 0x10)
-                                                        if not native_comp or native_comp < 0x10000:
+                                                        native_comp = memory.read_ptr(
+                                                            cand + 0x10
+                                                        )
+                                                        if (
+                                                            not native_comp
+                                                            or native_comp < 0x10000
+                                                        ):
                                                             continue
-                                                        rarity = memory.read_i32(cand + MICROWAVE_RARITY_OFFSET)
-                                                        uses = memory.read_i32(cand + MICROWAVE_USES_LEFT_OFFSET)
+                                                        rarity = memory.read_i32(
+                                                            cand
+                                                            + MICROWAVE_RARITY_OFFSET
+                                                        )
+                                                        uses = memory.read_i32(
+                                                            cand
+                                                            + MICROWAVE_USES_LEFT_OFFSET
+                                                        )
 
                                                     if uses > 0 and 0 <= rarity <= 4:
                                                         seen_addresses.add(cand)
@@ -1803,17 +2234,42 @@ def scan_heap_interactables(
                                                         rel_dir = None
                                                         if marker_client:
                                                             try:
-                                                                m_trans = marker_client._component_transform(cand)
-                                                                mx, _, mz = marker_client._transform_point(
-                                                                    m_trans, (0.0, 0.0, 0.0)
+                                                                m_trans = marker_client._component_transform(
+                                                                    cand
                                                                 )
-                                                                world_pos = (round(mx, 1), round(mz, 1))
-                                                                map_sector = get_map_sector(world_pos, world_size)
-                                                                distance = round(math.hypot(mx, mz), 1)
-                                                                rel_dir = get_player_relative_direction((0.0, 0.0), (mx, mz))
+                                                                mx, _, mz = (
+                                                                    marker_client._transform_point(
+                                                                        m_trans,
+                                                                        (0.0, 0.0, 0.0),
+                                                                    )
+                                                                )
+                                                                world_pos = (
+                                                                    round(mx, 1),
+                                                                    round(mz, 1),
+                                                                )
+                                                                map_sector = (
+                                                                    get_map_sector(
+                                                                        world_pos,
+                                                                        world_size,
+                                                                    )
+                                                                )
+                                                                distance = round(
+                                                                    math.hypot(mx, mz),
+                                                                    1,
+                                                                )
+                                                                rel_dir = get_player_relative_direction(
+                                                                    (0.0, 0.0), (mx, mz)
+                                                                )
                                                             except Exception:
                                                                 pass
-                                                        c_info = MICROWAVE_COLORS.get(rarity, ("White", "white", "bright_white"))
+                                                        c_info = MICROWAVE_COLORS.get(
+                                                            rarity,
+                                                            (
+                                                                "White",
+                                                                "white",
+                                                                "bright_white",
+                                                            ),
+                                                        )
                                                         microwaves.append(
                                                             {
                                                                 "ptr": cand,
@@ -1831,70 +2287,140 @@ def scan_heap_interactables(
                                                     pass
 
                                     if need_moai:
-                                        moai_indices = np.where(arr == moai_class_ptr)[0]
+                                        moai_indices = np.where(arr == moai_class_ptr)[
+                                            0
+                                        ]
                                         for idx in moai_indices:
                                             cand = region_base + int(idx) * 8
                                             if cand not in seen_addresses:
                                                 try:
-                                                    native_comp = memory.read_ptr(cand + 0x10)
-                                                    if native_comp and native_comp > 0x10000:
+                                                    native_comp = memory.read_ptr(
+                                                        cand + 0x10
+                                                    )
+                                                    if (
+                                                        native_comp
+                                                        and native_comp > 0x10000
+                                                    ):
                                                         world_pos = None
                                                         distance = None
                                                         rel_dir_8 = None
                                                         if marker_client:
                                                             try:
-                                                                m_trans = marker_client._component_transform(cand)
-                                                                mx, _, mz = marker_client._transform_point(
-                                                                    m_trans, (0.0, 0.0, 0.0)
+                                                                m_trans = marker_client._component_transform(
+                                                                    cand
                                                                 )
-                                                                world_pos = (round(mx, 1), round(mz, 1))
-                                                                rel_dir_8 = get_8_direction((0.0, 0.0), (mx, mz))
-                                                                distance = round(math.hypot(mx, mz), 1)
+                                                                mx, _, mz = (
+                                                                    marker_client._transform_point(
+                                                                        m_trans,
+                                                                        (0.0, 0.0, 0.0),
+                                                                    )
+                                                                )
+                                                                world_pos = (
+                                                                    round(mx, 1),
+                                                                    round(mz, 1),
+                                                                )
+                                                                rel_dir_8 = (
+                                                                    get_8_direction(
+                                                                        (0.0, 0.0),
+                                                                        (mx, mz),
+                                                                    )
+                                                                )
+                                                                distance = round(
+                                                                    math.hypot(mx, mz),
+                                                                    1,
+                                                                )
                                                             except Exception:
                                                                 pass
                                                         if world_pos is not None:
                                                             seen_addresses.add(cand)
+                                                            is_done = False
+                                                            try:
+                                                                is_done = bool(
+                                                                    memory.read_u8(
+                                                                        cand
+                                                                        + SHRINE_DONE_OFFSET
+                                                                    )
+                                                                )
+                                                            except Exception:
+                                                                pass
                                                             moais.append(
                                                                 {
                                                                     "ptr": cand,
                                                                     "pos": world_pos,
                                                                     "dist": distance,
-                                                                    "dir": rel_dir_8 or "Unknown",
+                                                                    "dir": rel_dir_8
+                                                                    or "Unknown",
+                                                                    "done": is_done,
                                                                 }
                                                             )
                                                 except Exception:
                                                     pass
 
                                     if need_boss:
-                                        boss_indices = np.where(arr == boss_class_ptr)[0]
+                                        boss_indices = np.where(arr == boss_class_ptr)[
+                                            0
+                                        ]
                                         for idx in boss_indices:
                                             cand = region_base + int(idx) * 8
                                             if cand not in seen_addresses:
                                                 try:
-                                                    native_comp = memory.read_ptr(cand + 0x10)
-                                                    if native_comp and native_comp > 0x10000:
+                                                    native_comp = memory.read_ptr(
+                                                        cand + 0x10
+                                                    )
+                                                    if (
+                                                        native_comp
+                                                        and native_comp > 0x10000
+                                                    ):
                                                         world_pos = None
                                                         distance = None
                                                         rel_dir_8 = None
                                                         if marker_client:
                                                             try:
-                                                                b_trans = marker_client._component_transform(cand)
-                                                                bx, _, bz = marker_client._transform_point(
-                                                                    b_trans, (0.0, 0.0, 0.0)
+                                                                b_trans = marker_client._component_transform(
+                                                                    cand
                                                                 )
-                                                                world_pos = (round(bx, 1), round(bz, 1))
-                                                                rel_dir_8 = get_8_direction((0.0, 0.0), (bx, bz))
-                                                                distance = round(math.hypot(bx, bz), 1)
+                                                                bx, _, bz = (
+                                                                    marker_client._transform_point(
+                                                                        b_trans,
+                                                                        (0.0, 0.0, 0.0),
+                                                                    )
+                                                                )
+                                                                world_pos = (
+                                                                    round(bx, 1),
+                                                                    round(bz, 1),
+                                                                )
+                                                                rel_dir_8 = (
+                                                                    get_8_direction(
+                                                                        (0.0, 0.0),
+                                                                        (bx, bz),
+                                                                    )
+                                                                )
+                                                                distance = round(
+                                                                    math.hypot(bx, bz),
+                                                                    1,
+                                                                )
                                                             except Exception:
                                                                 pass
                                                         if world_pos is not None:
                                                             seen_addresses.add(cand)
+                                                            is_done = False
+                                                            try:
+                                                                is_done = bool(
+                                                                    memory.read_u8(
+                                                                        cand
+                                                                        + SHRINE_DONE_OFFSET
+                                                                    )
+                                                                )
+                                                            except Exception:
+                                                                pass
                                                             boss_curses.append(
                                                                 {
                                                                     "ptr": cand,
                                                                     "pos": world_pos,
                                                                     "dist": distance,
-                                                                    "dir": rel_dir_8 or "Unknown",
+                                                                    "dir": rel_dir_8
+                                                                    or "Unknown",
+                                                                    "done": is_done,
                                                                 }
                                                             )
                                                 except Exception:
@@ -1906,29 +2432,59 @@ def scan_heap_interactables(
                                         pos = 0
                                         while True:
                                             idx = data.find(needle, pos)
-                                            if idx == -1: break
+                                            if idx == -1:
+                                                break
                                             if idx % 8 == 0:
                                                 cand = region_base + idx
                                                 if cand not in seen_addresses:
                                                     try:
-                                                        native_comp = memory.read_ptr(cand + 0x10)
-                                                        if native_comp and native_comp > 0x10000:
-                                                            items_ptr = memory.read_ptr(cand + SHADY_ITEMS_LIST_OFFSET)
+                                                        native_comp = memory.read_ptr(
+                                                            cand + 0x10
+                                                        )
+                                                        if (
+                                                            native_comp
+                                                            and native_comp > 0x10000
+                                                        ):
+                                                            items_ptr = memory.read_ptr(
+                                                                cand
+                                                                + SHADY_ITEMS_LIST_OFFSET
+                                                            )
                                                             if items_ptr > 0x10000:
-                                                                rarity = memory.read_i32(cand + SHADY_RARITY_OFFSET)
-                                                                done_shady = memory.read_u8(cand + SHADY_DONE_OFFSET)
-                                                                is_done = bool(done_shady)
+                                                                rarity = memory.read_i32(
+                                                                    cand
+                                                                    + SHADY_RARITY_OFFSET
+                                                                )
+                                                                done_shady = memory.read_u8(
+                                                                    cand
+                                                                    + SHADY_DONE_OFFSET
+                                                                )
+                                                                is_done = bool(
+                                                                    done_shady
+                                                                )
                                                                 if 0 <= rarity <= 4:
-                                                                    items = decode_il2cpp_list_items(memory, items_ptr)
+                                                                    items = decode_il2cpp_list_items(
+                                                                        memory,
+                                                                        items_ptr,
+                                                                    )
                                                                     if not items:
                                                                         pos = idx + 8
                                                                         continue
-                                                                    seen_addresses.add(cand)
+                                                                    seen_addresses.add(
+                                                                        cand
+                                                                    )
                                                                     gold_prices = decode_il2cpp_int_list(
-                                                                        memory, memory.read_ptr(cand + SHADY_SECONDARY_LIST_OFFSET)
+                                                                        memory,
+                                                                        memory.read_ptr(
+                                                                            cand
+                                                                            + SHADY_SECONDARY_LIST_OFFSET
+                                                                        ),
                                                                     )
                                                                     multipliers = decode_float_array(
-                                                                        memory, memory.read_ptr(cand + SHADY_PRICES_ARRAY_OFFSET)
+                                                                        memory,
+                                                                        memory.read_ptr(
+                                                                            cand
+                                                                            + SHADY_PRICES_ARRAY_OFFSET
+                                                                        ),
                                                                     )
                                                                     world_pos = None
                                                                     distance = None
@@ -1936,44 +2492,120 @@ def scan_heap_interactables(
                                                                     rel_dir = None
                                                                     if marker_client:
                                                                         try:
-                                                                            s_trans = marker_client._component_transform(cand)
-                                                                            sx, _, sz = marker_client._transform_point(s_trans, (0.0, 0.0, 0.0))
-                                                                            world_pos = (round(sx, 1), round(sz, 1))
-                                                                            map_sector = get_map_sector(world_pos, world_size)
-                                                                            distance = round(math.hypot(sx, sz), 1)
-                                                                            rel_dir = get_player_relative_direction((0.0, 0.0), (sx, sz))
-                                                                        except Exception:
+                                                                            mc = marker_client
+                                                                            _ct = mc._component_transform
+                                                                            s_trans = (
+                                                                                _ct(
+                                                                                    cand
+                                                                                )
+                                                                            )
+                                                                            _tp = mc._transform_point
+                                                                            (
+                                                                                sx,
+                                                                                _,
+                                                                                sz,
+                                                                            ) = _tp(
+                                                                                s_trans,
+                                                                                (
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                ),
+                                                                            )
+                                                                            world_pos = (
+                                                                                round(
+                                                                                    sx,
+                                                                                    1,
+                                                                                ),
+                                                                                round(
+                                                                                    sz,
+                                                                                    1,
+                                                                                ),
+                                                                            )
+                                                                            map_sector = get_map_sector(
+                                                                                world_pos,
+                                                                                world_size,
+                                                                            )
+                                                                            distance = round(
+                                                                                math.hypot(
+                                                                                    sx,
+                                                                                    sz,
+                                                                                ),
+                                                                                1,
+                                                                            )
+                                                                            rel_dir = get_player_relative_direction(
+                                                                                (
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                ),
+                                                                                (
+                                                                                    sx,
+                                                                                    sz,
+                                                                                ),
+                                                                            )
+                                                                        except (
+                                                                            Exception
+                                                                        ):
                                                                             pass
-                                                                    shady_guys.append({
-                                                                        "ptr": cand,
-                                                                        "rarity": _RARITIES[rarity] if 0 <= rarity < len(_RARITIES) else f"Tier {rarity}",
-                                                                        "done": is_done,
-                                                                        "items": items,
-                                                                        "gold_prices": gold_prices,
-                                                                        "multipliers": multipliers,
-                                                                        "pos": world_pos,
-                                                                        "dist": distance,
-                                                                        "map_sector": map_sector,
-                                                                        "rel_dir": rel_dir,
-                                                                    })
+                                                                    shady_guys.append(
+                                                                        {
+                                                                            "ptr": cand,
+                                                                            "rarity": _RARITIES[
+                                                                                rarity
+                                                                            ]
+                                                                            if 0
+                                                                            <= rarity
+                                                                            < len(
+                                                                                _RARITIES
+                                                                            )
+                                                                            else f"Tier {rarity}",
+                                                                            "done": is_done,
+                                                                            "items": items,
+                                                                            "gold_prices": gold_prices,
+                                                                            "multipliers": multipliers,
+                                                                            "pos": world_pos,
+                                                                            "dist": distance,
+                                                                            "map_sector": map_sector,
+                                                                            "rel_dir": rel_dir,
+                                                                        }
+                                                                    )
                                                     except Exception:
                                                         pass
                                             pos = idx + 8
 
-                                    if need_micro and micro_needle and micro_needle in data:
+                                    if (
+                                        need_micro
+                                        and micro_needle
+                                        and micro_needle in data
+                                    ):
                                         pos = 0
                                         while True:
                                             idx = data.find(micro_needle, pos)
-                                            if idx == -1: break
+                                            if idx == -1:
+                                                break
                                             if idx % 8 == 0:
                                                 cand = region_base + idx
                                                 if cand not in seen_addresses:
                                                     try:
-                                                        native_comp = memory.read_ptr(cand + 0x10)
-                                                        if native_comp and native_comp > 0x10000:
-                                                            rarity = memory.read_i32(cand + MICROWAVE_RARITY_OFFSET)
-                                                            uses = memory.read_i32(cand + MICROWAVE_USES_LEFT_OFFSET)
-                                                            if uses > 0 and 0 <= rarity <= 4:
+                                                        native_comp = memory.read_ptr(
+                                                            cand + 0x10
+                                                        )
+                                                        if (
+                                                            native_comp
+                                                            and native_comp > 0x10000
+                                                        ):
+                                                            rarity = memory.read_i32(
+                                                                cand
+                                                                + MICROWAVE_RARITY_OFFSET
+                                                            )
+                                                            uses = memory.read_i32(
+                                                                cand
+                                                                + MICROWAVE_USES_LEFT_OFFSET
+                                                            )
+                                                            if (
+                                                                uses > 0
+                                                                and 0 <= rarity <= 4
+                                                            ):
                                                                 seen_addresses.add(cand)
                                                                 world_pos = None
                                                                 distance = None
@@ -1981,104 +2613,232 @@ def scan_heap_interactables(
                                                                 rel_dir = None
                                                                 if marker_client:
                                                                     try:
-                                                                        m_trans = marker_client._component_transform(cand)
-                                                                        mx, _, mz = marker_client._transform_point(
-                                                                            m_trans, (0.0, 0.0, 0.0)
+                                                                        m_trans = marker_client._component_transform(
+                                                                            cand
                                                                         )
-                                                                        world_pos = (round(mx, 1), round(mz, 1))
-                                                                        map_sector = get_map_sector(world_pos, world_size)
-                                                                        distance = round(math.hypot(mx, mz), 1)
-                                                                        rel_dir = get_player_relative_direction((0.0, 0.0), (mx, mz))
+                                                                        mx, _, mz = (
+                                                                            marker_client._transform_point(
+                                                                                m_trans,
+                                                                                (
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                ),
+                                                                            )
+                                                                        )
+                                                                        world_pos = (
+                                                                            round(
+                                                                                mx, 1
+                                                                            ),
+                                                                            round(
+                                                                                mz, 1
+                                                                            ),
+                                                                        )
+                                                                        map_sector = get_map_sector(
+                                                                            world_pos,
+                                                                            world_size,
+                                                                        )
+                                                                        distance = round(
+                                                                            math.hypot(
+                                                                                mx, mz
+                                                                            ),
+                                                                            1,
+                                                                        )
+                                                                        rel_dir = get_player_relative_direction(
+                                                                            (0.0, 0.0),
+                                                                            (mx, mz),
+                                                                        )
                                                                     except Exception:
                                                                         pass
-                                                                c_info = MICROWAVE_COLORS.get(rarity, ("White", "white", "bright_white"))
-                                                                microwaves.append({
-                                                                    "ptr": cand,
-                                                                    "rarity": rarity,
-                                                                    "color": c_info[0],
-                                                                    "style": c_info[2],
-                                                                    "uses_left": uses,
-                                                                    "pos": world_pos,
-                                                                    "dist": distance,
-                                                                    "map_sector": map_sector,
-                                                                    "rel_dir": rel_dir,
-                                                                })
-                                                    except Exception:
-                                                        pass
-                                            pos = idx + 8
-
-                                    if need_moai and moai_needle and moai_needle in data:
-                                        pos = 0
-                                        while True:
-                                            idx = data.find(moai_needle, pos)
-                                            if idx == -1: break
-                                            if idx % 8 == 0:
-                                                cand = region_base + idx
-                                                if cand not in seen_addresses:
-                                                    try:
-                                                        native_comp = memory.read_ptr(cand + 0x10)
-                                                        if native_comp and native_comp > 0x10000:
-                                                            world_pos = None
-                                                            distance = None
-                                                            rel_dir_8 = None
-                                                            if marker_client:
-                                                                try:
-                                                                    m_trans = marker_client._component_transform(cand)
-                                                                    mx, _, mz = marker_client._transform_point(
-                                                                        m_trans, (0.0, 0.0, 0.0)
-                                                                    )
-                                                                    world_pos = (round(mx, 1), round(mz, 1))
-                                                                    rel_dir_8 = get_8_direction((0.0, 0.0), (mx, mz))
-                                                                    distance = round(math.hypot(mx, mz), 1)
-                                                                except Exception:
-                                                                    pass
-                                                            if world_pos is not None:
-                                                                seen_addresses.add(cand)
-                                                                moais.append(
+                                                                c_info = MICROWAVE_COLORS.get(
+                                                                    rarity,
+                                                                    (
+                                                                        "White",
+                                                                        "white",
+                                                                        "bright_white",
+                                                                    ),
+                                                                )
+                                                                microwaves.append(
                                                                     {
                                                                         "ptr": cand,
+                                                                        "rarity": rarity,
+                                                                        "color": c_info[
+                                                                            0
+                                                                        ],
+                                                                        "style": c_info[
+                                                                            2
+                                                                        ],
+                                                                        "uses_left": uses,
                                                                         "pos": world_pos,
                                                                         "dist": distance,
-                                                                        "dir": rel_dir_8 or "Unknown",
+                                                                        "map_sector": map_sector,
+                                                                        "rel_dir": rel_dir,
                                                                     }
                                                                 )
                                                     except Exception:
                                                         pass
                                             pos = idx + 8
 
-                                    if need_boss and boss_needle and boss_needle in data:
+                                    if (
+                                        need_moai
+                                        and moai_needle
+                                        and moai_needle in data
+                                    ):
                                         pos = 0
                                         while True:
-                                            idx = data.find(boss_needle, pos)
-                                            if idx == -1: break
+                                            idx = data.find(moai_needle, pos)
+                                            if idx == -1:
+                                                break
                                             if idx % 8 == 0:
                                                 cand = region_base + idx
                                                 if cand not in seen_addresses:
                                                     try:
-                                                        native_comp = memory.read_ptr(cand + 0x10)
-                                                        if native_comp and native_comp > 0x10000:
+                                                        native_comp = memory.read_ptr(
+                                                            cand + 0x10
+                                                        )
+                                                        if (
+                                                            native_comp
+                                                            and native_comp > 0x10000
+                                                        ):
                                                             world_pos = None
                                                             distance = None
                                                             rel_dir_8 = None
                                                             if marker_client:
                                                                 try:
-                                                                    b_trans = marker_client._component_transform(cand)
-                                                                    bx, _, bz = marker_client._transform_point(
-                                                                        b_trans, (0.0, 0.0, 0.0)
+                                                                    m_trans = marker_client._component_transform(
+                                                                        cand
                                                                     )
-                                                                    world_pos = (round(bx, 1), round(bz, 1))
-                                                                    rel_dir_8 = get_8_direction((0.0, 0.0), (bx, bz))
-                                                                    distance = round(math.hypot(bx, bz), 1)
+                                                                    mx, _, mz = (
+                                                                        marker_client._transform_point(
+                                                                            m_trans,
+                                                                            (
+                                                                                0.0,
+                                                                                0.0,
+                                                                                0.0,
+                                                                            ),
+                                                                        )
+                                                                    )
+                                                                    world_pos = (
+                                                                        round(mx, 1),
+                                                                        round(mz, 1),
+                                                                    )
+                                                                    rel_dir_8 = (
+                                                                        get_8_direction(
+                                                                            (0.0, 0.0),
+                                                                            (mx, mz),
+                                                                        )
+                                                                    )
+                                                                    distance = round(
+                                                                        math.hypot(
+                                                                            mx, mz
+                                                                        ),
+                                                                        1,
+                                                                    )
                                                                 except Exception:
                                                                     pass
                                                             if world_pos is not None:
                                                                 seen_addresses.add(cand)
+                                                                is_done = False
+                                                                try:
+                                                                    is_done = bool(
+                                                                        memory.read_u8(
+                                                                            cand
+                                                                            + SHRINE_DONE_OFFSET
+                                                                        )
+                                                                    )
+                                                                except Exception:
+                                                                    pass
+                                                                moais.append(
+                                                                    {
+                                                                        "ptr": cand,
+                                                                        "pos": world_pos,
+                                                                        "dist": distance,
+                                                                        "dir": rel_dir_8
+                                                                        or "Unknown",
+                                                                        "done": is_done,
+                                                                    }
+                                                                )
+                                                    except Exception:
+                                                        pass
+                                            pos = idx + 8
+
+                                    if (
+                                        need_boss
+                                        and boss_needle
+                                        and boss_needle in data
+                                    ):
+                                        pos = 0
+                                        while True:
+                                            idx = data.find(boss_needle, pos)
+                                            if idx == -1:
+                                                break
+                                            if idx % 8 == 0:
+                                                cand = region_base + idx
+                                                if cand not in seen_addresses:
+                                                    try:
+                                                        native_comp = memory.read_ptr(
+                                                            cand + 0x10
+                                                        )
+                                                        if (
+                                                            native_comp
+                                                            and native_comp > 0x10000
+                                                        ):
+                                                            world_pos = None
+                                                            distance = None
+                                                            rel_dir_8 = None
+                                                            if marker_client:
+                                                                try:
+                                                                    b_trans = marker_client._component_transform(
+                                                                        cand
+                                                                    )
+                                                                    bx, _, bz = (
+                                                                        marker_client._transform_point(
+                                                                            b_trans,
+                                                                            (
+                                                                                0.0,
+                                                                                0.0,
+                                                                                0.0,
+                                                                            ),
+                                                                        )
+                                                                    )
+                                                                    world_pos = (
+                                                                        round(bx, 1),
+                                                                        round(bz, 1),
+                                                                    )
+                                                                    rel_dir_8 = (
+                                                                        get_8_direction(
+                                                                            (0.0, 0.0),
+                                                                            (bx, bz),
+                                                                        )
+                                                                    )
+                                                                    distance = round(
+                                                                        math.hypot(
+                                                                            bx, bz
+                                                                        ),
+                                                                        1,
+                                                                    )
+                                                                except Exception:
+                                                                    pass
+                                                            if world_pos is not None:
+                                                                seen_addresses.add(cand)
+                                                                is_done = False
+                                                                try:
+                                                                    is_done = bool(
+                                                                        memory.read_u8(
+                                                                            cand
+                                                                            + SHRINE_DONE_OFFSET
+                                                                        )
+                                                                    )
+                                                                except Exception:
+                                                                    pass
                                                                 boss_curses.append(
                                                                     {
                                                                         "ptr": cand,
                                                                         "pos": world_pos,
                                                                         "dist": distance,
-                                                                        "dir": rel_dir_8 or "Unknown",
+                                                                        "dir": rel_dir_8
+                                                                        or "Unknown",
+                                                                        "done": is_done,
                                                                     }
                                                                 )
                                                     except Exception:
@@ -2086,11 +2846,24 @@ def scan_heap_interactables(
                                             pos = idx + 8
 
                                 # Early termination within pass if all targets found
-                                all_shady_found = target_shady <= 0 or len(shady_guys) >= target_shady
-                                all_micro_found = target_micro <= 0 or len(microwaves) >= target_micro
-                                all_moai_found = target_moai <= 0 or len(moais) >= target_moai
-                                all_boss_found = target_boss <= 0 or len(boss_curses) >= target_boss
-                                if all_shady_found and all_micro_found and all_moai_found and all_boss_found:
+                                all_shady_found = (
+                                    target_shady <= 0 or len(shady_guys) >= target_shady
+                                )
+                                all_micro_found = (
+                                    target_micro <= 0 or len(microwaves) >= target_micro
+                                )
+                                all_moai_found = (
+                                    target_moai <= 0 or len(moais) >= target_moai
+                                )
+                                all_boss_found = (
+                                    target_boss <= 0 or len(boss_curses) >= target_boss
+                                )
+                                if (
+                                    all_shady_found
+                                    and all_micro_found
+                                    and all_moai_found
+                                    and all_boss_found
+                                ):
                                     break
                     except Exception:
                         pass
@@ -2147,12 +2920,18 @@ def scan_heap_interactables(
                 b["dir"] = get_8_direction((0.0, 0.0), (bx, bz)) or "Unknown"
 
     # Sort Shady Guys, Microwaves, Moais, and Boss Curses by proximity to player/spawn (closest first)
-    shady_guys.sort(key=lambda s: s.get("dist") if s.get("dist") is not None else 999999.0)
+    shady_guys.sort(
+        key=lambda s: s.get("dist") if s.get("dist") is not None else 999999.0
+    )
     for idx, sg in enumerate(shady_guys, 1):
         sg["shady_num"] = idx
-    microwaves.sort(key=lambda m: m.get("dist") if m.get("dist") is not None else 999999.0)
+    microwaves.sort(
+        key=lambda m: m.get("dist") if m.get("dist") is not None else 999999.0
+    )
     moais.sort(key=lambda m: m.get("dist") if m.get("dist") is not None else 999999.0)
-    boss_curses.sort(key=lambda b: b.get("dist") if b.get("dist") is not None else 999999.0)
+    boss_curses.sort(
+        key=lambda b: b.get("dist") if b.get("dist") is not None else 999999.0
+    )
 
     return shady_guys, microwaves, moais, boss_curses
 
@@ -2194,70 +2973,86 @@ def evaluate_target_item_matches(
 
 def can_satisfy_required_items_on_distinct_shadys(
     shady_guys: list[dict],
-    req_all: list[int],
-    req_any: list[int],
+    req_all: Any,
+    req_any: Any,
 ) -> tuple[bool, bool, bool]:
-    """Check if all REQUIRED_ALL items and at least one REQUIRED_ANY item can be obtained on distinct Shady Guys.
+    """Check if all REQUIRED_ALL items and at least one REQUIRED_ANY item combination
+    can be obtained on distinct Shady Guys.
 
-    Because a Shady Guy disappears after a single item purchase, each must-have item
-    in req_all and the selected any-of item in req_any must come from separate vendors.
+    Because a Shady Guy disappears after a single item purchase:
+      - Each item required simultaneously must come from a separate vendor.
+      - A nested combination [A, B] requires two separate vendors (one for A, one for B).
+      - Multiple combinations in REQUIRED_ALL require distinct vendors for every item across all combinations.
+      - At least one combination in REQUIRED_ANY must be satisfiable on remaining distinct vendors.
 
     Returns:
         (all_passed, any_passed, satisfied)
     """
-    req_all = list(req_all) if req_all else []
-    req_any = list(req_any) if req_any else []
+    combos_all = normalize_required_item_combos(req_all)
+    combos_any = normalize_required_item_combos(req_any)
 
-    if not req_all and not req_any:
+    if not combos_all and not combos_any:
         return True, True, True
 
     shady_item_sets = []
-    for sg in (shady_guys or []):
-        s_items = {it.get("item_id") for it in sg.get("items", []) if it.get("item_id") is not None}
+    for sg in shady_guys or []:
+        s_items = {
+            it.get("item_id")
+            for it in sg.get("items", [])
+            if it.get("item_id") is not None
+        }
         shady_item_sets.append(s_items)
 
     num_shadys = len(shady_item_sets)
-    min_needed = len(req_all) + (1 if req_any else 0)
+    all_needed_items = flatten_item_combos(combos_all)
 
-    def match_all_only(items: list[int], used: set[int]) -> bool:
-        if not items:
+    def match_distinct_items(items_to_match: list[int], used_shadys: set[int]) -> bool:
+        if not items_to_match:
             return True
-        tgt, rest = items[0], items[1:]
+        tgt, rest = items_to_match[0], items_to_match[1:]
         for idx in range(num_shadys):
-            if idx not in used and tgt in shady_item_sets[idx]:
-                used.add(idx)
-                if match_all_only(rest, used):
+            if idx not in used_shadys and tgt in shady_item_sets[idx]:
+                used_shadys.add(idx)
+                if match_distinct_items(rest, used_shadys):
                     return True
-                used.remove(idx)
+                used_shadys.remove(idx)
         return False
 
-    can_all_only = match_all_only(req_all, set()) if req_all else True
-    can_any_only = any(any(item in s for item in req_any) for s in shady_item_sets) if req_any else True
+    can_all_only = (
+        match_distinct_items(all_needed_items, set()) if all_needed_items else True
+    )
 
-    if num_shadys < min_needed:
-        return can_all_only, can_any_only, False
+    if not combos_any:
+        can_any_only = True
+    else:
+        can_any_only = any(match_distinct_items(combo, set()) for combo in combos_any)
 
-    if not req_all:
+    if not combos_all:
         return True, can_any_only, can_any_only
-    if not req_any:
+    if not combos_any:
         return can_all_only, True, can_all_only
 
-    def match_all_and_any(items: list[int], used: set[int]) -> bool:
-        if not items:
+    def match_all_and_any_combos(
+        all_items: list[int],
+        any_combinations: list[list[int]],
+        used_shadys: set[int],
+    ) -> bool:
+        if all_items:
+            tgt, rest = all_items[0], all_items[1:]
             for idx in range(num_shadys):
-                if idx not in used and any(item in shady_item_sets[idx] for item in req_any):
-                    return True
+                if idx not in used_shadys and tgt in shady_item_sets[idx]:
+                    used_shadys.add(idx)
+                    if match_all_and_any_combos(rest, any_combinations, used_shadys):
+                        return True
+                    used_shadys.remove(idx)
             return False
-        tgt, rest = items[0], items[1:]
-        for idx in range(num_shadys):
-            if idx not in used and tgt in shady_item_sets[idx]:
-                used.add(idx)
-                if match_all_and_any(rest, used):
-                    return True
-                used.remove(idx)
+        for any_combo in any_combinations:
+            used_copy = set(used_shadys)
+            if match_distinct_items(any_combo, used_copy):
+                return True
         return False
 
-    satisfied = match_all_and_any(req_all, set())
+    satisfied = match_all_and_any_combos(all_needed_items, combos_any, set())
     if satisfied:
         return True, True, True
 
@@ -2270,8 +3065,8 @@ def evaluate_stage1_criteria(
     boss_pass: bool,
     magnet_pass: bool,
     shady_pass: bool,
-    required_all_item_ids: list[int] | None = None,
-    required_any_item_ids: list[int] | None = None,
+    required_all_item_ids: list[Any] | None = None,
+    required_any_item_ids: list[Any] | None = None,
     offered_item_ids: set[int] | list[int] | None = None,
     has_white_micro: bool = True,
     is_fox: bool = False,
@@ -2283,7 +3078,9 @@ def evaluate_stage1_criteria(
     Returns:
         (target_items_pass, thresholds_matched, target_only_matched, all_matched, match_reason)
     """
-    thresholds_pass = sm_pass and micro_pass and boss_pass and magnet_pass and shady_pass
+    thresholds_pass = (
+        sm_pass and micro_pass and boss_pass and magnet_pass and shady_pass
+    )
 
     # Resolve required item lists
     if (required_all_item_ids is not None) or (required_any_item_ids is not None):
@@ -2293,13 +3090,16 @@ def evaluate_stage1_criteria(
         req_all = list(REQUIRED_ALL_ITEM_IDS) if REQUIRED_ALL_ITEM_IDS else []
         req_any = list(REQUIRED_ANY_ITEM_IDS) if REQUIRED_ANY_ITEM_IDS else []
 
+    combos_all = normalize_required_item_combos(req_all)
+    combos_any = normalize_required_item_combos(req_any)
+
     # Resolve offered items set
     if offered_item_ids is not None:
         present_set = set(offered_item_ids)
     elif shady_guys is not None or kwargs.get("shady_guys") is not None:
         sg_source = shady_guys if shady_guys is not None else kwargs.get("shady_guys")
         present_set = set()
-        for sg in (sg_source or []):
+        for sg in sg_source or []:
             for it in sg.get("items", []):
                 it_id = it.get("item_id")
                 if it_id is not None:
@@ -2311,22 +3111,33 @@ def evaluate_stage1_criteria(
         if kwargs.get("has_soul_harvester"):
             present_set.add(47)
 
-    has_mandatory = bool(req_all) or bool(req_any)
+    has_mandatory = bool(combos_all) or bool(combos_any)
+
+    pool_all = (
+        all(all(item in present_set for item in combo) for combo in combos_all)
+        if combos_all
+        else True
+    )
+    pool_any = (
+        any(all(item in present_set for item in combo) for combo in combos_any)
+        if combos_any
+        else True
+    )
 
     sg_list = shady_guys if shady_guys is not None else kwargs.get("shady_guys")
     if sg_list is not None and has_mandatory:
-        distinct_all, distinct_any, distinct_satisfied = can_satisfy_required_items_on_distinct_shadys(
-            sg_list, req_all, req_any
+        distinct_all, distinct_any, distinct_satisfied = (
+            can_satisfy_required_items_on_distinct_shadys(
+                sg_list, combos_all, combos_any
+            )
         )
-        pool_all = all(item_id in present_set for item_id in req_all) if req_all else True
-        pool_any = any(item_id in present_set for item_id in req_any) if req_any else True
         is_shady_conflict = (pool_all and pool_any) and not distinct_satisfied
         all_passed = distinct_all
         any_passed = distinct_any
         required_items_satisfied = distinct_satisfied
     else:
-        all_passed = all(item_id in present_set for item_id in req_all) if req_all else True
-        any_passed = any(item_id in present_set for item_id in req_any) if req_any else True
+        all_passed = pool_all
+        any_passed = pool_any
         required_items_satisfied = all_passed and any_passed
         is_shady_conflict = False
 
@@ -2339,7 +3150,11 @@ def evaluate_stage1_criteria(
             if is_shady_conflict:
                 match_reason = "REQUIRED_ITEMS_CONFLICT_SAME_SHADY"
             else:
-                match_reason = "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS" if thresholds_pass else "MISSING_REQUIRED_ITEMS"
+                match_reason = (
+                    "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS"
+                    if thresholds_pass
+                    else "MISSING_REQUIRED_ITEMS"
+                )
         elif not thresholds_pass:
             target_items_pass = True
             thresholds_matched = False
@@ -2366,7 +3181,13 @@ def evaluate_stage1_criteria(
             all_matched = False
             match_reason = "CRITERIA_NOT_MET"
 
-    return target_items_pass, thresholds_matched, target_only_matched, all_matched, match_reason
+    return (
+        target_items_pass,
+        thresholds_matched,
+        target_only_matched,
+        all_matched,
+        match_reason,
+    )
 
 
 def scan_stage1_seed_filter(
@@ -2376,8 +3197,8 @@ def scan_stage1_seed_filter(
     game_client: GameDataClient | None = None,
     fast_eval: bool = False,
     character: tuple[int, str] | None = None,
-    required_all_item_ids: list[int] | None = None,
-    required_any_item_ids: list[int] | None = None,
+    required_all_item_ids: list[Any] | None = None,
+    required_any_item_ids: list[Any] | None = None,
     **kwargs: Any,
 ) -> dict:
     """Scan all Shady Guys in memory during Stage 1 and evaluate threshold criteria + required items."""
@@ -2392,6 +3213,9 @@ def scan_stage1_seed_filter(
     else:
         req_all = list(REQUIRED_ALL_ITEM_IDS) if REQUIRED_ALL_ITEM_IDS else []
         req_any = list(REQUIRED_ANY_ITEM_IDS) if REQUIRED_ANY_ITEM_IDS else []
+
+    combos_all = normalize_required_item_combos(req_all)
+    combos_any = normalize_required_item_combos(req_any)
 
     if character is None:
         character = get_character_identity(memory, module_base)
@@ -2410,18 +3234,26 @@ def scan_stage1_seed_filter(
     magnet_pass = map_counts["magnets"] >= THRESHOLD_MAGNET_CURSES
     counts_pass = sm_pass and micro_pass and boss_pass and magnet_pass
 
-    mandatory_active = bool(req_all) or bool(req_any)
-    min_shadys_needed = len(req_all) + (1 if req_any else 0)
+    mandatory_active = bool(combos_all) or bool(combos_any)
+    min_all = sum(len(c) for c in combos_all)
+    min_any = min((len(c) for c in combos_any), default=0) if combos_any else 0
+    min_shadys_needed = min_all + min_any
     skip_heap = False
     if fast_eval:
-        if not counts_pass or (mandatory_active and map_counts["shady"] < min_shadys_needed):
+        if not counts_pass or (
+            mandatory_active and map_counts["shady"] < min_shadys_needed
+        ):
             skip_heap = True
 
     if skip_heap:
         dt = time.time() - t0
         target_items_pass = False if mandatory_active else True
         if mandatory_active:
-            skip_reason = "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS" if counts_pass else "MISSING_REQUIRED_ITEMS"
+            skip_reason = (
+                "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS"
+                if counts_pass
+                else "MISSING_REQUIRED_ITEMS"
+            )
         else:
             skip_reason = "CRITERIA_NOT_MET"
         return {
@@ -2460,7 +3292,11 @@ def scan_stage1_seed_filter(
 
     # 3. Scan Shady Guy, Microwave, Moai, and Boss Curse instances across the heap
     target_shady = map_counts.get("shady", 0)
-    target_micro = map_counts.get("microwaves", 0) if (REQUIRE_BOTH_MICROWAVES_WHITE or not fast_eval) else 0
+    target_micro = (
+        map_counts.get("microwaves", 0)
+        if (REQUIRE_BOTH_MICROWAVES_WHITE or not fast_eval)
+        else 0
+    )
     # In fast evaluation (auto-rerolls), Boss Curses and Moais are already verified from map_counts;
     # skipping their heap scans prevents slow multi-pass retries for missing instances.
     target_moai = 0 if fast_eval else map_counts.get("moai", 0)
@@ -2469,7 +3305,11 @@ def scan_stage1_seed_filter(
     # Shady Guy items take ~0.85s - 0.95s after map load to be rolled and populated in Unity memory.
     # 16 attempts with 60ms sleep gives a ~0.96s window. The loop breaks immediately the moment
     # all Shady Guys are populated, so it only waits as long as Unity needs to generate the items.
-    max_scan_attempts = 16 if (target_shady > 0 or target_micro > 0 or target_moai > 0 or target_boss > 0) else 1
+    max_scan_attempts = (
+        16
+        if (target_shady > 0 or target_micro > 0 or target_moai > 0 or target_boss > 0)
+        else 1
+    )
 
     shady_guys, microwaves, moais, boss_curses = scan_heap_interactables(
         memory,
@@ -2534,8 +3374,8 @@ def scan_stage1_seed_filter(
     )
 
     if mandatory_active:
-        all_passed, any_passed, required_items_satisfied = can_satisfy_required_items_on_distinct_shadys(
-            shady_guys, req_all, req_any
+        all_passed, any_passed, required_items_satisfied = (
+            can_satisfy_required_items_on_distinct_shadys(shady_guys, req_all, req_any)
         )
     else:
         all_passed = True
@@ -2608,7 +3448,9 @@ def scan_stage_inspect(
         target_micro=target_micro,
         target_moai=target_moai,
         target_boss=target_boss,
-        max_scan_attempts=12 if (target_shady > 0 or target_micro > 0 or target_moai > 0 or target_boss > 0) else 3,
+        max_scan_attempts=12
+        if (target_shady > 0 or target_micro > 0 or target_moai > 0 or target_boss > 0)
+        else 3,
     )
 
     dt = time.time() - t0
@@ -2631,8 +3473,10 @@ def scan_stage_inspect(
     }
 
 
-def _format_required_items_summary(result: dict) -> tuple[str, str, list[int], int]:
-    """Return (req_label_str, found_label_str, combined_req_ids, min_shadys_needed) for display."""
+def _format_required_items_summary(
+    result: dict,
+) -> tuple[str, str, list[list[int]], int]:
+    """Return (req_label_str, found_label_str, combined_req_combos, min_shadys_needed) for display."""
     has_req_all = "required_all_item_ids" in result
     has_req_any = "required_any_item_ids" in result
 
@@ -2643,11 +3487,23 @@ def _format_required_items_summary(result: dict) -> tuple[str, str, list[int], i
         req_all = list(REQUIRED_ALL_ITEM_IDS) if REQUIRED_ALL_ITEM_IDS else []
         req_any = list(REQUIRED_ANY_ITEM_IDS) if REQUIRED_ANY_ITEM_IDS else []
 
-    min_shadys_needed = len(req_all) + (1 if req_any else 0)
+    combos_all = normalize_required_item_combos(req_all)
+    combos_any = normalize_required_item_combos(req_any)
+
+    min_all = sum(len(c) for c in combos_all)
+    min_any = min((len(c) for c in combos_any), default=0) if combos_any else 0
+    min_shadys_needed = min_all + min_any
 
     offered_cnts = result.get("offered_item_counts", {})
-    all_names = [get_item_name(i) for i in req_all]
-    any_names = [get_item_name(i) for i in req_any]
+
+    all_names = [
+        get_item_name(c[0]) if len(c) == 1 else f"[{format_item_combo_name(c)}]"
+        for c in combos_all
+    ]
+    any_names = [
+        get_item_name(c[0]) if len(c) == 1 else f"[{format_item_combo_name(c)}]"
+        for c in combos_any
+    ]
 
     parts = []
     if all_names:
@@ -2657,16 +3513,24 @@ def _format_required_items_summary(result: dict) -> tuple[str, str, list[int], i
     req_label = " and ".join(parts) if parts else "Required items"
 
     found_names = []
-    for i in req_all:
-        if offered_cnts.get(i, 0) > 0:
-            found_names.append(get_item_name(i))
-    for i in req_any:
-        if offered_cnts.get(i, 0) > 0 and get_item_name(i) not in found_names:
-            found_names.append(get_item_name(i))
+    for c in combos_all:
+        if all(offered_cnts.get(iid, 0) > 0 for iid in c):
+            c_name = format_item_combo_name(c)
+            if c_name not in found_names:
+                found_names.append(c_name)
+    for c in combos_any:
+        if all(offered_cnts.get(iid, 0) > 0 for iid in c):
+            c_name = format_item_combo_name(c)
+            if c_name not in found_names:
+                found_names.append(c_name)
     found_label = " & ".join(found_names) if found_names else "Required items"
 
-    combined_ids = list(dict.fromkeys(req_all + req_any))
-    return req_label, found_label, combined_ids, min_shadys_needed
+    combined_combos: list[list[int]] = []
+    for c in combos_all + combos_any:
+        if c not in combined_combos:
+            combined_combos.append(c)
+
+    return req_label, found_label, combined_combos, min_shadys_needed
 
 
 def print_stage1_report(
@@ -2683,7 +3547,10 @@ def print_stage1_report(
 
     if not result.get("is_stage_1"):
         stage_num = result.get("stage_index", -1) + 1
-        print(f"[*] Stage {stage_num} active. (Seed filter only runs on Stage 1)", flush=True)
+        print(
+            f"[*] Stage {stage_num} active. (Seed filter only runs on Stage 1)",
+            flush=True,
+        )
         return
 
     counts = result["map_counts"]
@@ -2694,32 +3561,52 @@ def print_stage1_report(
     magnet_mark = "PASS" if result["magnet_pass"] else "FAIL"
 
     reroll_info = f" | Reroll #{reroll_num}" if reroll_num is not None else ""
-    req_label, found_label, combined_ids, min_shadys_needed = _format_required_items_summary(result)
+    req_label, found_label, combined_combos, min_shadys_needed = (
+        _format_required_items_summary(result)
+    )
+    combined_ids = combined_combos
 
     if console and Table and Panel:
         reason = result.get("match_reason")
         if reason == "PERFECT_MATCH_ALL":
             title_color = "bold green"
             if combined_ids:
-                status_text = f"[bold green]🎉 PERFECT SEED MATCH ON STAGE 1![/]\n[green]{found_label} satisfied & all other criteria met![/]"
+                status_text = (
+                    "[bold green]🎉 PERFECT SEED MATCH ON STAGE 1![/]\n"
+                    f"[green]{found_label} satisfied & all other criteria met![/]"
+                )
             else:
-                status_text = "[bold green]🎉 PERFECT SEED MATCH ON STAGE 1![/]\n[green]All shrine & curse thresholds satisfied![/]"
+                status_text = (
+                    "[bold green]🎉 PERFECT SEED MATCH ON STAGE 1![/]\n"
+                    "[green]All shrine & curse thresholds satisfied![/]"
+                )
         elif reason == "THRESHOLDS_MATCH":
             title_color = "bold green"
-            status_text = "[bold green]🎉 THRESHOLDS MATCH ON STAGE 1![/]\n[green]All shrine & curse thresholds satisfied![/]"
+            status_text = (
+                "[bold green]🎉 THRESHOLDS MATCH ON STAGE 1![/]\n"
+                "[green]All shrine & curse thresholds satisfied![/]"
+            )
         elif reason == "REQUIRED_ITEMS_CONFLICT_SAME_SHADY":
             title_color = "bold red"
             status_text = (
-                f"[bold red]Status: CRITERIA NOT MET[/]\n"
-                f"[yellow]Required items found on map, but conflict on the same Shady Guy! "
+                "[bold red]Status: CRITERIA NOT MET[/]\n"
+                "[yellow]Required items found on map, but conflict on the same Shady Guy! "
                 f"Must appear across at least {min_shadys_needed} different Shady Guys.[/]"
             )
         elif reason == "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS":
             title_color = "bold red"
-            status_text = f"[bold red]Status: CRITERIA NOT MET[/]\n[yellow]Threshold criteria met ({sm_total}/{THRESHOLD_SHADY_PLUS_MOAI}), but requires {req_label} on map![/]"
+            status_text = (
+                "[bold red]Status: CRITERIA NOT MET[/]\n"
+                f"[yellow]Threshold criteria met ({sm_total}/{THRESHOLD_SHADY_PLUS_MOAI}), "
+                f"but requires {req_label} on map![/]"
+            )
         elif reason == "REQUIRED_ITEMS_FOUND_CRITERIA_FAILED":
             title_color = "bold red"
-            status_text = f"[bold red]Status: CRITERIA NOT MET[/]\n[yellow]{found_label} found, but other criteria failed ({sm_total}/{THRESHOLD_SHADY_PLUS_MOAI} Shady+Moai)![/]"
+            status_text = (
+                "[bold red]Status: CRITERIA NOT MET[/]\n"
+                f"[yellow]{found_label} found, but other criteria failed "
+                f"({sm_total}/{THRESHOLD_SHADY_PLUS_MOAI} Shady+Moai)![/]"
+            )
         elif reason == "MISSING_REQUIRED_ITEMS":
             title_color = "bold red"
             status_text = f"[bold red]Status: CRITERIA NOT MET[/]\n[yellow]Strictly requires {req_label} on map![/]"
@@ -2731,7 +3618,11 @@ def print_stage1_report(
             status_text = "[bold red]Status: CRITERIA NOT MET[/]"
 
         char_name = result.get("character")
-        char_info = f" | Character: [bold]{char_name}[/]" if char_name and char_name != "Unknown" else ""
+        char_info = (
+            f" | Character: [bold]{char_name}[/]"
+            if char_name and char_name != "Unknown"
+            else ""
+        )
 
         title = f"STAGE 1 SEED EVALUATION (Scan took {result['elapsed_s']}s{reroll_info}{char_info})"
         panel = Panel(
@@ -2763,21 +3654,66 @@ def print_stage1_report(
         magnet_color = "bold green" if result["magnet_pass"] else "bold red"
 
         moai_list = result.get("moais", [])
-        moai_dirs = [m["dir"] for m in moai_list if m.get("dir") and m["dir"] != "Unknown"]
-        moais_detail = f"Moais: {counts['moai']} ({', '.join(moai_dirs)})" if moai_dirs else f"Moais: {counts['moai']}"
-        table.add_row(
-            "Shady + Moai",
-            f"[{sm_color}]{sm_mark}[/]",
-            f"{sm_total} / {THRESHOLD_SHADY_PLUS_MOAI}",
-            f"Shady: {counts['shady']}, {moais_detail}",
+        moai_parts = []
+        for m in moai_list:
+            d = m.get("dir")
+            if d and d != "Unknown":
+                if m.get("done", False):
+                    moai_parts.append(f"[dim strike]{d}[/]")
+                else:
+                    moai_parts.append(d)
+        all_moais_done = bool(
+            moai_list and all(m.get("done", False) for m in moai_list)
         )
+        if all_moais_done:
+            moais_detail = (
+                f"[dim strike]Moais: {counts['moai']} ({', '.join(moai_parts)})[/]"
+                if moai_parts
+                else f"[dim strike]Moais: {counts['moai']}[/]"
+            )
+        else:
+            moais_detail = (
+                f"Moais: {counts['moai']} ({', '.join(moai_parts)})"
+                if moai_parts
+                else f"Moais: {counts['moai']}"
+            )
+
+        all_shadys_done = bool(
+            result.get("shady_guys")
+            and all(sg.get("done", False) for sg in result.get("shady_guys", []))
+        )
+        shady_detail = (
+            f"[dim strike]Shady: {counts['shady']}[/]"
+            if all_shadys_done
+            else f"Shady: {counts['shady']}"
+        )
+
+        all_sm_done = (
+            (all_moais_done or not moai_list)
+            and (all_shadys_done or not result.get("shady_guys"))
+            and (bool(moai_list) or bool(result.get("shady_guys")))
+        )
+        if all_sm_done:
+            table.add_row(
+                "[dim strike]Shady + Moai[/]",
+                "[dim strike green]DONE[/]",
+                f"[dim strike]{sm_total} / {THRESHOLD_SHADY_PLUS_MOAI}[/]",
+                f"{shady_detail}, {moais_detail}",
+            )
+        else:
+            table.add_row(
+                "Shady + Moai",
+                f"[{sm_color}]{sm_mark}[/]",
+                f"{sm_total} / {THRESHOLD_SHADY_PLUS_MOAI}",
+                f"{shady_detail}, {moais_detail}",
+            )
 
         micro_list = result.get("microwaves", [])
         micro_parts = []
         for m in micro_list:
             sec_str = f" @ {m['map_sector']}" if m.get("map_sector") else ""
             if m.get("uses_left", 3) <= 0:
-                micro_parts.append(f"[dim strike]{m['color']}{sec_str}[/]")
+                micro_parts.append(f"[dim strike]{m['color']}{sec_str} (0 uses)[/]")
             else:
                 micro_parts.append(f"{m['color']}{sec_str}")
         if micro_parts:
@@ -2785,14 +3721,18 @@ def print_stage1_report(
         else:
             micro_details = ""
 
-        micro_label = "Microwaves (2x White)" if REQUIRE_BOTH_MICROWAVES_WHITE else "Microwaves"
+        micro_label = (
+            "Microwaves (2x White)" if REQUIRE_BOTH_MICROWAVES_WHITE else "Microwaves"
+        )
         white_cnt = sum(1 for m in micro_list if m.get("color") == "White")
         micro_cur_str = (
             f"{white_cnt} White ({counts['microwaves']} total)"
             if REQUIRE_BOTH_MICROWAVES_WHITE
             else f"{counts['microwaves']}"
         )
-        all_micros_depleted = bool(micro_list and all(m.get("uses_left", 3) <= 0 for m in micro_list))
+        all_micros_depleted = bool(
+            micro_list and all(m.get("uses_left", 3) <= 0 for m in micro_list)
+        )
         if all_micros_depleted:
             table.add_row(
                 f"[dim strike]{micro_label}[/]",
@@ -2808,14 +3748,48 @@ def print_stage1_report(
                 micro_details,
             )
         boss_list = result.get("boss_curses", [])
-        boss_dirs = [b["dir"] for b in boss_list if b.get("dir") and b["dir"] != "Unknown"]
-        boss_detail = f"Directions: {', '.join(boss_dirs)}" if boss_dirs else ""
-        table.add_row(
-            "Boss Curses",
-            f"[{boss_color}]{boss_mark}[/]",
-            f"{counts['boss_curses']} / {THRESHOLD_BOSS_CURSES}",
-            boss_detail,
-        )
+        boss_parts = []
+        for b in boss_list:
+            d = b.get("dir")
+            if d and d != "Unknown":
+                if b.get("done", False):
+                    boss_parts.append(f"[dim strike]{d}[/]")
+                else:
+                    boss_parts.append(d)
+        boss_dirs = [
+            b["dir"] for b in boss_list if b.get("dir") and b["dir"] != "Unknown"
+        ]
+        all_boss_done = bool(boss_list and all(b.get("done", False) for b in boss_list))
+        active_boss_cnt = sum(1 for b in boss_list if not b.get("done", False))
+
+        if all_boss_done:
+            boss_detail = (
+                f"[dim strike]Directions: {', '.join(boss_dirs)} (CLEANSED)[/]"
+                if boss_dirs
+                else "[dim strike]CLEANSED[/]"
+            )
+            table.add_row(
+                "[dim strike]Boss Curses[/]",
+                "[dim strike green]DONE[/]",
+                f"[dim strike]{counts['boss_curses']} / {THRESHOLD_BOSS_CURSES}[/]",
+                boss_detail,
+            )
+        elif active_boss_cnt < len(boss_list):
+            boss_detail = f"Directions: {', '.join(boss_parts)}" if boss_parts else ""
+            table.add_row(
+                "Boss Curses",
+                f"[{boss_color}]{boss_mark}[/]",
+                f"{active_boss_cnt} active ({counts['boss_curses']} total) / {THRESHOLD_BOSS_CURSES}",
+                boss_detail,
+            )
+        else:
+            boss_detail = f"Directions: {', '.join(boss_dirs)}" if boss_dirs else ""
+            table.add_row(
+                "Boss Curses",
+                f"[{boss_color}]{boss_mark}[/]",
+                f"{counts['boss_curses']} / {THRESHOLD_BOSS_CURSES}",
+                boss_detail,
+            )
         table.add_row(
             "Magnet Curses",
             f"[{magnet_color}]{magnet_mark}[/]",
@@ -2825,48 +3799,106 @@ def print_stage1_report(
 
         offered_counts = dict(result.get("offered_item_counts") or {})
 
-        if combined_ids:
-            for iid in combined_ids:
-                item_name = get_item_name(iid)
-                target_label = f"Target Items ({item_name})"
-                item_cnt = offered_counts.get(iid, 0)
-                shadys_with_item = [
-                    sg for sg in result.get("shady_guys", [])
-                    if any(it.get("item_id") == iid for it in sg.get("items", []))
-                ]
-                consumed_count = sum(1 for sg in shadys_with_item if sg.get("done", False))
-                all_consumed = bool(shadys_with_item and consumed_count == len(shadys_with_item))
+        if combined_combos:
+            for combo in combined_combos:
+                if len(combo) == 1:
+                    iid = combo[0]
+                    item_name = get_item_name(iid)
+                    target_label = f"Target Items ({item_name})"
+                    item_cnt = offered_counts.get(iid, 0)
+                    shadys_with_item = [
+                        sg
+                        for sg in result.get("shady_guys", [])
+                        if any(it.get("item_id") == iid for it in sg.get("items", []))
+                    ]
+                    consumed_count = sum(
+                        1 for sg in shadys_with_item if sg.get("done", False)
+                    )
+                    all_consumed = bool(
+                        shadys_with_item and consumed_count == len(shadys_with_item)
+                    )
 
-                if item_cnt > 0:
-                    if all_consumed:
-                        table.add_row(
-                            f"[dim strike]{target_label}[/]",
-                            "[dim strike green]DONE[/]",
-                            f"[dim strike]{item_cnt} / 1 {item_name}[/]",
-                            f"[dim strike]{item_name}[/] [dim red][TAKEN][/]",
-                        )
-                    elif consumed_count > 0:
-                        avail_cnt = len(shadys_with_item) - consumed_count
-                        table.add_row(
-                            target_label,
-                            "[bold green]PASS[/]",
-                            f"{avail_cnt} avail ({consumed_count} taken)",
-                            f"{item_name} [green]({avail_cnt} available)[/]",
-                        )
+                    if item_cnt > 0:
+                        if all_consumed:
+                            table.add_row(
+                                f"[dim strike]{target_label}[/]",
+                                "[dim strike green]DONE[/]",
+                                f"[dim strike]{item_cnt} / 1 {item_name}[/]",
+                                f"[dim strike]{item_name}[/] [dim red][TAKEN][/]",
+                            )
+                        elif consumed_count > 0:
+                            avail_cnt = len(shadys_with_item) - consumed_count
+                            table.add_row(
+                                target_label,
+                                "[bold green]PASS[/]",
+                                f"{avail_cnt} avail ({consumed_count} taken)",
+                                f"{item_name} [green]({avail_cnt} available)[/]",
+                            )
+                        else:
+                            table.add_row(
+                                target_label,
+                                "[bold green]PASS[/]",
+                                f"{item_cnt} / 1 {item_name}",
+                                item_name,
+                            )
                     else:
                         table.add_row(
                             target_label,
-                            "[bold green]PASS[/]",
-                            f"{item_cnt} / 1 {item_name}",
+                            "[bold red]FAIL[/]",
+                            f"0 / 1 {item_name}",
                             item_name,
                         )
                 else:
-                    table.add_row(
-                        target_label,
-                        "[bold red]FAIL[/]",
-                        f"0 / 1 {item_name}",
-                        item_name,
+                    combo_name = format_item_combo_name(combo)
+                    target_label = f"Target Combo ({combo_name})"
+                    all_present = all(offered_counts.get(iid, 0) > 0 for iid in combo)
+                    shadys_with_combo = [
+                        sg
+                        for sg in result.get("shady_guys", [])
+                        if any(it.get("item_id") in combo for it in sg.get("items", []))
+                    ]
+                    consumed_count = sum(
+                        1 for sg in shadys_with_combo if sg.get("done", False)
                     )
+                    all_consumed = bool(
+                        all_present
+                        and shadys_with_combo
+                        and consumed_count == len(shadys_with_combo)
+                    )
+                    if all_present:
+                        if all_consumed:
+                            table.add_row(
+                                f"[dim strike]{target_label}[/]",
+                                "[dim strike green]DONE[/]",
+                                "[dim strike]CONSUMED[/]",
+                                f"[dim strike]{combo_name}[/] [dim red][TAKEN][/]",
+                            )
+                        elif consumed_count > 0:
+                            table.add_row(
+                                target_label,
+                                "[bold green]PASS[/]",
+                                f"In Progress ({consumed_count} taken)",
+                                f"{combo_name} [green](found on map)[/]",
+                            )
+                        else:
+                            table.add_row(
+                                target_label,
+                                "[bold green]PASS[/]",
+                                "MATCHED",
+                                f"{combo_name} [green](all present)[/]",
+                            )
+                    else:
+                        missing = [
+                            get_item_name(iid)
+                            for iid in combo
+                            if offered_counts.get(iid, 0) == 0
+                        ]
+                        table.add_row(
+                            target_label,
+                            "[bold red]FAIL[/]",
+                            f"Missing {len(missing)}",
+                            f"Missing: {', '.join(missing)}",
+                        )
 
         console.print(table)
 
@@ -2874,39 +3906,61 @@ def print_stage1_report(
         if result.get("all_matched") and result.get("shady_guys"):
             if result.get("shady_guys"):
                 ranked_items = get_all_shady_items_ranked(result["shady_guys"])
-                available_items = sum(1 for it in ranked_items if not it.get("shady_done"))
+                available_items = sum(
+                    1 for it in ranked_items if not it.get("shady_done")
+                )
                 avail_str = (
                     f"{available_items}/{len(ranked_items)} available"
                     if available_items < len(ranked_items)
                     else f"{len(ranked_items)} items"
                 )
+                n_sg = len(result["shady_guys"])
                 items_table = Table(
-                    title=f"🎯 All Shady Items Ranked by Distance ({avail_str} across {len(result['shady_guys'])} Shady Guys)",
+                    title=f"🎯 All Shady Items Ranked by Distance ({avail_str} across {n_sg} Shady Guys)",
                     header_style="bold bright_white",
                 )
-                items_table.add_column("Rank", style="bold bright_white", justify="right")
-                items_table.add_column("Distance", style="bright_white", justify="right")
+                items_table.add_column(
+                    "Rank", style="bold bright_white", justify="right"
+                )
+                items_table.add_column(
+                    "Distance", style="bright_white", justify="right"
+                )
                 items_table.add_column("Direction", style="bold bright_white")
                 items_table.add_column("Map Sector", style="bold white")
                 items_table.add_column("Shady Guy", style="bold yellow")
                 items_table.add_column("Tier", justify="center")
                 items_table.add_column("Item", style="bold bright_white")
-                items_table.add_column("Gold Price", justify="right", style="bold bright_yellow")
+                items_table.add_column(
+                    "Gold Price", justify="right", style="bold bright_yellow"
+                )
                 items_table.add_column("Multiplier", justify="right")
                 items_table.add_column("Status", justify="center")
 
                 for item_rank, it in enumerate(ranked_items, 1):
                     is_taken = it.get("shady_done", False)
                     dist_str = f"{it['dist']}m" if it.get("dist") is not None else "??m"
-                    dir_str = f"{it['direction']} {it['bearing_str']}".strip() if it.get("direction") else "-"
+                    dir_str = (
+                        f"{it['direction']} {it['bearing_str']}".strip()
+                        if it.get("direction")
+                        else "-"
+                    )
 
                     sg_label = f"Shady #{it['shady_num']}"
                     sector_str = it.get("map_sector") or "-"
-                    tier_str = format_shady_rarity(it.get("shady_rarity") or it.get("rarity", "COMMON"), use_rich=True)
-                    name_str = format_item_display(it.get("item_id"), it["item_name"], use_rich=True)
+                    tier_str = format_shady_rarity(
+                        it.get("shady_rarity") or it.get("rarity", "COMMON"),
+                        use_rich=True,
+                    )
+                    name_str = format_item_display(
+                        it.get("item_id"), it["item_name"], use_rich=True
+                    )
 
                     gold_str = f"{it['gold']}g" if it.get("gold") is not None else "-"
-                    mult_str = f"{it['multiplier']:.2f}x" if it.get("multiplier") is not None else "-"
+                    mult_str = (
+                        f"{it['multiplier']:.2f}x"
+                        if it.get("multiplier") is not None
+                        else "-"
+                    )
 
                     if is_taken:
                         rank_disp = f"[dim strike]{item_rank}[/]"
@@ -2978,7 +4032,9 @@ def print_stage1_report(
 
                 for i, sg in enumerate(shady_guys):
                     is_done = sg.get("done", False)
-                    status_tag = "[dim red]COMPLETED[/]" if is_done else "[green]AVAILABLE[/]"
+                    status_tag = (
+                        "[dim red]COMPLETED[/]" if is_done else "[green]AVAILABLE[/]"
+                    )
                     prices = sg.get("gold_prices", [])
                     item_names = []
                     for it_idx, it in enumerate(sg["items"]):
@@ -2992,7 +4048,9 @@ def print_stage1_report(
                             marker = "*" if is_tgt else ""
                             item_names.append(f"[dim strike]{name}{marker}{cost}[/]")
                         else:
-                            styled_name = format_item_display(item_id, name, use_rich=True)
+                            styled_name = format_item_display(
+                                item_id, name, use_rich=True
+                            )
                             item_names.append(f"{styled_name}{cost}")
 
                     loc_parts = []
@@ -3003,7 +4061,9 @@ def print_stage1_report(
                         loc_parts.append(f"{sg['dist']}m")
                     loc_str = ", ".join(loc_parts) if loc_parts else "-"
                     sector_str = sg.get("map_sector") or "-"
-                    tier_str = format_shady_rarity(sg.get("rarity", "COMMON"), use_rich=True)
+                    tier_str = format_shady_rarity(
+                        sg.get("rarity", "COMMON"), use_rich=True
+                    )
 
                     if is_done:
                         rank_disp = f"[dim strike]{i + 1}[/]"
@@ -3041,7 +4101,8 @@ def print_stage1_report(
             else:
                 console.print(
                     Panel(
-                        f"[yellow]⚠ {counts.get('shady', 0)} Shady Guy(s) expected on map, but instances were not resolved from memory.[/]",
+                        f"[yellow]⚠ {counts.get('shady', 0)} Shady Guy(s) expected on map, "
+                        "but instances were not resolved from memory.[/]",
                         title="Shady Guys Warning",
                         style="yellow",
                         expand=False,
@@ -3105,26 +4166,57 @@ def print_stage1_report(
     if result["all_matched"]:
         reason = result.get("match_reason")
         if reason == "PERFECT_MATCH_ALL":
-            print(f">>> [PERFECT SEED MATCH ON STAGE 1! (Thresholds + Required Items){reroll_info}] <<<", flush=True)
+            print(
+                f">>> [PERFECT SEED MATCH ON STAGE 1! (Thresholds + Required Items){reroll_info}] <<<",
+                flush=True,
+            )
             print("=" * 80, flush=True)
-            print(f"ALL THRESHOLDS & REQUIRED ITEMS MATCHED (Scan took {result['elapsed_s']}s):", flush=True)
+            print(
+                f"ALL THRESHOLDS & REQUIRED ITEMS MATCHED (Scan took {result['elapsed_s']}s):",
+                flush=True,
+            )
         else:
             print(f">>> [PERFECT SEED MATCH ON STAGE 1!{reroll_info}] <<<", flush=True)
             print("=" * 80, flush=True)
-            print(f"ALL THRESHOLDS MATCHED (Scan took {result['elapsed_s']}s):", flush=True)
+            print(
+                f"ALL THRESHOLDS MATCHED (Scan took {result['elapsed_s']}s):",
+                flush=True,
+            )
     else:
-        char_plain = f" | Character: {result.get('character', 'Unknown')}" if result.get("character") else ""
-        print(f"[STAGE 1 SEED EVALUATION]{reroll_info}{char_plain} (Scan took {result['elapsed_s']}s)", flush=True)
+        char_plain = (
+            f" | Character: {result.get('character', 'Unknown')}"
+            if result.get("character")
+            else ""
+        )
+        print(
+            f"[STAGE 1 SEED EVALUATION]{reroll_info}{char_plain} (Scan took {result['elapsed_s']}s)",
+            flush=True,
+        )
         print("-" * 80, flush=True)
         reason = result.get("match_reason")
         if reason == "REQUIRED_ITEMS_CONFLICT_SAME_SHADY":
-            print(f"Status: [-] CRITERIA NOT MET (Required items found on map, but conflict on the same Shady Guy! Must appear across at least {min_shadys_needed} different Shady Guys)", flush=True)
+            print(
+                "Status: [-] CRITERIA NOT MET (Required items found on map, but conflict on the same Shady Guy! "
+                f"Must appear across at least {min_shadys_needed} different Shady Guys)",
+                flush=True,
+            )
         elif reason == "MISSING_REQUIRED_ITEMS_THRESHOLDS_PASS":
-            print(f"Status: [-] CRITERIA NOT MET (Threshold criteria met [{sm_total}/{THRESHOLD_SHADY_PLUS_MOAI}], but requires {req_label} on map)", flush=True)
+            print(
+                f"Status: [-] CRITERIA NOT MET (Threshold criteria met [{sm_total}/{THRESHOLD_SHADY_PLUS_MOAI}], "
+                f"but requires {req_label} on map)",
+                flush=True,
+            )
         elif reason == "REQUIRED_ITEMS_FOUND_CRITERIA_FAILED":
-            print(f"Status: [-] CRITERIA NOT MET ({found_label} found, but other criteria failed: {sm_total}/{THRESHOLD_SHADY_PLUS_MOAI} Shady+Moai)", flush=True)
+            print(
+                f"Status: [-] CRITERIA NOT MET ({found_label} found, but other criteria failed: "
+                f"{sm_total}/{THRESHOLD_SHADY_PLUS_MOAI} Shady+Moai)",
+                flush=True,
+            )
         elif reason == "MISSING_REQUIRED_ITEMS":
-            print(f"Status: [-] CRITERIA NOT MET (Strictly requires {req_label} on map)", flush=True)
+            print(
+                f"Status: [-] CRITERIA NOT MET (Strictly requires {req_label} on map)",
+                flush=True,
+            )
         else:
             print("Status: [-] CRITERIA NOT MET", flush=True)
         print("=" * 80 + "\n", flush=True)
@@ -3135,53 +4227,202 @@ def print_stage1_report(
         micro_str_parts = []
         for m in micro_list:
             sec_str = f" @ {m['map_sector']}" if m.get("map_sector") else ""
-            micro_str_parts.append(f"{m['color']}{sec_str}")
+            if m.get("uses_left", 3) <= 0:
+                micro_str_parts.append(
+                    f"\033[2;9m{m['color']}{sec_str} (0 uses)\033[0m"
+                )
+            else:
+                micro_str_parts.append(f"{m['color']}{sec_str}")
         micro_info = f" ({', '.join(micro_str_parts)})"
     else:
         micro_info = ""
 
-    micro_label = "Microwaves (2x White)" if REQUIRE_BOTH_MICROWAVES_WHITE else "Microwaves"
+    micro_label = (
+        "Microwaves (2x White)" if REQUIRE_BOTH_MICROWAVES_WHITE else "Microwaves"
+    )
     white_cnt = sum(1 for m in micro_list if m.get("color") == "White")
     micro_cur_str = (
         f"{white_cnt} White ({counts['microwaves']} total)"
         if REQUIRE_BOTH_MICROWAVES_WHITE
         else f"{counts['microwaves']:>2d}"
     )
+    all_micros_depleted = bool(
+        micro_list and all(m.get("uses_left", 3) <= 0 for m in micro_list)
+    )
+
     moai_list = result.get("moais", [])
-    moai_dirs = [m["dir"] for m in moai_list if m.get("dir") and m["dir"] != "Unknown"]
-    moais_detail = f"Moais: {counts['moai']} ({', '.join(moai_dirs)})" if moai_dirs else f"Moais: {counts['moai']}"
-    print(f"  [{sm_mark:^4}] Shady + Moai:         {sm_total:>2d} / {THRESHOLD_SHADY_PLUS_MOAI}  (Shady: {counts['shady']}, {moais_detail})", flush=True)
-    print(f"  [{micro_mark:^4}] {micro_label:<21}: {micro_cur_str} / {THRESHOLD_MICROWAVES}{micro_info}", flush=True)
+    moai_parts = []
+    for m in moai_list:
+        d = m.get("dir")
+        if d and d != "Unknown":
+            if m.get("done", False):
+                moai_parts.append(f"\033[2;9m{d}\033[0m")
+            else:
+                moai_parts.append(d)
+    all_moais_done = bool(moai_list and all(m.get("done", False) for m in moai_list))
+    if all_moais_done:
+        moais_detail = (
+            f"\033[2;9mMoais: {counts['moai']} ({', '.join(moai_parts)})\033[0m"
+            if moai_parts
+            else f"\033[2;9mMoais: {counts['moai']}\033[0m"
+        )
+    else:
+        moais_detail = (
+            f"Moais: {counts['moai']} ({', '.join(moai_parts)})"
+            if moai_parts
+            else f"Moais: {counts['moai']}"
+        )
+    all_shadys_done = bool(
+        result.get("shady_guys")
+        and all(sg.get("done", False) for sg in result.get("shady_guys", []))
+    )
+    shady_detail = (
+        f"\033[2;9mShady: {counts['shady']}\033[0m"
+        if all_shadys_done
+        else f"Shady: {counts['shady']}"
+    )
+
+    sm_thresh = THRESHOLD_SHADY_PLUS_MOAI
+    sm_desc = f"{sm_total:>2d} / {sm_thresh}  ({shady_detail}, {moais_detail})"
+    if all_moais_done and (all_shadys_done or not result.get("shady_guys")):
+        print(f"\033[2;9m  [DONE] Shady + Moai:         {sm_desc}\033[0m", flush=True)
+    else:
+        print(f"  [{sm_mark:^4}] Shady + Moai:         {sm_desc}", flush=True)
+
+    micro_thresh = THRESHOLD_MICROWAVES
+    if all_micros_depleted:
+        print(
+            f"\033[2;9m  [DONE] {micro_label:<21}: {micro_cur_str} / {micro_thresh}{micro_info} [DEPLETED]\033[0m",
+            flush=True,
+        )
+    else:
+        print(
+            f"  [{micro_mark:^4}] {micro_label:<21}: {micro_cur_str} / {micro_thresh}{micro_info}",
+            flush=True,
+        )
+
     boss_list = result.get("boss_curses", [])
-    boss_dirs = [b["dir"] for b in boss_list if b.get("dir") and b["dir"] != "Unknown"]
-    boss_detail_str = f" ({', '.join(boss_dirs)})" if boss_dirs else ""
-    print(f"  [{boss_mark:^4}] Boss Curses:          {counts['boss_curses']:>2d} / {THRESHOLD_BOSS_CURSES}{boss_detail_str}", flush=True)
-    print(f"  [{magnet_mark:^4}] Magnet Curses:        {counts['magnets']:>2d} / {THRESHOLD_MAGNET_CURSES}", flush=True)
+    boss_parts = []
+    for b in boss_list:
+        d = b.get("dir")
+        if d and d != "Unknown":
+            if b.get("done", False):
+                boss_parts.append(f"\033[2;9m{d}\033[0m")
+            else:
+                boss_parts.append(d)
+    all_boss_done = bool(boss_list and all(b.get("done", False) for b in boss_list))
+    bc_cnt = counts["boss_curses"]
+    bc_thresh = THRESHOLD_BOSS_CURSES
+    if all_boss_done:
+        boss_dirs_plain = [
+            b["dir"] for b in boss_list if b.get("dir") and b["dir"] != "Unknown"
+        ]
+        boss_detail_str = (
+            f" ({', '.join(boss_dirs_plain)}) [CLEANSED]"
+            if boss_dirs_plain
+            else " [CLEANSED]"
+        )
+        print(
+            f"\033[2;9m  [DONE] Boss Curses:          {bc_cnt:>2d} / {bc_thresh}{boss_detail_str}\033[0m",
+            flush=True,
+        )
+    else:
+        boss_detail_str = f" ({', '.join(boss_parts)})" if boss_parts else ""
+        print(
+            f"  [{boss_mark:^4}] Boss Curses:          {bc_cnt:>2d} / {bc_thresh}{boss_detail_str}",
+            flush=True,
+        )
+    print(
+        f"  [{magnet_mark:^4}] Magnet Curses:        {counts['magnets']:>2d} / {THRESHOLD_MAGNET_CURSES}",
+        flush=True,
+    )
 
     offered_counts_plain = dict(result.get("offered_item_counts") or {})
 
-    if combined_ids:
-        for iid in combined_ids:
-            item_name = get_item_name(iid)
-            target_label = f"Target Items ({item_name})"
-            item_cnt = offered_counts_plain.get(iid, 0)
-            shadys_with_item = [
-                sg for sg in result.get("shady_guys", [])
-                if any(it.get("item_id") == iid for it in sg.get("items", []))
-            ]
-            consumed_count = sum(1 for sg in shadys_with_item if sg.get("done", False))
-            all_consumed = bool(shadys_with_item and consumed_count == len(shadys_with_item))
+    if combined_combos:
+        for combo in combined_combos:
+            if len(combo) == 1:
+                iid = combo[0]
+                item_name = get_item_name(iid)
+                target_label = f"Target Items ({item_name})"
+                item_cnt = offered_counts_plain.get(iid, 0)
+                shadys_with_item = [
+                    sg
+                    for sg in result.get("shady_guys", [])
+                    if any(it.get("item_id") == iid for it in sg.get("items", []))
+                ]
+                consumed_count = sum(
+                    1 for sg in shadys_with_item if sg.get("done", False)
+                )
+                all_consumed = bool(
+                    shadys_with_item and consumed_count == len(shadys_with_item)
+                )
 
-            if item_cnt > 0:
-                if all_consumed:
-                    print(f"\033[2;9m  [DONE] {target_label}:    CONSUMED (All {consumed_count} taken)\033[0m", flush=True)
-                elif consumed_count > 0:
-                    avail_cnt = len(shadys_with_item) - consumed_count
-                    print(f"  [PASS] {target_label}:    MATCHED ({avail_cnt} available, {consumed_count} taken)", flush=True)
+                if item_cnt > 0:
+                    if all_consumed:
+                        print(
+                            f"\033[2;9m  [DONE] {target_label}:    CONSUMED (All {consumed_count} taken)\033[0m",
+                            flush=True,
+                        )
+                    elif consumed_count > 0:
+                        avail_cnt = len(shadys_with_item) - consumed_count
+                        print(
+                            f"  [PASS] {target_label}:    MATCHED ({avail_cnt} available, {consumed_count} taken)",
+                            flush=True,
+                        )
+                    else:
+                        print(
+                            f"  [PASS] {target_label}:    MATCHED ({item_cnt} {item_name} found on map)",
+                            flush=True,
+                        )
                 else:
-                    print(f"  [PASS] {target_label}:    MATCHED ({item_cnt} {item_name} found on map)", flush=True)
+                    print(
+                        f"  [FAIL] {target_label}:    FAILED (0 {item_name} found on map)",
+                        flush=True,
+                    )
             else:
-                print(f"  [FAIL] {target_label}:    FAILED (0 {item_name} found on map)", flush=True)
+                combo_name = format_item_combo_name(combo)
+                target_label = f"Target Combo ({combo_name})"
+                all_present = all(offered_counts_plain.get(iid, 0) > 0 for iid in combo)
+                shadys_with_combo = [
+                    sg
+                    for sg in result.get("shady_guys", [])
+                    if any(it.get("item_id") in combo for it in sg.get("items", []))
+                ]
+                consumed_count = sum(
+                    1 for sg in shadys_with_combo if sg.get("done", False)
+                )
+                all_consumed = bool(
+                    all_present
+                    and shadys_with_combo
+                    and consumed_count == len(shadys_with_combo)
+                )
+                if all_present:
+                    if all_consumed:
+                        print(
+                            f"\033[2;9m  [DONE] {target_label}:    CONSUMED (All items taken)\033[0m",
+                            flush=True,
+                        )
+                    elif consumed_count > 0:
+                        print(
+                            f"  [PASS] {target_label}:    MATCHED ({consumed_count} taken)",
+                            flush=True,
+                        )
+                    else:
+                        print(
+                            f"  [PASS] {target_label}:    MATCHED (All items found on map)",
+                            flush=True,
+                        )
+                else:
+                    missing = [
+                        get_item_name(iid)
+                        for iid in combo
+                        if offered_counts_plain.get(iid, 0) == 0
+                    ]
+                    print(
+                        f"  [FAIL] {target_label}:    FAILED (Missing: {', '.join(missing)})",
+                        flush=True,
+                    )
 
     if result.get("all_matched") and result.get("shady_guys"):
         if result.get("shady_guys"):
@@ -3193,12 +4434,19 @@ def print_stage1_report(
                 else f"{len(ranked_items)} items"
             )
             print("-" * 80, flush=True)
-            print(f"🎯 ALL SHADY ITEMS RANKED BY DISTANCE ({avail_str} across {len(result['shady_guys'])} Shady Guys):", flush=True)
+            print(
+                f"🎯 ALL SHADY ITEMS RANKED BY DISTANCE ({avail_str} across {len(result['shady_guys'])} Shady Guys):",
+                flush=True,
+            )
             print("-" * 80, flush=True)
             for item_rank, it in enumerate(ranked_items, 1):
                 is_taken = it.get("shady_done", False)
                 dist_str = f"{it['dist']}m" if it.get("dist") is not None else "??m"
-                dir_str = f"{it['direction']} {it['bearing_str']}".strip() if it.get("direction") else ""
+                dir_str = (
+                    f"{it['direction']} {it['bearing_str']}".strip()
+                    if it.get("direction")
+                    else ""
+                )
                 loc_str = f"{dist_str} {dir_str}".strip()
 
                 cost_parts = []
@@ -3221,12 +4469,18 @@ def print_stage1_report(
                 if is_taken:
                     vendor_str = f"Shady #{it['shady_num']} [{sh_rarity}] [DONE]"
                     item_disp = f"{it['item_name']}{target_star} [TAKEN]"
-                    line_out = f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} {cost_str:<16} @ {vendor_str} {sec_str}"
+                    line_out = (
+                        f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} "
+                        f"{cost_str:<16} @ {vendor_str} {sec_str}"
+                    )
                     print(f"\033[2;9m{line_out}\033[0m", flush=True)
                 else:
                     vendor_str = f"Shady #{it['shady_num']} [{sh_rarity}]"
                     item_disp = f"{it['item_name']}{target_star}"
-                    print(f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} {cost_str:<16} @ {vendor_str} {sec_str}", flush=True)
+                    print(
+                        f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} {cost_str:<16} @ {vendor_str} {sec_str}",
+                        flush=True,
+                    )
 
                 is_last_in_group = (
                     item_rank == len(ranked_items)
@@ -3243,12 +4497,14 @@ def print_stage1_report(
                 if available_sgs < sh_total
                 else f"{sh_total} found on map"
             )
-            print(f"SHADY GUY INVENTORIES ({sg_avail_str} - Ranked by Distance):", flush=True)
+            print(
+                f"SHADY GUY INVENTORIES ({sg_avail_str} - Ranked by Distance):",
+                flush=True,
+            )
             for i, sg in enumerate(result["shady_guys"]):
                 is_done = sg.get("done", False)
                 done_tag = " [DONE]" if is_done else ""
                 prices = sg.get("gold_prices", [])
-                mults = sg.get("multipliers", [])
                 item_names = []
                 for it_idx, it in enumerate(sg["items"]):
                     name = it.get("item_name", "?")
@@ -3256,9 +4512,19 @@ def print_stage1_report(
                     cost = ""
                     if it_idx < len(prices):
                         cost = f" ({prices[it_idx]}g)"
-                    item_tag = "*" if is_target_item(item_id, name) else (HIGHLIGHTED_ITEM_MARKER if is_highlighted_item(item_id, name) else "")
+                    item_tag = (
+                        "*"
+                        if is_target_item(item_id, name)
+                        else (
+                            HIGHLIGHTED_ITEM_MARKER
+                            if is_highlighted_item(item_id, name)
+                            else ""
+                        )
+                    )
                     if is_done:
-                        item_names.append(f"\033[2;9m{name}{item_tag}{cost} [TAKEN]\033[0m")
+                        item_names.append(
+                            f"\033[2;9m{name}{item_tag}{cost} [TAKEN]\033[0m"
+                        )
                     else:
                         item_names.append(f"{name}{item_tag}{cost}")
                 loc_parts = []
@@ -3270,19 +4536,31 @@ def print_stage1_report(
                 elif sg.get("dist") is not None:
                     loc_parts.append(f"{sg['dist']}m")
                 loc_str = f" ({', '.join(loc_parts)})" if loc_parts else ""
-                line_str = f"  Rank #{i+1} - Shady Guy [{sg.get('rarity', 'COMMON')}]{done_tag}{loc_str}: {', '.join(item_names)}"
+                rarity_str = sg.get("rarity", "COMMON")
+                items_summary = ", ".join(item_names)
+                line_str = f"  Rank #{i + 1} - Shady Guy [{rarity_str}]{done_tag}{loc_str}: {items_summary}"
                 if is_done:
                     print(f"\033[2;9m{line_str}\033[0m", flush=True)
                 else:
                     print(line_str, flush=True)
         elif counts.get("shady", 0) == 0:
-            print(f"  [Shady Guys] ℹ No Shady Guys spawned on this map ({counts.get('moai', 0)} Moai Shrines present).", flush=True)
+            print(
+                f"  [Shady Guys] ℹ No Shady Guys spawned on this map ({counts.get('moai', 0)} Moai Shrines present).",
+                flush=True,
+            )
         else:
-            print(f"  [Shady Guys] ⚠ {counts.get('shady', 0)} Shady Guy(s) expected on map, but instances could not be resolved from memory.", flush=True)
+            print(
+                f"  [Shady Guys] ⚠ {counts.get('shady', 0)} Shady Guy(s) expected on map, "
+                "but instances could not be resolved from memory.",
+                flush=True,
+            )
 
     if result.get("all_matched") and result.get("microwaves"):
         print("-" * 80, flush=True)
-        print(f"MICROWAVES ON MAP ({len(result['microwaves'])} found on map - Ranked by Distance):", flush=True)
+        print(
+            f"MICROWAVES ON MAP ({len(result['microwaves'])} found on map - Ranked by Distance):",
+            flush=True,
+        )
         for i, m in enumerate(result["microwaves"]):
             dist_str = f"{m['dist']}m" if m.get("dist") is not None else "??m"
             rel = m.get("rel_dir")
@@ -3292,11 +4570,17 @@ def print_stage1_report(
             rarity = m.get("rarity", 0)
             uses = m.get("uses_left", 3)
             if uses <= 0:
-                line_str = f"  #{i+1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] {sec_str} (0 uses - DEPLETED)"
+                line_str = (
+                    f"  #{i + 1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] "
+                    f"{sec_str} (0 uses - DEPLETED)"
+                )
                 print(f"\033[2;9m{line_str}\033[0m", flush=True)
             else:
                 uses_str = f"{uses} uses"
-                print(f"  #{i+1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] {sec_str} ({uses_str})", flush=True)
+                print(
+                    f"  #{i + 1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] {sec_str} ({uses_str})",
+                    flush=True,
+                )
     render_active_powerups_block(powerup_data, use_rich=False)
     print("=" * 80 + "\n", flush=True)
 
@@ -3318,18 +4602,28 @@ def print_stage_inspect_report(
     shady_guys = result.get("shady_guys", [])
     microwaves = result.get("microwaves", [])
     target_matches = result.get("target_matches", [])
+    sm_total = result.get("sm_total", counts.get("shady", 0) + counts.get("moai", 0))
 
     if console and Table and Panel:
         title_color = "bold cyan"
         char_name = result.get("character")
-        char_info = f" | Character: [bold]{char_name}[/]" if char_name and char_name != "Unknown" else ""
+        char_info = (
+            f" | Character: [bold]{char_name}[/]"
+            if char_name and char_name != "Unknown"
+            else ""
+        )
+        n_sg = len(shady_guys)
+        n_mw = len(microwaves)
+        scan_t = result["elapsed_s"]
         panel_lines = [
             f"[bold cyan]STAGE {stage_num} MAP OVERVIEW[/]",
-            f"Found {len(shady_guys)} Shady Guys and {len(microwaves)} Microwaves | Scan took {result['elapsed_s']}s{char_info}",
+            f"Found {n_sg} Shady Guys and {n_mw} Microwaves | Scan took {scan_t}s{char_info}",
         ]
         if target_matches:
             target_names = ", ".join(m["item_name"] for m in target_matches)
-            panel_lines.append(f"[bold yellow]🎯 Target Items Present: {target_names}[/]")
+            panel_lines.append(
+                f"[bold yellow]🎯 Target Items Present: {target_names}[/]"
+            )
 
         console.print(
             Panel(
@@ -3341,30 +4635,100 @@ def print_stage_inspect_report(
         )
 
         # 1. Map Interactables Summary Table
-        table = Table(title=f"Stage {stage_num} Interactables Summary", header_style="bold bright_white")
+        table = Table(
+            title=f"Stage {stage_num} Interactables Summary",
+            header_style="bold bright_white",
+        )
         table.add_column("Interactable", style="bold")
         table.add_column("Count", justify="right")
         table.add_column("Details", style="bright_white")
 
-        sm_total = result.get("sm_total", counts.get("shady", 0) + counts.get("moai", 0))
-        table.add_row(
-            "Shady Guys",
-            str(len(shady_guys)),
-            f"{counts.get('shady', 0)} reported by map",
+        sm_total = result.get(
+            "sm_total", counts.get("shady", 0) + counts.get("moai", 0)
         )
+
+        all_shady_done = bool(
+            shady_guys and all(sg.get("done", False) for sg in shady_guys)
+        )
+        active_shady_cnt = sum(1 for sg in shady_guys if not sg.get("done", False))
+        if all_shady_done:
+            table.add_row(
+                "[dim strike]Shady Guys[/]",
+                f"[dim strike]0 / {len(shady_guys)}[/]",
+                f"[dim strike]{counts.get('shady', 0)} reported by map (ALL TAKEN)[/]",
+            )
+        elif active_shady_cnt < len(shady_guys):
+            table.add_row(
+                "Shady Guys",
+                f"{active_shady_cnt} / {len(shady_guys)}",
+                f"{counts.get('shady', 0)} reported by map",
+            )
+        else:
+            table.add_row(
+                "Shady Guys",
+                str(len(shady_guys)),
+                f"{counts.get('shady', 0)} reported by map",
+            )
+
         moais = result.get("moais", [])
+        moai_parts = []
+        for m in moais:
+            d = m.get("dir")
+            if d and d != "Unknown":
+                if m.get("done", False):
+                    moai_parts.append(f"[dim strike]{d}[/]")
+                else:
+                    moai_parts.append(d)
         moai_dirs = [m["dir"] for m in moais if m.get("dir") and m["dir"] != "Unknown"]
-        moai_detail = f"Directions: {', '.join(moai_dirs)}" if moai_dirs else ""
-        table.add_row(
-            "Moai Shrines",
-            str(counts.get("moai", 0)),
-            moai_detail,
-        )
-        table.add_row(
-            "Shady + Moai Total",
-            str(sm_total),
-            "",
-        )
+        all_moais_done = bool(moais and all(m.get("done", False) for m in moais))
+        active_moais_cnt = sum(1 for m in moais if not m.get("done", False))
+
+        if all_moais_done:
+            table.add_row(
+                "[dim strike]Moai Shrines[/]",
+                f"[dim strike]0 / {len(moais)}[/]",
+                f"[dim strike]Directions: {', '.join(moai_dirs)} (COLLECTED)[/]"
+                if moai_dirs
+                else "[dim strike]COLLECTED[/]",
+            )
+        elif active_moais_cnt < len(moais):
+            table.add_row(
+                "Moai Shrines",
+                f"{active_moais_cnt} / {len(moais)}",
+                f"Directions: {', '.join(moai_parts)}" if moai_parts else "",
+            )
+        else:
+            moai_detail = f"Directions: {', '.join(moai_dirs)}" if moai_dirs else ""
+            table.add_row(
+                "Moai Shrines",
+                str(counts.get("moai", 0)),
+                moai_detail,
+            )
+
+        if (
+            (all_shady_done or not shady_guys)
+            and (all_moais_done or not moais)
+            and (shady_guys or moais)
+        ):
+            table.add_row(
+                "[dim strike]Shady + Moai Total[/]",
+                f"[dim strike]0 / {sm_total}[/]",
+                "[dim strike]ALL COMPLETED[/]",
+            )
+        else:
+            active_sm = active_shady_cnt + active_moais_cnt
+            if active_sm < sm_total:
+                table.add_row(
+                    "Shady + Moai Total",
+                    f"{active_sm} / {sm_total}",
+                    "",
+                )
+            else:
+                table.add_row(
+                    "Shady + Moai Total",
+                    str(sm_total),
+                    "",
+                )
 
         if microwaves:
             micro_summaries = []
@@ -3373,7 +4737,9 @@ def print_stage_inspect_report(
                 style = m.get("style", "bright_white")
                 uses = m.get("uses_left", 3)
                 if uses <= 0:
-                    micro_summaries.append(f"[dim strike][{style}]{m['color']}[/]{sec_str} (0 uses)[/]")
+                    micro_summaries.append(
+                        f"[dim strike][{style}]{m['color']}[/]{sec_str} (0 uses)[/]"
+                    )
                 else:
                     micro_summaries.append(f"[{style}]{m['color']}[/]{sec_str}")
             micro_details = ", ".join(micro_summaries)
@@ -3405,13 +4771,41 @@ def print_stage_inspect_report(
                 micro_details,
             )
         boss_list = result.get("boss_curses", [])
-        boss_dirs = [b["dir"] for b in boss_list if b.get("dir") and b["dir"] != "Unknown"]
-        boss_detail = f"Directions: {', '.join(boss_dirs)}" if boss_dirs else ""
-        table.add_row(
-            "Boss Curses",
-            str(counts.get("boss_curses", 0)),
-            boss_detail,
-        )
+        boss_parts = []
+        for b in boss_list:
+            d = b.get("dir")
+            if d and d != "Unknown":
+                if b.get("done", False):
+                    boss_parts.append(f"[dim strike]{d}[/]")
+                else:
+                    boss_parts.append(d)
+        boss_dirs = [
+            b["dir"] for b in boss_list if b.get("dir") and b["dir"] != "Unknown"
+        ]
+        all_boss_done = bool(boss_list and all(b.get("done", False) for b in boss_list))
+        active_boss_cnt = sum(1 for b in boss_list if not b.get("done", False))
+
+        if all_boss_done:
+            table.add_row(
+                "[dim strike]Boss Curses[/]",
+                f"[dim strike]0 / {len(boss_list)}[/]",
+                f"[dim strike]Directions: {', '.join(boss_dirs)} (CLEANSED)[/]"
+                if boss_dirs
+                else "[dim strike]CLEANSED[/]",
+            )
+        elif active_boss_cnt < len(boss_list):
+            table.add_row(
+                "Boss Curses",
+                f"{active_boss_cnt} / {len(boss_list)}",
+                f"Directions: {', '.join(boss_parts)}" if boss_parts else "",
+            )
+        else:
+            boss_detail = f"Directions: {', '.join(boss_dirs)}" if boss_dirs else ""
+            table.add_row(
+                "Boss Curses",
+                str(counts.get("boss_curses", 0)),
+                boss_detail,
+            )
         table.add_row(
             "Magnet Curses",
             str(counts.get("magnets", 0)),
@@ -3450,8 +4844,12 @@ def print_stage_inspect_report(
                 if available_items < len(ranked_items)
                 else f"{len(ranked_items)} items"
             )
+            table_title = (
+                f"🎯 Stage {stage_num} - All Shady Items Ranked by Distance "
+                f"({avail_str} across {len(shady_guys)} Shady Guys)"
+            )
             items_table = Table(
-                title=f"🎯 Stage {stage_num} - All Shady Items Ranked by Distance ({avail_str} across {len(shady_guys)} Shady Guys)",
+                title=table_title,
                 header_style="bold bright_white",
             )
             items_table.add_column("Rank", style="bold bright_white", justify="right")
@@ -3459,13 +4857,19 @@ def print_stage_inspect_report(
             items_table.add_column("Direction", style="bold bright_white")
             items_table.add_column("Map Sector", style="bold white")
             items_table.add_column("Item Name")
-            items_table.add_column("Price (Mult)", style="bold bright_yellow", justify="right")
+            items_table.add_column(
+                "Price (Mult)", style="bold bright_yellow", justify="right"
+            )
             items_table.add_column("Vendor")
 
             for item_rank, it in enumerate(ranked_items, 1):
                 is_taken = it.get("shady_done", False)
                 dist_disp = f"{it['dist']}m" if it.get("dist") is not None else "-"
-                dir_disp = f"{it['direction']} {it['bearing_str']}".strip() if it.get("direction") else "-"
+                dir_disp = (
+                    f"{it['direction']} {it['bearing_str']}".strip()
+                    if it.get("direction")
+                    else "-"
+                )
 
                 cost_parts = []
                 if it.get("gold") is not None:
@@ -3477,7 +4881,9 @@ def print_stage_inspect_report(
                 name = it["item_name"]
                 item_id = it.get("item_id")
                 name_styled = format_item_display(item_id, name, use_rich=True)
-                vendor_str = format_vendor_display(it["shady_num"], it.get("shady_rarity"), use_rich=True)
+                vendor_str = format_vendor_display(
+                    it["shady_num"], it.get("shady_rarity"), use_rich=True
+                )
 
                 if is_taken:
                     rank_disp = f"[dim strike]{item_rank}[/]"
@@ -3555,14 +4961,20 @@ def print_stage_inspect_report(
                         marker = "*" if is_tgt else ""
                         item_strs.append(f"[dim strike]{name}{marker}{cost_info}[/]")
                     else:
-                        item_str = format_item_display(item_id, name, cost_info=cost_info, use_rich=True)
+                        item_str = format_item_display(
+                            item_id, name, cost_info=cost_info, use_rich=True
+                        )
                         item_strs.append(item_str)
 
                 sector_str = sg.get("map_sector") or "-"
-                vendor_rarity = format_shady_rarity(sg.get("rarity", "-"), use_rich=True)
+                vendor_rarity = format_shady_rarity(
+                    sg.get("rarity", "-"), use_rich=True
+                )
                 if is_done:
                     rank_str = f"[dim strike]{i + 1}[/]"
-                    vendor_rarity = f"[dim strike]{sg.get('rarity', '-')}[/] [dim red][DONE][/]"
+                    vendor_rarity = (
+                        f"[dim strike]{sg.get('rarity', '-')}[/] [dim red][DONE][/]"
+                    )
                     sector_str = f"[dim strike]{sector_str}[/]"
                     dist_str = f"[dim strike]{dist_str}[/]"
                 else:
@@ -3632,27 +5044,111 @@ def print_stage_inspect_report(
 
     # Plain text fallback
     print("\n" + "=" * 80, flush=True)
-    print(f"[STAGE {stage_num} MAP OVERVIEW] (Scan took {result['elapsed_s']}s)", flush=True)
+    print(
+        f"[STAGE {stage_num} MAP OVERVIEW] (Scan took {result['elapsed_s']}s)",
+        flush=True,
+    )
     print("=" * 80, flush=True)
     micro_list = microwaves
     if micro_list:
         micro_str_parts = []
         for m in micro_list:
             sec_str = f" @ {m['map_sector']}" if m.get("map_sector") else ""
-            micro_str_parts.append(f"{m['color']}{sec_str}")
+            if m.get("uses_left", 3) <= 0:
+                micro_str_parts.append(
+                    f"\033[2;9m{m['color']}{sec_str} (0 uses)\033[0m"
+                )
+            else:
+                micro_str_parts.append(f"{m['color']}{sec_str}")
         micro_info = f" ({', '.join(micro_str_parts)})"
     else:
         micro_info = ""
 
+    all_micro_depleted = bool(
+        micro_list and all(m.get("uses_left", 3) <= 0 for m in micro_list)
+    )
+
     moais = result.get("moais", [])
-    moai_dirs = [m["dir"] for m in moais if m.get("dir") and m["dir"] != "Unknown"]
-    moais_detail = f"Moais: {counts.get('moai', 0)} ({', '.join(moai_dirs)})" if moai_dirs else f"Moais: {counts.get('moai', 0)}"
-    print(f"  Shady + Moai:    {sm_total:>2d}  (Shady: {counts.get('shady', len(shady_guys))}, {moais_detail})", flush=True)
-    print(f"  Microwaves:      {len(microwaves):>2d}{micro_info}", flush=True)
+    moai_parts = []
+    for m in moais:
+        d = m.get("dir")
+        if d and d != "Unknown":
+            if m.get("done", False):
+                moai_parts.append(f"\033[2;9m{d}\033[0m")
+            else:
+                moai_parts.append(d)
+    all_moais_done = bool(moais and all(m.get("done", False) for m in moais))
+    if all_moais_done:
+        moais_detail = (
+            f"\033[2;9mMoais: {counts.get('moai', 0)} ({', '.join(moai_parts)})\033[0m"
+            if moai_parts
+            else f"\033[2;9mMoais: {counts.get('moai', 0)}\033[0m"
+        )
+    else:
+        moais_detail = (
+            f"Moais: {counts.get('moai', 0)} ({', '.join(moai_parts)})"
+            if moai_parts
+            else f"Moais: {counts.get('moai', 0)}"
+        )
+
+    all_shady_done = bool(
+        shady_guys and all(sg.get("done", False) for sg in shady_guys)
+    )
+    shady_detail = (
+        f"\033[2;9mShady: {counts.get('shady', len(shady_guys))}\033[0m"
+        if all_shady_done
+        else f"Shady: {counts.get('shady', len(shady_guys))}"
+    )
+
+    if all_moais_done and (all_shady_done or not shady_guys):
+        print(
+            f"\033[2;9m  Shady + Moai:    {sm_total:>2d}  ({shady_detail}, {moais_detail})\033[0m",
+            flush=True,
+        )
+    else:
+        print(
+            f"  Shady + Moai:    {sm_total:>2d}  ({shady_detail}, {moais_detail})",
+            flush=True,
+        )
+
+    if all_micro_depleted:
+        print(
+            f"\033[2;9m  Microwaves:      {len(microwaves):>2d}{micro_info} [DEPLETED]\033[0m",
+            flush=True,
+        )
+    else:
+        print(f"  Microwaves:      {len(microwaves):>2d}{micro_info}", flush=True)
+
     boss_list = result.get("boss_curses", [])
-    boss_dirs = [b["dir"] for b in boss_list if b.get("dir") and b["dir"] != "Unknown"]
-    boss_detail = f" (Directions: {', '.join(boss_dirs)})" if boss_dirs else ""
-    print(f"  Boss Curses:     {counts.get('boss_curses', 0):>2d}{boss_detail}", flush=True)
+    boss_parts = []
+    for b in boss_list:
+        d = b.get("dir")
+        if d and d != "Unknown":
+            if b.get("done", False):
+                boss_parts.append(f"\033[2;9m{d}\033[0m")
+            else:
+                boss_parts.append(d)
+    all_boss_done = bool(boss_list and all(b.get("done", False) for b in boss_list))
+    if all_boss_done:
+        boss_dirs_plain = [
+            b["dir"] for b in boss_list if b.get("dir") and b["dir"] != "Unknown"
+        ]
+        boss_detail = (
+            f" (Directions: {', '.join(boss_dirs_plain)}) [CLEANSED]"
+            if boss_dirs_plain
+            else " [CLEANSED]"
+        )
+        print(
+            f"\033[2;9m  Boss Curses:     {counts.get('boss_curses', 0):>2d}{boss_detail}\033[0m",
+            flush=True,
+        )
+    else:
+        boss_detail = f" (Directions: {', '.join(boss_parts)})" if boss_parts else ""
+        print(
+            f"  Boss Curses:     {counts.get('boss_curses', 0):>2d}{boss_detail}",
+            flush=True,
+        )
+
     print(f"  Magnet Curses:   {counts.get('magnets', 0):>2d}", flush=True)
 
     if shady_guys:
@@ -3663,13 +5159,21 @@ def print_stage_inspect_report(
             if available_items < len(ranked_items)
             else f"{len(ranked_items)} items"
         )
+        n_sg = len(shady_guys)
         print("-" * 80, flush=True)
-        print(f"🎯 STAGE {stage_num} - ALL SHADY ITEMS RANKED BY DISTANCE ({avail_str} across {len(shady_guys)} Shady Guys):", flush=True)
+        print(
+            f"🎯 STAGE {stage_num} - ALL SHADY ITEMS RANKED BY DISTANCE ({avail_str} across {n_sg} Shady Guys):",
+            flush=True,
+        )
         print("-" * 80, flush=True)
         for item_rank, it in enumerate(ranked_items, 1):
             is_taken = it.get("shady_done", False)
             dist_str = f"{it['dist']}m" if it.get("dist") is not None else "??m"
-            dir_str = f"{it['direction']} {it['bearing_str']}".strip() if it.get("direction") else ""
+            dir_str = (
+                f"{it['direction']} {it['bearing_str']}".strip()
+                if it.get("direction")
+                else ""
+            )
             loc_str = f"{dist_str} {dir_str}".strip()
 
             cost_parts = []
@@ -3692,12 +5196,18 @@ def print_stage_inspect_report(
             if is_taken:
                 vendor_str = f"Shady #{it['shady_num']} [{sh_rarity}] [DONE]"
                 item_disp = f"{it['item_name']}{target_star} [TAKEN]"
-                line_out = f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} {cost_str:<16} @ {vendor_str} {sec_str}"
+                line_out = (
+                    f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} "
+                    f"{cost_str:<16} @ {vendor_str} {sec_str}"
+                )
                 print(f"\033[2;9m{line_out}\033[0m", flush=True)
             else:
                 vendor_str = f"Shady #{it['shady_num']} [{sh_rarity}]"
                 item_disp = f"{it['item_name']}{target_star}"
-                print(f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} {cost_str:<16} @ {vendor_str} {sec_str}", flush=True)
+                print(
+                    f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} {cost_str:<16} @ {vendor_str} {sec_str}",
+                    flush=True,
+                )
 
             is_last_in_group = (
                 item_rank == len(ranked_items)
@@ -3713,7 +5223,10 @@ def print_stage_inspect_report(
             if available_sgs < len(shady_guys)
             else f"{len(shady_guys)} found on map"
         )
-        print(f"STAGE {stage_num} - SHADY GUY INVENTORIES ({sg_avail_str} - Ranked by Distance):", flush=True)
+        print(
+            f"STAGE {stage_num} - SHADY GUY INVENTORIES ({sg_avail_str} - Ranked by Distance):",
+            flush=True,
+        )
         for i, sg in enumerate(shady_guys):
             is_done = sg.get("done", False)
             done_tag = " [DONE]" if is_done else ""
@@ -3726,7 +5239,15 @@ def print_stage_inspect_report(
                 cost = ""
                 if it_idx < len(prices):
                     cost = f" ({prices[it_idx]}g)"
-                item_tag = "*" if is_target_item(item_id, name) else (HIGHLIGHTED_ITEM_MARKER if is_highlighted_item(item_id, name) else "")
+                item_tag = (
+                    "*"
+                    if is_target_item(item_id, name)
+                    else (
+                        HIGHLIGHTED_ITEM_MARKER
+                        if is_highlighted_item(item_id, name)
+                        else ""
+                    )
+                )
                 if is_done:
                     item_names.append(f"\033[2;9m{name}{item_tag}{cost} [TAKEN]\033[0m")
                 else:
@@ -3740,7 +5261,9 @@ def print_stage_inspect_report(
             elif sg.get("dist") is not None:
                 loc_parts.append(f"{sg['dist']}m")
             loc_str = f" ({', '.join(loc_parts)})" if loc_parts else ""
-            line_str = f"  Rank #{i+1} - Shady Guy [{sg.get('rarity', 'COMMON')}]{done_tag}{loc_str}: {', '.join(item_names)}"
+            rarity_str = sg.get("rarity", "COMMON")
+            items_summary = ", ".join(item_names)
+            line_str = f"  Rank #{i + 1} - Shady Guy [{rarity_str}]{done_tag}{loc_str}: {items_summary}"
             if is_done:
                 print(f"\033[2;9m{line_str}\033[0m", flush=True)
             else:
@@ -3748,7 +5271,10 @@ def print_stage_inspect_report(
 
     if microwaves:
         print("-" * 80, flush=True)
-        print(f"STAGE {stage_num} - MICROWAVES ON MAP ({len(microwaves)} found on map - Ranked by Distance):", flush=True)
+        print(
+            f"STAGE {stage_num} - MICROWAVES ON MAP ({len(microwaves)} found on map - Ranked by Distance):",
+            flush=True,
+        )
         for i, m in enumerate(microwaves):
             dist_str = f"{m['dist']}m" if m.get("dist") is not None else "??m"
             rel = m.get("rel_dir")
@@ -3758,11 +5284,17 @@ def print_stage_inspect_report(
             rarity = m.get("rarity", 0)
             uses = m.get("uses_left", 3)
             if uses <= 0:
-                line_str = f"  #{i+1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] {sec_str} (0 uses - DEPLETED)"
+                line_str = (
+                    f"  #{i + 1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] "
+                    f"{sec_str} (0 uses - DEPLETED)"
+                )
                 print(f"\033[2;9m{line_str}\033[0m", flush=True)
             else:
                 uses_str = f"{uses} uses"
-                print(f"  #{i+1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] {sec_str} ({uses_str})", flush=True)
+                print(
+                    f"  #{i + 1:>2d}  [{loc_str:<16}] Microwave [{m['color']} / Tier {rarity}] {sec_str} ({uses_str})",
+                    flush=True,
+                )
     render_active_powerups_block(powerup_data, use_rich=False)
     print("=" * 80 + "\n", flush=True)
 
@@ -3801,16 +5333,39 @@ def wait_for_game_focus(memory: ProcessMemory) -> None:
 REWIRED_QUICK_RESET_ACTION_ID = 16
 
 UNITY_KEY_MAP = {
-    8: "backspace", 9: "tab", 12: "clear", 13: "enter", 19: "pause", 27: "esc",
-    32: "space", 127: "delete",
-    256: "0", 257: "1", 258: "2", 259: "3", 260: "4",
-    261: "5", 262: "6", 263: "7", 264: "8", 265: "9",
-    273: "up", 274: "down", 275: "right", 276: "left",
-    277: "insert", 278: "home", 279: "end",
-    280: "page up", 281: "page down",
-    303: "right shift", 304: "shift",
-    305: "right ctrl", 306: "ctrl",
-    307: "right alt", 308: "alt",
+    8: "backspace",
+    9: "tab",
+    12: "clear",
+    13: "enter",
+    19: "pause",
+    27: "esc",
+    32: "space",
+    127: "delete",
+    256: "0",
+    257: "1",
+    258: "2",
+    259: "3",
+    260: "4",
+    261: "5",
+    262: "6",
+    263: "7",
+    264: "8",
+    265: "9",
+    273: "up",
+    274: "down",
+    275: "right",
+    276: "left",
+    277: "insert",
+    278: "home",
+    279: "end",
+    280: "page up",
+    281: "page down",
+    303: "right shift",
+    304: "shift",
+    305: "right ctrl",
+    306: "ctrl",
+    307: "right alt",
+    308: "alt",
 }
 for i in range(1, 13):
     UNITY_KEY_MAP[281 + i] = f"f{i}"
@@ -3843,7 +5398,9 @@ def get_game_reset_hotkey() -> str:
                 if "ControllerMap|" in k and "controllerMapType=0" in k:
                     parsed = json.loads(v) if isinstance(v, str) else v
                     for bm in parsed.get("buttonMaps", []):
-                        if bm.get("actionId") == REWIRED_QUICK_RESET_ACTION_ID and bm.get("enabled", True):
+                        if bm.get(
+                            "actionId"
+                        ) == REWIRED_QUICK_RESET_ACTION_ID and bm.get("enabled", True):
                             kc = bm.get("keyboardKeyCode", 0)
                             if kc > 0:
                                 return unity_keycode_to_str(kc)
@@ -3878,14 +5435,19 @@ def perform_restart(
 ) -> bool:
     """Send the restart hotkey to restart the run, matching BonkScanner mechanics."""
     if keyboard is None:
-        print("[-] 'keyboard' library not installed; cannot send restart key.", flush=True)
+        print(
+            "[-] 'keyboard' library not installed; cannot send restart key.", flush=True
+        )
         return False
     try:
         if game_client:
             try:
                 state = game_client.get_runtime_game_state()
                 if state and state.is_paused:
-                    print("[*] Game is paused. Dismissing pause menu before quick reset...", flush=True)
+                    print(
+                        "[*] Game is paused. Dismissing pause menu before quick reset...",
+                        flush=True,
+                    )
                     keyboard.press_and_release("esc")
                     time.sleep(0.12)
             except Exception:
@@ -3921,7 +5483,9 @@ def pause_game(
             pass
 
     if keyboard is None:
-        print("[-] 'keyboard' library not installed; cannot send pause key.", flush=True)
+        print(
+            "[-] 'keyboard' library not installed; cannot send pause key.", flush=True
+        )
         return False
 
     try:
@@ -3948,8 +5512,6 @@ def pause_game(
             keyboard.release(pause_key)
         except Exception:
             pass
-
-
 
 
 def save_seed_reroll_data(
@@ -4061,6 +5623,7 @@ def save_seed_reroll_data(
             "direction": m.get("dir"),
             "coordinates": list(m["pos"]) if m.get("pos") else None,
             "distance_m": m.get("dist"),
+            "done": bool(m.get("done", False)),
         }
         for m in scan_result.get("moais", [])
     ]
@@ -4070,6 +5633,7 @@ def save_seed_reroll_data(
             "direction": b.get("dir"),
             "coordinates": list(b["pos"]) if b.get("pos") else None,
             "distance_m": b.get("dist"),
+            "done": bool(b.get("done", False)),
         }
         for b in scan_result.get("boss_curses", [])
     ]
@@ -4079,11 +5643,15 @@ def save_seed_reroll_data(
         "shady_plus_moai": {
             "status": "PASS" if scan_result.get("sm_pass") else "FAIL",
             "passed": bool(scan_result.get("sm_pass")),
-            "current": scan_result.get("sm_total", counts.get("shady", 0) + counts.get("moai", 0)),
+            "current": scan_result.get(
+                "sm_total", counts.get("shady", 0) + counts.get("moai", 0)
+            ),
             "required": THRESHOLD_SHADY_PLUS_MOAI,
             "shady_count": counts.get("shady", 0),
             "moai_count": counts.get("moai", 0),
-            "moai_directions": [m["dir"] for m in scan_result.get("moais", []) if m.get("dir")],
+            "moai_directions": [
+                m["dir"] for m in scan_result.get("moais", []) if m.get("dir")
+            ],
         },
         "microwaves": {
             "status": "PASS" if scan_result.get("micro_pass") else "FAIL",
@@ -4091,7 +5659,9 @@ def save_seed_reroll_data(
             "current": counts.get("microwaves", 0),
             "required": THRESHOLD_MICROWAVES,
             "require_both_white": REQUIRE_BOTH_MICROWAVES_WHITE,
-            "colors": [m.get("color", "White") for m in scan_result.get("microwaves", [])],
+            "colors": [
+                m.get("color", "White") for m in scan_result.get("microwaves", [])
+            ],
             "microwaves": microwaves_serializable,
         },
         "boss_curses": {
@@ -4099,7 +5669,9 @@ def save_seed_reroll_data(
             "passed": bool(scan_result.get("boss_pass")),
             "current": counts.get("boss_curses", 0),
             "required": THRESHOLD_BOSS_CURSES,
-            "boss_directions": [b["dir"] for b in scan_result.get("boss_curses", []) if b.get("dir")],
+            "boss_directions": [
+                b["dir"] for b in scan_result.get("boss_curses", []) if b.get("dir")
+            ],
             "boss_curses": boss_curses_serializable,
         },
         "magnet_curses": {
@@ -4113,9 +5685,15 @@ def save_seed_reroll_data(
             "passed": bool(scan_result.get("target_items_pass")),
             "character": scan_result.get("character", "Unknown"),
             "character_id": scan_result.get("character_id"),
-            "required_all_item_ids": scan_result.get("required_all_item_ids", REQUIRED_ALL_ITEM_IDS),
-            "required_any_item_ids": scan_result.get("required_any_item_ids", REQUIRED_ANY_ITEM_IDS),
-            "required_items_satisfied": bool(scan_result.get("required_items_satisfied", False)),
+            "required_all_item_ids": scan_result.get(
+                "required_all_item_ids", REQUIRED_ALL_ITEM_IDS
+            ),
+            "required_any_item_ids": scan_result.get(
+                "required_any_item_ids", REQUIRED_ANY_ITEM_IDS
+            ),
+            "required_items_satisfied": bool(
+                scan_result.get("required_items_satisfied", False)
+            ),
             "found_count": len(target_matches),
             "targets_sought": list(TARGET_SHADY_ITEMS.values()),
             "prices_found": [
@@ -4131,13 +5709,18 @@ def save_seed_reroll_data(
     }
 
     entry = {
-        "seed": seed if isinstance(seed, int) else (int(seed) if str(seed).isdigit() else seed_key),
+        "seed": seed
+        if isinstance(seed, int)
+        else (int(seed) if str(seed).isdigit() else seed_key),
         "reroll": reroll_num if reroll_num is not None else 0,
         "timestamp": now_iso,
         "character": scan_result.get("character", "Unknown"),
         "character_id": scan_result.get("character_id"),
         "elapsed_s": scan_result.get("elapsed_s", 0.0),
-        "status": scan_result.get("match_reason", "PERFECT_MATCH" if scan_result.get("all_matched") else "CRITERIA_NOT_MET"),
+        "status": scan_result.get(
+            "match_reason",
+            "PERFECT_MATCH" if scan_result.get("all_matched") else "CRITERIA_NOT_MET",
+        ),
         "all_matched": bool(scan_result.get("all_matched")),
         "requirements": requirements,
         "target_locations": target_locations,
@@ -4171,9 +5754,9 @@ def save_seed_reroll_data(
     return len(data)
 
 
-
-
-def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = True) -> None:
+def analyze_seed_data(
+    file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = True
+) -> None:
     """Analyze the collected seed dataset using pandas and rich."""
     if clear_screen and CLEAR_CONSOLE_ON_OUTPUT:
         clear_console()
@@ -4196,7 +5779,8 @@ def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = 
     if console and Panel and Table and pd:
         console.print(
             Panel(
-                f"[bold cyan]Shady Guy Seed Dataset Analysis[/]\nFile: [yellow]{file_path.name}[/] | Total Seeds Tracked: [bold green]{len(data)}[/]",
+                f"[bold cyan]Shady Guy Seed Dataset Analysis[/]\n"
+                f"File: [yellow]{file_path.name}[/] | Total Seeds Tracked: [bold green]{len(data)}[/]",
                 expand=False,
             )
         )
@@ -4211,39 +5795,62 @@ def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = 
                 for it in entry.get("items", []):
                     item_records.append({"seed": seed, "item": it})
                 for sg in entry.get("shady_guys", []):
-                    shady_records.append({"seed": seed, "map_part": sg.get("map_part"), "rarity": sg.get("rarity")})
+                    shady_records.append(
+                        {
+                            "seed": seed,
+                            "map_part": sg.get("map_part"),
+                            "rarity": sg.get("rarity"),
+                        }
+                    )
                     prices = sg.get("gold_prices", [])
                     mults = sg.get("multipliers", [])
                     for i, it in enumerate(sg.get("items", [])):
-                        it_name = it.get("item_name") if isinstance(it, dict) else str(it)
-                        if it_name in TARGET_SHADY_ITEMS.values() or it_name in HIGHLIGHTED_SHADY_ITEMS.values():
-                            target_records.append({
-                                "seed": seed,
-                                "item": it_name,
-                                "map_part": sg.get("map_part"),
-                                "gold": prices[i] if i < len(prices) else None,
-                                "multiplier": mults[i] if i < len(mults) else None,
-                            })
+                        it_name = (
+                            it.get("item_name") if isinstance(it, dict) else str(it)
+                        )
+                        if (
+                            it_name in TARGET_SHADY_ITEMS.values()
+                            or it_name in HIGHLIGHTED_SHADY_ITEMS.values()
+                        ):
+                            target_records.append(
+                                {
+                                    "seed": seed,
+                                    "item": it_name,
+                                    "map_part": sg.get("map_part"),
+                                    "gold": prices[i] if i < len(prices) else None,
+                                    "multiplier": mults[i] if i < len(mults) else None,
+                                }
+                            )
                 micros = entry.get("microwaves", [])
                 if not micros and "requirements" in entry:
-                    micros = entry["requirements"].get("microwaves", {}).get("microwaves", [])
+                    micros = (
+                        entry["requirements"]
+                        .get("microwaves", {})
+                        .get("microwaves", [])
+                    )
                 for m in micros:
                     if isinstance(m, dict):
-                        microwave_records.append({
-                            "seed": seed,
-                            "color": m.get("color", "Unknown"),
-                            "rarity": m.get("rarity", "Unknown"),
-                            "map_sector": m.get("map_sector", "Unknown"),
-                        })
+                        microwave_records.append(
+                            {
+                                "seed": seed,
+                                "color": m.get("color", "Unknown"),
+                                "rarity": m.get("rarity", "Unknown"),
+                                "map_sector": m.get("map_sector", "Unknown"),
+                            }
+                        )
                 if not micros and "requirements" in entry:
-                    colors = entry["requirements"].get("microwaves", {}).get("colors", [])
+                    colors = (
+                        entry["requirements"].get("microwaves", {}).get("colors", [])
+                    )
                     for c in colors:
-                        microwave_records.append({
-                            "seed": seed,
-                            "color": c,
-                            "rarity": "Unknown",
-                            "map_sector": "Unknown",
-                        })
+                        microwave_records.append(
+                            {
+                                "seed": seed,
+                                "color": c,
+                                "rarity": "Unknown",
+                                "map_sector": "Unknown",
+                            }
+                        )
             elif isinstance(entry, list):
                 for it in entry:
                     item_records.append({"seed": seed, "item": it})
@@ -4255,11 +5862,21 @@ def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = 
                 reqs = entry["requirements"]
                 sm_info = reqs.get("shady_plus_moai", {})
                 sm_cur = sm_info.get("current")
-                sm_p = (sm_cur >= THRESHOLD_SHADY_PLUS_MOAI) if sm_cur is not None else sm_info.get("passed", False)
+                sm_p = (
+                    (sm_cur >= THRESHOLD_SHADY_PLUS_MOAI)
+                    if sm_cur is not None
+                    else sm_info.get("passed", False)
+                )
                 micro_info = reqs.get("microwaves", {})
-                if REQUIRE_BOTH_MICROWAVES_WHITE and "colors" in micro_info and micro_info["colors"]:
+                if (
+                    REQUIRE_BOTH_MICROWAVES_WHITE
+                    and "colors" in micro_info
+                    and micro_info["colors"]
+                ):
                     colors = micro_info["colors"]
-                    micro_p = len(colors) >= THRESHOLD_MICROWAVES and all(c == "White" for c in colors)
+                    micro_p = len(colors) >= THRESHOLD_MICROWAVES and all(
+                        c == "White" for c in colors
+                    )
                 else:
                     micro_p = micro_info.get("passed", False)
                 boss_info = reqs.get("boss_curses", {})
@@ -4269,7 +5886,13 @@ def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = 
                 target_info = reqs.get("required_items", reqs.get("target_items", {}))
                 target_p = target_info.get("passed", False)
                 has_req = bool(REQUIRED_ALL_ITEM_IDS or REQUIRED_ANY_ITEM_IDS)
-                all_p = sm_p and micro_p and boss_p and magnet_p and (target_p if has_req else True)
+                all_p = (
+                    sm_p
+                    and micro_p
+                    and boss_p
+                    and magnet_p
+                    and (target_p if has_req else True)
+                )
 
                 req_records.append(
                     {
@@ -4300,14 +5923,20 @@ def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = 
                 if REQUIRE_BOTH_MICROWAVES_WHITE
                 else f"Microwaves (>= {THRESHOLD_MICROWAVES})"
             )
-            req_all_names = [get_item_name(i) for i in REQUIRED_ALL_ITEM_IDS]
-            req_any_names = [get_item_name(i) for i in REQUIRED_ANY_ITEM_IDS]
+            req_all_combos = normalize_required_item_combos(REQUIRED_ALL_ITEM_IDS)
+            req_any_combos = normalize_required_item_combos(REQUIRED_ANY_ITEM_IDS)
+            req_all_names = [format_item_combo_name(c) for c in req_all_combos]
+            req_any_names = [format_item_combo_name(c) for c in req_any_combos]
             parts = []
             if req_all_names:
                 parts.append(f"ALL: {', '.join(req_all_names)}")
             if req_any_names:
                 parts.append(f"ANY: {', '.join(req_any_names)}")
-            target_crit_label = f"Required Items ({'; '.join(parts)})" if parts else "Required Items (None configured)"
+            target_crit_label = (
+                f"Required Items ({'; '.join(parts)})"
+                if parts
+                else "Required Items (None configured)"
+            )
             criteria = [
                 (f"Shady + Moai (>= {THRESHOLD_SHADY_PLUS_MOAI})", "sm_pass"),
                 (micro_crit_label, "micro_pass"),
@@ -4333,28 +5962,50 @@ def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = 
             table_items.add_column("Item Name")
             table_items.add_column("Offerings", justify="right")
             table_items.add_column("Frequency (%)", justify="right")
-            for rank, (name, cnt) in enumerate(df_items["item"].value_counts().head(10).items(), start=1):
+            for rank, (name, cnt) in enumerate(
+                df_items["item"].value_counts().head(10).items(), start=1
+            ):
                 name_styled = format_item_display(item_name=name, use_rich=True)
-                table_items.add_row(str(rank), name_styled, str(cnt), f"{(cnt / len(df_items))*100:.1f}%")
+                table_items.add_row(
+                    str(rank),
+                    name_styled,
+                    str(cnt),
+                    f"{(cnt / len(df_items)) * 100:.1f}%",
+                )
             console.print(table_items)
 
             # Favoured Items Pricing & Spawn Statistics table
             target_names = list(TARGET_SHADY_ITEMS.values())
-            table_targets = Table(title="Favoured Items Pricing & Spawn Statistics", header_style="bold bright_white")
+            table_targets = Table(
+                title="Favoured Items Pricing & Spawn Statistics",
+                header_style="bold bright_white",
+            )
             table_targets.add_column("Favoured Item")
             table_targets.add_column("Spawns", justify="right")
-            table_targets.add_column("Min Gold", justify="right", style="bold bright_yellow")
-            table_targets.add_column("Avg Gold", justify="right", style="bold bright_yellow")
-            table_targets.add_column("Max Gold", justify="right", style="bold bright_yellow")
+            table_targets.add_column(
+                "Min Gold", justify="right", style="bold bright_yellow"
+            )
+            table_targets.add_column(
+                "Avg Gold", justify="right", style="bold bright_yellow"
+            )
+            table_targets.add_column(
+                "Max Gold", justify="right", style="bold bright_yellow"
+            )
             table_targets.add_column("Multiplier Range", justify="right")
             table_targets.add_column("Seeds", justify="right")
             table_targets.add_column("Rate (%)", justify="right")
 
-            df_targets = pd.DataFrame(target_records) if target_records else pd.DataFrame()
+            df_targets = (
+                pd.DataFrame(target_records) if target_records else pd.DataFrame()
+            )
 
             for t_name in target_names:
                 cnt = int((df_items["item"] == t_name).sum())
-                seeds_with = df_items[df_items["item"] == t_name]["seed"].nunique() if cnt > 0 else 0
+                seeds_with = (
+                    df_items[df_items["item"] == t_name]["seed"].nunique()
+                    if cnt > 0
+                    else 0
+                )
                 pct = (seeds_with / len(data)) * 100 if len(data) > 0 else 0.0
 
                 min_price_str = "-"
@@ -4362,11 +6013,21 @@ def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = 
                 max_price_str = "-"
                 range_str = "-"
 
-                if not df_targets.empty and "item" in df_targets.columns and "gold" in df_targets.columns:
-                    t_rows = df_targets[(df_targets["item"] == t_name) & df_targets["gold"].notna()]
+                if (
+                    not df_targets.empty
+                    and "item" in df_targets.columns
+                    and "gold" in df_targets.columns
+                ):
+                    t_rows = df_targets[
+                        (df_targets["item"] == t_name) & df_targets["gold"].notna()
+                    ]
                     if not t_rows.empty:
                         golds = t_rows["gold"].astype(float)
-                        mults = t_rows["multiplier"].dropna().astype(float) if "multiplier" in t_rows.columns else []
+                        mults = (
+                            t_rows["multiplier"].dropna().astype(float)
+                            if "multiplier" in t_rows.columns
+                            else []
+                        )
                         min_g = int(golds.min())
                         max_g = int(golds.max())
                         avg_g = round(golds.mean(), 1)
@@ -4395,19 +6056,32 @@ def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = 
 
             # Highlighted Items Pricing & Spawn Statistics table
             highlight_names = list(HIGHLIGHTED_SHADY_ITEMS.values())
-            table_highlights = Table(title="Highlighted Items Pricing & Spawn Statistics", header_style="bold bright_white")
+            table_highlights = Table(
+                title="Highlighted Items Pricing & Spawn Statistics",
+                header_style="bold bright_white",
+            )
             table_highlights.add_column("Highlighted Item")
             table_highlights.add_column("Spawns", justify="right")
-            table_highlights.add_column("Min Gold", justify="right", style="bold bright_yellow")
-            table_highlights.add_column("Avg Gold", justify="right", style="bold bright_yellow")
-            table_highlights.add_column("Max Gold", justify="right", style="bold bright_yellow")
+            table_highlights.add_column(
+                "Min Gold", justify="right", style="bold bright_yellow"
+            )
+            table_highlights.add_column(
+                "Avg Gold", justify="right", style="bold bright_yellow"
+            )
+            table_highlights.add_column(
+                "Max Gold", justify="right", style="bold bright_yellow"
+            )
             table_highlights.add_column("Multiplier Range", justify="right")
             table_highlights.add_column("Seeds", justify="right")
             table_highlights.add_column("Rate (%)", justify="right")
 
             for h_name in highlight_names:
                 cnt = int((df_items["item"] == h_name).sum())
-                seeds_with = df_items[df_items["item"] == h_name]["seed"].nunique() if cnt > 0 else 0
+                seeds_with = (
+                    df_items[df_items["item"] == h_name]["seed"].nunique()
+                    if cnt > 0
+                    else 0
+                )
                 pct = (seeds_with / len(data)) * 100 if len(data) > 0 else 0.0
 
                 min_price_str = "-"
@@ -4415,11 +6089,21 @@ def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = 
                 max_price_str = "-"
                 range_str = "-"
 
-                if not df_targets.empty and "item" in df_targets.columns and "gold" in df_targets.columns:
-                    h_rows = df_targets[(df_targets["item"] == h_name) & df_targets["gold"].notna()]
+                if (
+                    not df_targets.empty
+                    and "item" in df_targets.columns
+                    and "gold" in df_targets.columns
+                ):
+                    h_rows = df_targets[
+                        (df_targets["item"] == h_name) & df_targets["gold"].notna()
+                    ]
                     if not h_rows.empty:
                         golds = h_rows["gold"].astype(float)
-                        mults = h_rows["multiplier"].dropna().astype(float) if "multiplier" in h_rows.columns else []
+                        mults = (
+                            h_rows["multiplier"].dropna().astype(float)
+                            if "multiplier" in h_rows.columns
+                            else []
+                        )
                         min_g = int(golds.min())
                         max_g = int(golds.max())
                         avg_g = round(golds.mean(), 1)
@@ -4448,18 +6132,27 @@ def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = 
 
         if shady_records:
             df_sg = pd.DataFrame(shady_records)
-            table_sectors = Table(title="Shady Guy Map Sector Distribution", header_style="bold bright_white")
+            table_sectors = Table(
+                title="Shady Guy Map Sector Distribution",
+                header_style="bold bright_white",
+            )
             table_sectors.add_column("Map Sector", style="bold")
             table_sectors.add_column("Spawns", justify="right")
             table_sectors.add_column("Share (%)", justify="right")
             for sector, cnt in df_sg["map_part"].value_counts().items():
-                table_sectors.add_row(str(sector), str(cnt), f"{(cnt / len(df_sg))*100:.1f}%")
+                table_sectors.add_row(
+                    str(sector), str(cnt), f"{(cnt / len(df_sg)) * 100:.1f}%"
+                )
             console.print(table_sectors)
 
         if microwave_records:
             df_micro = pd.DataFrame(microwave_records)
+            title_str = (
+                f"Microwave Color Distribution ({len(df_micro)} microwaves "
+                f"recorded across {df_micro['seed'].nunique()} seeds)"
+            )
             table_micro = Table(
-                title=f"Microwave Color Distribution ({len(df_micro)} microwaves recorded across {df_micro['seed'].nunique()} seeds)",
+                title=title_str,
                 header_style="bold bright_white",
             )
             table_micro.add_column("Microwave Color / Tier", style="bold")
@@ -4481,7 +6174,10 @@ def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = 
                 table_micro.add_row(style, str(cnt), f"{pct:.1f}%")
             console.print(table_micro)
     else:
-        print(f"\n[*] Seed Dataset Analysis for {file_path.name}: {len(data)} seeds tracked.", flush=True)
+        print(
+            f"\n[*] Seed Dataset Analysis for {file_path.name}: {len(data)} seeds tracked.",
+            flush=True,
+        )
         all_items = []
         for v in data.values():
             if isinstance(v, dict):
@@ -4489,33 +6185,59 @@ def analyze_seed_data(file_path: Path = SEED_TRACKER_FILE, clear_screen: bool = 
             elif isinstance(v, list):
                 all_items.extend(v)
         from collections import Counter
+
         counts = Counter(all_items).most_common(10)
         print("Top 10 items:", counts, flush=True)
 
         if target_records:
             print("\nFavoured Items Pricing Summary:", flush=True)
             for t_name in TARGET_SHADY_ITEMS.values():
-                t_golds = [r["gold"] for r in target_records if r.get("item") == t_name and r.get("gold") is not None]
+                t_golds = [
+                    r["gold"]
+                    for r in target_records
+                    if r.get("item") == t_name and r.get("gold") is not None
+                ]
                 if t_golds:
-                    print(f"  {t_name}: Min {min(t_golds)}g, Avg {sum(t_golds)/len(t_golds):.1f}g, Max {max(t_golds)}g ({len(t_golds)} spawns)", flush=True)
+                    avg_g = sum(t_golds) / len(t_golds)
+                    print(
+                        f"  {t_name}: Min {min(t_golds)}g, Avg {avg_g:.1f}g, "
+                        f"Max {max(t_golds)}g ({len(t_golds)} spawns)",
+                        flush=True,
+                    )
                 else:
                     print(f"  {t_name}: No spawns recorded yet", flush=True)
 
         if target_records:
             print("\nHighlighted Items Pricing Summary:", flush=True)
             for h_name in HIGHLIGHTED_SHADY_ITEMS.values():
-                h_golds = [r["gold"] for r in target_records if r.get("item") == h_name and r.get("gold") is not None]
+                h_golds = [
+                    r["gold"]
+                    for r in target_records
+                    if r.get("item") == h_name and r.get("gold") is not None
+                ]
                 if h_golds:
-                    print(f"  {h_name}: Min {min(h_golds)}g, Avg {sum(h_golds)/len(h_golds):.1f}g, Max {max(h_golds)}g ({len(h_golds)} spawns)", flush=True)
+                    avg_g = sum(h_golds) / len(h_golds)
+                    print(
+                        f"  {h_name}: Min {min(h_golds)}g, Avg {avg_g:.1f}g, "
+                        f"Max {max(h_golds)}g ({len(h_golds)} spawns)",
+                        flush=True,
+                    )
                 else:
                     print(f"  {h_name}: No spawns recorded yet", flush=True)
 
         if microwave_records:
-            print(f"\nMicrowave Color Distribution ({len(microwave_records)} recorded):", flush=True)
+            print(
+                f"\nMicrowave Color Distribution ({len(microwave_records)} recorded):",
+                flush=True,
+            )
             from collections import Counter
+
             m_counts = Counter(r["color"] for r in microwave_records)
             for c, cnt in m_counts.items():
-                print(f"  {c}: {cnt} ({(cnt/len(microwave_records))*100:.1f}%)", flush=True)
+                print(
+                    f"  {c}: {cnt} ({(cnt / len(microwave_records)) * 100:.1f}%)",
+                    flush=True,
+                )
 
 
 def main():
@@ -4531,71 +6253,126 @@ def main():
         REQUIRED_ANY_ITEM_IDS = []
 
     # REQUIRED_ALL_ITEM_IDS (--required-all-items, --must-have-items)
-    if any(arg.startswith(("--required-all-items=", "--must-have-items=", "--required-all-item-ids=")) for arg in sys.argv):
+    if any(
+        arg.startswith(
+            ("--required-all-items=", "--must-have-items=", "--required-all-item-ids=")
+        )
+        for arg in sys.argv
+    ):
         for arg in sys.argv:
-            if arg.startswith(("--required-all-items=", "--must-have-items=", "--required-all-item-ids=")):
+            if arg.startswith(
+                (
+                    "--required-all-items=",
+                    "--must-have-items=",
+                    "--required-all-item-ids=",
+                )
+            ):
                 val = arg.split("=", 1)[1].strip()
-                try:
-                    REQUIRED_ALL_ITEM_IDS = [int(x.strip()) for x in val.split(",") if x.strip().isdigit()]
-                except Exception:
-                    pass
-    elif any(arg in sys.argv for arg in ("--required-all-items", "--must-have-items", "--required-all-item-ids")):
+                parsed = parse_cli_item_specs(val)
+                if parsed:
+                    REQUIRED_ALL_ITEM_IDS = parsed
+    elif any(
+        arg in sys.argv
+        for arg in (
+            "--required-all-items",
+            "--must-have-items",
+            "--required-all-item-ids",
+        )
+    ):
         for i, arg in enumerate(sys.argv):
-            if arg in ("--required-all-items", "--must-have-items", "--required-all-item-ids") and i + 1 < len(sys.argv):
+            if arg in (
+                "--required-all-items",
+                "--must-have-items",
+                "--required-all-item-ids",
+            ) and i + 1 < len(sys.argv):
                 val = sys.argv[i + 1].strip()
-                try:
-                    REQUIRED_ALL_ITEM_IDS = [int(x.strip()) for x in val.split(",") if x.strip().isdigit()]
-                except Exception:
-                    pass
+                parsed = parse_cli_item_specs(val)
+                if parsed:
+                    REQUIRED_ALL_ITEM_IDS = parsed
                 break
     elif "REQUIRED_ALL_ITEM_IDS" in os.environ or "MUST_HAVE_ITEM_IDS" in os.environ:
-        raw_env = (os.environ.get("REQUIRED_ALL_ITEM_IDS") or os.environ.get("MUST_HAVE_ITEM_IDS", "")).strip()
-        cleaned = raw_env.strip("[]() ")
-        if cleaned:
-            try:
-                REQUIRED_ALL_ITEM_IDS = [int(x.strip()) for x in cleaned.split(",") if x.strip().isdigit()]
-            except Exception:
-                pass
-        else:
-            REQUIRED_ALL_ITEM_IDS = []
+        raw_env = (
+            os.environ.get("REQUIRED_ALL_ITEM_IDS")
+            or os.environ.get("MUST_HAVE_ITEM_IDS", "")
+        ).strip()
+        parsed = parse_cli_item_specs(raw_env)
+        REQUIRED_ALL_ITEM_IDS = parsed
 
     # REQUIRED_ANY_ITEM_IDS (--required-any-items, --any-items)
-    if any(arg.startswith(("--required-any-items=", "--any-items=", "--required-any-item-ids=")) for arg in sys.argv):
+    if any(
+        arg.startswith(
+            ("--required-any-items=", "--any-items=", "--required-any-item-ids=")
+        )
+        for arg in sys.argv
+    ):
         for arg in sys.argv:
-            if arg.startswith(("--required-any-items=", "--any-items=", "--required-any-item-ids=")):
+            if arg.startswith(
+                ("--required-any-items=", "--any-items=", "--required-any-item-ids=")
+            ):
                 val = arg.split("=", 1)[1].strip()
-                try:
-                    REQUIRED_ANY_ITEM_IDS = [int(x.strip()) for x in val.split(",") if x.strip().isdigit()]
-                except Exception:
-                    pass
-    elif any(arg in sys.argv for arg in ("--required-any-items", "--any-items", "--required-any-item-ids")):
+                parsed = parse_cli_item_specs(val)
+                if parsed:
+                    REQUIRED_ANY_ITEM_IDS = parsed
+    elif any(
+        arg in sys.argv
+        for arg in ("--required-any-items", "--any-items", "--required-any-item-ids")
+    ):
         for i, arg in enumerate(sys.argv):
-            if arg in ("--required-any-items", "--any-items", "--required-any-item-ids") and i + 1 < len(sys.argv):
+            if arg in (
+                "--required-any-items",
+                "--any-items",
+                "--required-any-item-ids",
+            ) and i + 1 < len(sys.argv):
                 val = sys.argv[i + 1].strip()
-                try:
-                    REQUIRED_ANY_ITEM_IDS = [int(x.strip()) for x in val.split(",") if x.strip().isdigit()]
-                except Exception:
-                    pass
+                parsed = parse_cli_item_specs(val)
+                if parsed:
+                    REQUIRED_ANY_ITEM_IDS = parsed
                 break
     elif "REQUIRED_ANY_ITEM_IDS" in os.environ or "ANY_OF_ITEM_IDS" in os.environ:
-        raw_env = (os.environ.get("REQUIRED_ANY_ITEM_IDS") or os.environ.get("ANY_OF_ITEM_IDS", "")).strip()
-        cleaned = raw_env.strip("[]() ")
-        if cleaned:
-            try:
-                REQUIRED_ANY_ITEM_IDS = [int(x.strip()) for x in cleaned.split(",") if x.strip().isdigit()]
-            except Exception:
-                pass
-        else:
-            REQUIRED_ANY_ITEM_IDS = []
+        raw_env = (
+            os.environ.get("REQUIRED_ANY_ITEM_IDS")
+            or os.environ.get("ANY_OF_ITEM_IDS", "")
+        ).strip()
+        parsed = parse_cli_item_specs(raw_env)
+        REQUIRED_ANY_ITEM_IDS = parsed
 
     # Power-Up & Za Warudo tracking toggle
     global ENABLE_POWERUP_TRACKING
-    if any(arg in sys.argv for arg in ("--enable-powerups", "--track-powerups", "--enable-powerup-tracking")):
+    if any(
+        arg in sys.argv
+        for arg in (
+            "--enable-powerups",
+            "--track-powerups",
+            "--enable-powerup-tracking",
+        )
+    ):
         ENABLE_POWERUP_TRACKING = True
-    elif any(arg in sys.argv for arg in ("--disable-powerups", "--no-powerups", "--disable-powerup-tracking")):
+    elif any(
+        arg in sys.argv
+        for arg in ("--disable-powerups", "--no-powerups", "--disable-powerup-tracking")
+    ):
         ENABLE_POWERUP_TRACKING = False
     elif "ENABLE_POWERUP_TRACKING" in os.environ:
-        ENABLE_POWERUP_TRACKING = os.environ["ENABLE_POWERUP_TRACKING"].strip().lower() in ("1", "true", "yes", "on")
+        ENABLE_POWERUP_TRACKING = os.environ[
+            "ENABLE_POWERUP_TRACKING"
+        ].strip().lower() in ("1", "true", "yes", "on")
+
+    # Seed offerings JSON logging toggle
+    global TRACK_SEED_OFFERINGS
+    if any(
+        arg in sys.argv
+        for arg in ("--no-track-seeds", "--disable-seed-tracker", "--no-seed-tracker")
+    ):
+        TRACK_SEED_OFFERINGS = False
+    elif any(arg in sys.argv for arg in ("--track-seeds", "--enable-seed-tracker")):
+        TRACK_SEED_OFFERINGS = True
+    elif "TRACK_SEED_OFFERINGS" in os.environ:
+        TRACK_SEED_OFFERINGS = os.environ["TRACK_SEED_OFFERINGS"].strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
 
     print(f"[*] Attaching to {PROCESS_NAME}...", flush=True)
     try:
@@ -4636,12 +6413,16 @@ def main():
     reroll_count = 0
 
     if keyboard and HOTKEY_TOGGLE_AUTORESTART:
+
         def toggle_autorestart():
             nonlocal auto_restart_active, user_toggled_off
             auto_restart_active = not auto_restart_active
             user_toggled_off = not auto_restart_active
             status = "ENABLED [ON]" if auto_restart_active else "DISABLED [OFF]"
-            print(f"\n[***] Auto-Restart is now {status} (Press {HOTKEY_TOGGLE_AUTORESTART.upper()} to toggle) [***]\n", flush=True)
+            print(
+                f"\n[***] Auto-Restart is now {status} (Press {HOTKEY_TOGGLE_AUTORESTART.upper()} to toggle) [***]\n",
+                flush=True,
+            )
 
         try:
             keyboard.add_hotkey(HOTKEY_TOGGLE_AUTORESTART, toggle_autorestart)
@@ -4649,24 +6430,36 @@ def main():
             pass
 
     print("[*] Stage 1 Seed Filter ready!", flush=True)
-    if TRACK_SEED_OFFERINGS:
-        print(f"[*] Seed Offerings Tracker: ACTIVE -> {SEED_TRACKER_FILE.name}", flush=True)
+    tracker_status_str = (
+        f"ACTIVE -> {SEED_TRACKER_FILE.name}" if TRACK_SEED_OFFERINGS else "DISABLED"
+    )
+    print(f"[*] Seed Offerings Tracker: {tracker_status_str}", flush=True)
     pause_mode_str = "ENABLED (Escape)" if PAUSE_GAME_ON_MATCH else "DISABLED"
     print(f"[*] Pause on Match: {pause_mode_str}", flush=True)
 
     banner_parts = []
     if REQUIRED_ALL_ITEM_IDS:
-        all_names = [get_item_name(i) for i in REQUIRED_ALL_ITEM_IDS]
-        banner_parts.append(f"ALL (Must-have): {', '.join(all_names)} [IDs: {REQUIRED_ALL_ITEM_IDS}]")
+        all_combos = normalize_required_item_combos(REQUIRED_ALL_ITEM_IDS)
+        all_names = [format_item_combo_name(c) for c in all_combos]
+        banner_parts.append(
+            f"ALL (Must-have): {', '.join(all_names)} [IDs: {REQUIRED_ALL_ITEM_IDS}]"
+        )
     if REQUIRED_ANY_ITEM_IDS:
-        any_names = [get_item_name(i) for i in REQUIRED_ANY_ITEM_IDS]
-        banner_parts.append(f"ANY (At least 1): {', '.join(any_names)} [IDs: {REQUIRED_ANY_ITEM_IDS}]")
+        any_combos = normalize_required_item_combos(REQUIRED_ANY_ITEM_IDS)
+        any_names = [format_item_combo_name(c) for c in any_combos]
+        banner_parts.append(
+            f"ANY (At least 1): {', '.join(any_names)} [IDs: {REQUIRED_ANY_ITEM_IDS}]"
+        )
 
     if banner_parts:
         print(f"[*] Required Items: ENABLED ({' | '.join(banner_parts)})", flush=True)
     else:
         print("[*] Required Items: DISABLED (Shrine thresholds only)", flush=True)
-    restart_mode_str = f"ENABLED (Press {HOTKEY_TOGGLE_AUTORESTART.upper()} to toggle)" if auto_restart_active else "DISABLED"
+    restart_mode_str = (
+        f"ENABLED (Press {HOTKEY_TOGGLE_AUTORESTART.upper()} to toggle)"
+        if auto_restart_active
+        else "DISABLED"
+    )
     print(f"[*] Auto-Restart on fail: {restart_mode_str}", flush=True)
     powerup_mode_str = "ENABLED" if ENABLE_POWERUP_TRACKING else "DISABLED"
     print(f"[*] Power-Up & Za Warudo Tracking: {powerup_mode_str}\n", flush=True)
@@ -4710,9 +6503,15 @@ def main():
             else get_stage_index(memory, module_base)
         )
 
-        scan_key = (current_seed, stage_idx) if current_seed is not None else (player, stage_idx)
+        scan_key = (
+            (current_seed, stage_idx)
+            if current_seed is not None
+            else (player, stage_idx)
+        )
         map_ready = (
-            map_state.has_loaded_map and not map_state.is_generating and not map_state.is_resetting
+            map_state.has_loaded_map
+            and not map_state.is_generating
+            and not map_state.is_resetting
             if map_state
             else bool(player)
         )
@@ -4739,15 +6538,29 @@ def main():
                 if CLEAR_CONSOLE_ON_OUTPUT:
                     clear_console()
 
-                if AUTO_RESTART_ON_FAIL and not user_toggled_off and not auto_restart_active:
+                if (
+                    AUTO_RESTART_ON_FAIL
+                    and not user_toggled_off
+                    and not auto_restart_active
+                ):
                     auto_restart_active = True
                     reroll_count = 0
-                    print(f"[*] New run detected ({current_seed}). Auto-restart re-armed!", flush=True)
+                    print(
+                        f"[*] New run detected ({current_seed}). Auto-restart re-armed!",
+                        flush=True,
+                    )
 
                 reroll_label = reroll_count if auto_restart_active else None
-                seed_str = f"Seed: {current_seed}" if current_seed is not None else f"Player: 0x{player:X}"
+                seed_str = (
+                    f"Seed: {current_seed}"
+                    if current_seed is not None
+                    else f"Player: 0x{player:X}"
+                )
                 char_str = f" | Char: {cached_character[1]}" if cached_character else ""
-                print(f"[+] Stage 1 active ({seed_str}{char_str})! Evaluating seed...", flush=True)
+                print(
+                    f"[+] Stage 1 active ({seed_str}{char_str})! Evaluating seed...",
+                    flush=True,
+                )
                 scan_res = scan_stage1_seed_filter(
                     memory,
                     module_base,
@@ -4757,12 +6570,21 @@ def main():
                     character=cached_character,
                 )
                 if scan_res.get("character") and scan_res.get("character") != "Unknown":
-                    cached_character = (scan_res.get("character_id"), scan_res.get("character"))
+                    cached_character = (
+                        scan_res.get("character_id"),
+                        scan_res.get("character"),
+                    )
                 try:
-                    pu_data = read_active_powerups(memory, module_base) if ENABLE_POWERUP_TRACKING else None
+                    pu_data = (
+                        read_active_powerups(memory, module_base)
+                        if ENABLE_POWERUP_TRACKING
+                        else None
+                    )
                 except Exception:
                     pu_data = None
-                print_stage1_report(scan_res, reroll_num=reroll_label, powerup_data=pu_data)
+                print_stage1_report(
+                    scan_res, reroll_num=reroll_label, powerup_data=pu_data
+                )
 
                 if TRACK_SEED_OFFERINGS:
                     total_seeds = save_seed_reroll_data(
@@ -4770,9 +6592,21 @@ def main():
                         scan_res,
                         reroll_num=reroll_count if auto_restart_active else 0,
                     )
-                    reroll_tag = f"Reroll #{reroll_count}" if (auto_restart_active and reroll_count > 0) else "Initial scan"
-                    seed_disp = f"Seed {current_seed}" if current_seed is not None else "Unknown Seed"
-                    print(f"[*] Recorded {reroll_tag} ({seed_disp}) to {SEED_TRACKER_FILE.name} (Total entries: {total_seeds})", flush=True)
+                    reroll_tag = (
+                        f"Reroll #{reroll_count}"
+                        if (auto_restart_active and reroll_count > 0)
+                        else "Initial scan"
+                    )
+                    seed_disp = (
+                        f"Seed {current_seed}"
+                        if current_seed is not None
+                        else "Unknown Seed"
+                    )
+                    print(
+                        f"[*] Recorded {reroll_tag} ({seed_disp}) to {SEED_TRACKER_FILE.name} "
+                        f"(Total entries: {total_seeds})",
+                        flush=True,
+                    )
 
                 if scan_res.get("shady_guys"):
                     active_stage_report = scan_res
@@ -4782,31 +6616,58 @@ def main():
                     if reason == "PERFECT_MATCH_ALL":
                         parts = []
                         if scan_res.get("required_all_item_ids"):
-                            r_names = [get_item_name(i) for i in scan_res["required_all_item_ids"]]
+                            r_combos = normalize_required_item_combos(
+                                scan_res["required_all_item_ids"]
+                            )
+                            r_names = [format_item_combo_name(c) for c in r_combos]
                             parts.append(f"ALL: {', '.join(r_names)}")
                         if scan_res.get("required_any_item_ids"):
-                            r_names = [get_item_name(i) for i in scan_res["required_any_item_ids"]]
+                            r_combos = normalize_required_item_combos(
+                                scan_res["required_any_item_ids"]
+                            )
+                            r_names = [format_item_combo_name(c) for c in r_combos]
                             parts.append(f"ANY: {', '.join(r_names)}")
 
-                        items_str = f" + Required Items ({'; '.join(parts)})" if parts else ""
-                        print(f"🎉 [PERFECT SEED FOUND (Thresholds{items_str})!] Stopping auto-restart. Enjoy your run!\n", flush=True)
+                        items_str = (
+                            f" + Required Items ({'; '.join(parts)})" if parts else ""
+                        )
+                        print(
+                            f"🎉 [PERFECT SEED FOUND (Thresholds{items_str})!] "
+                            "Stopping auto-restart. Enjoy your run!\n",
+                            flush=True,
+                        )
                     else:
-                        print("🎉 [PERFECT SEED FOUND (Thresholds Met)!] Stopping auto-restart. Enjoy your run!\n", flush=True)
+                        print(
+                            "🎉 [PERFECT SEED FOUND (Thresholds Met)!] Stopping auto-restart. Enjoy your run!\n",
+                            flush=True,
+                        )
 
                     auto_restart_active = False
                     if PAUSE_GAME_ON_MATCH:
                         pause_game(game_client=game_client)
                 elif auto_restart_active:
                     if MAX_REROLLS > 0 and reroll_count >= MAX_REROLLS:
-                        print(f"[*] Reached max rerolls ({MAX_REROLLS}). Auto-restart stopped.\n", flush=True)
+                        print(
+                            f"[*] Reached max rerolls ({MAX_REROLLS}). Auto-restart stopped.\n",
+                            flush=True,
+                        )
                         auto_restart_active = False
                     else:
                         if REQUIRE_GAME_WINDOW_FOCUS:
                             wait_for_game_focus(memory)
                         reroll_count += 1
-                        print(f"[*] Criteria not met. Auto-restarting Stage 1 (Reroll #{reroll_count})...\n", flush=True)
-                        last_state = map_state or (game_client.get_map_generation_state() if game_client else None)
-                        perform_restart(reset_hotkey, reset_hold_duration, game_client=game_client)
+                        print(
+                            f"[*] Criteria not met. Auto-restarting Stage 1 (Reroll #{reroll_count})...\n",
+                            flush=True,
+                        )
+                        last_state = map_state or (
+                            game_client.get_map_generation_state()
+                            if game_client
+                            else None
+                        )
+                        perform_restart(
+                            reset_hotkey, reset_hold_duration, game_client=game_client
+                        )
                         if game_client and last_state:
                             try:
                                 game_client.wait_for_map_ready(
@@ -4826,9 +6687,16 @@ def main():
                 if CLEAR_CONSOLE_ON_OUTPUT:
                     clear_console()
                 stage_num = stage_idx + 1
-                seed_str = f"Seed: {current_seed}" if current_seed is not None else f"Player: 0x{player:X}"
+                seed_str = (
+                    f"Seed: {current_seed}"
+                    if current_seed is not None
+                    else f"Player: 0x{player:X}"
+                )
                 char_str = f" | Char: {cached_character[1]}" if cached_character else ""
-                print(f"[+] Stage {stage_num} active ({seed_str}{char_str})! Scanning Shady Guys and Microwaves...", flush=True)
+                print(
+                    f"[+] Stage {stage_num} active ({seed_str}{char_str})! Scanning Shady Guys and Microwaves...",
+                    flush=True,
+                )
                 scan_res = scan_stage_inspect(
                     memory,
                     module_base,
@@ -4838,19 +6706,29 @@ def main():
                     character=cached_character,
                 )
                 if scan_res.get("character") and scan_res.get("character") != "Unknown":
-                    cached_character = (scan_res.get("character_id"), scan_res.get("character"))
+                    cached_character = (
+                        scan_res.get("character_id"),
+                        scan_res.get("character"),
+                    )
                 active_stage_report = scan_res
                 try:
-                    pu_data = read_active_powerups(memory, module_base) if ENABLE_POWERUP_TRACKING else None
+                    pu_data = (
+                        read_active_powerups(memory, module_base)
+                        if ENABLE_POWERUP_TRACKING
+                        else None
+                    )
                 except Exception:
                     pu_data = None
                 print_stage_inspect_report(scan_res, powerup_data=pu_data)
 
-        # Check for Shady Guy purchases and Microwave uses during active gameplay
+        # Check for Shady Guy purchases, Microwave uses, Moai collections, and Boss Curse cleanses
+        # during active gameplay
         if active_stage_report and (now - last_shady_poll_time >= 0.25):
             last_shady_poll_time = now
             shady_state_changed = False
             micro_state_changed = False
+            moai_state_changed = False
+            boss_state_changed = False
 
             # 1. Shady Guys
             if active_stage_report.get("shady_guys"):
@@ -4859,7 +6737,9 @@ def main():
                         continue
                     ptr = sg.get("ptr")
                     if ptr:
-                        if is_shady_guy_done(memory, ptr, sg_dict=sg, marker_client=marker_client):
+                        if is_shady_guy_done(
+                            memory, ptr, sg_dict=sg, marker_client=marker_client
+                        ):
                             sg["done"] = True
                             shady_state_changed = True
 
@@ -4869,36 +6749,92 @@ def main():
                     m_ptr = m.get("ptr")
                     if m_ptr:
                         try:
-                            cur_uses = memory.read_i32(m_ptr + MICROWAVE_USES_LEFT_OFFSET)
+                            cur_uses = memory.read_i32(
+                                m_ptr + MICROWAVE_USES_LEFT_OFFSET
+                            )
                             if cur_uses != m.get("uses_left"):
                                 m["uses_left"] = cur_uses
                                 micro_state_changed = True
                         except Exception:
                             pass
 
-            if shady_state_changed or micro_state_changed:
+            # 3. Moais
+            if active_stage_report.get("moais"):
+                for mo in active_stage_report["moais"]:
+                    if mo.get("done", False):
+                        continue
+                    mo_ptr = mo.get("ptr")
+                    if mo_ptr:
+                        try:
+                            is_done = bool(memory.read_u8(mo_ptr + SHRINE_DONE_OFFSET))
+                            if is_done != mo.get("done", False):
+                                mo["done"] = is_done
+                                moai_state_changed = True
+                        except Exception:
+                            pass
+
+            # 4. Boss Curses
+            if active_stage_report.get("boss_curses"):
+                for bc in active_stage_report["boss_curses"]:
+                    if bc.get("done", False):
+                        continue
+                    bc_ptr = bc.get("ptr")
+                    if bc_ptr:
+                        try:
+                            is_done = bool(memory.read_u8(bc_ptr + SHRINE_DONE_OFFSET))
+                            if is_done != bc.get("done", False):
+                                bc["done"] = is_done
+                                boss_state_changed = True
+                        except Exception:
+                            pass
+
+            if (
+                shady_state_changed
+                or micro_state_changed
+                or moai_state_changed
+                or boss_state_changed
+            ):
                 if CLEAR_CONSOLE_ON_OUTPUT:
                     clear_console()
-                s_num = active_stage_report.get("stage_num", active_stage_report.get("stage_index", 0) + 1)
-                if shady_state_changed and micro_state_changed:
-                    print(f"[*] Map interactables updated! Updated Stage {s_num} status:\n", flush=True)
-                elif shady_state_changed:
-                    print(f"[*] Shady Guy item taken! Updated Stage {s_num} status:\n", flush=True)
-                else:
-                    print(f"[*] Microwave used! Updated Stage {s_num} status:\n", flush=True)
+                s_num = active_stage_report.get(
+                    "stage_num", active_stage_report.get("stage_index", 0) + 1
+                )
+                updates = []
+                if shady_state_changed:
+                    updates.append("Shady Guy item taken")
+                if micro_state_changed:
+                    updates.append("Microwave used")
+                if moai_state_changed:
+                    updates.append("Moai collected")
+                if boss_state_changed:
+                    updates.append("Boss Curse cleansed")
+                update_msg = ", ".join(updates)
+                print(f"[*] {update_msg}! Updated Stage {s_num} status:\n", flush=True)
                 try:
-                    pu_data = read_active_powerups(memory, module_base) if ENABLE_POWERUP_TRACKING else None
+                    pu_data = (
+                        read_active_powerups(memory, module_base)
+                        if ENABLE_POWERUP_TRACKING
+                        else None
+                    )
                 except Exception:
                     pu_data = None
                 if active_stage_report.get("is_stage_1"):
-                    print_stage1_report(active_stage_report, reroll_num=None, powerup_data=pu_data)
+                    print_stage1_report(
+                        active_stage_report, reroll_num=None, powerup_data=pu_data
+                    )
                 else:
-                    print_stage_inspect_report(active_stage_report, powerup_data=pu_data)
+                    print_stage_inspect_report(
+                        active_stage_report, powerup_data=pu_data
+                    )
                 if ENABLE_POWERUP_TRACKING:
                     powerup_tracker.on_console_cleared()
 
         # Check for active power-ups and Za Warudo during active gameplay
-        if ENABLE_POWERUP_TRACKING and (map_ready or player) and (now - last_powerup_poll_time >= 0.15):
+        if (
+            ENABLE_POWERUP_TRACKING
+            and (map_ready or player)
+            and (now - last_powerup_poll_time >= 0.15)
+        ):
             last_powerup_poll_time = now
             try:
                 pu_data = read_active_powerups(memory, module_base)
@@ -4921,4 +6857,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         clear_live_line()
         print("\n[*] Exiting.", flush=True)
-

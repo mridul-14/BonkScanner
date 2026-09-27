@@ -55,7 +55,9 @@ class AxisTests(unittest.TestCase):
         )
 
         self.assertEqual(1.0, table.rows[0].magnitude)
-        self.assertLess(table.rows[1].magnitude, 0.1, "a 1% gap must not look like a 50% one")
+        self.assertLess(
+            table.rows[1].magnitude, 0.1, "a 1% gap must not look like a 50% one"
+        )
 
     def test_metrics_the_runs_agree_on_are_dropped(self) -> None:
         """A screen of centred zero-length bars would bury the rows that matter."""
@@ -178,7 +180,9 @@ class LuckLootTests(unittest.TestCase):
 
         payload = overview.build_compare_runs_luck_loot(measured, measured)
 
-        self.assertEqual("Both runs landed close to their expected loot", payload.verdict)
+        self.assertEqual(
+            "Both runs landed close to their expected loot", payload.verdict
+        )
 
     def test_the_verdict_names_the_run_that_carried_luck_and_still_lost(self) -> None:
         lucky = snapshot(
@@ -239,10 +243,15 @@ class HubFactTests(unittest.TestCase):
     def test_the_weapon_fact_picks_the_weapon_with_the_most_changes(self) -> None:
         weapons = MetricTable(
             sections=(
-                MetricSection(("", "A", "B", "Diff"), (MetricRow("Level", "3", "3", "--"),), "Bow"),
+                MetricSection(
+                    ("", "A", "B", "Diff"), (MetricRow("Level", "3", "3", "--"),), "Bow"
+                ),
                 MetricSection(
                     ("", "A", "B", "Diff"),
-                    (MetricRow("Level", "5", "3", "+2"), MetricRow("Damage", "9", "4", "+5")),
+                    (
+                        MetricRow("Level", "5", "3", "+2"),
+                        MetricRow("Damage", "9", "4", "+5"),
+                    ),
                     "Sword",
                 ),
             )
@@ -275,8 +284,12 @@ class LinkedInventoryTests(unittest.TestCase):
                 sorted_calls=0,
             )
             view.expanded = lambda v=view: v._expanded
-            view.set_expanded = lambda value, v=view: setattr(v, "_expanded", bool(value))
-            view.on_sort_changed = lambda v=view: setattr(v, "sorted_calls", v.sorted_calls + 1)
+            view.set_expanded = lambda value, v=view: setattr(
+                v, "_expanded", bool(value)
+            )
+            view.on_sort_changed = lambda v=view: setattr(
+                v, "sorted_calls", v.sorted_calls + 1
+            )
             views[side] = view
             setattr(tab, f"_run_{side}_items_view", view)
         return tab, views
@@ -289,7 +302,9 @@ class LinkedInventoryTests(unittest.TestCase):
         self.assertTrue(views["a"]._expanded)
         self.assertTrue(views["b"]._expanded)
 
-    def test_clicking_the_folded_side_opens_both_rather_than_swapping_them(self) -> None:
+    def test_clicking_the_folded_side_opens_both_rather_than_swapping_them(
+        self,
+    ) -> None:
         """Two `toggle_expanded` calls on drifted panels would swap, not align."""
         tab, views = self._tab()
         views["a"]._expanded = True

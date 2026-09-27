@@ -97,9 +97,7 @@ class DeadThread:
 
 def _refuse(name):
     def factory(*_args, **_kwargs):
-        raise AssertionError(
-            f"{name} was opened by a test that did not arrange for it"
-        )
+        raise AssertionError(f"{name} was opened by a test that did not arrange for it")
 
     return factory
 
@@ -123,8 +121,14 @@ def build_run_control(
     test that wants the F9 binding has to say so -- the opposite of the guard
     it replaces, which was silently true and would have gone silently false.
     """
-    calls = {"log": [], "scheduled": [], "toggle_scan": 0, "player_movement": 0, "toggle_recording": 0,
-             "toggle_overlay_edit": 0}
+    calls = {
+        "log": [],
+        "scheduled": [],
+        "toggle_scan": 0,
+        "player_movement": 0,
+        "toggle_recording": 0,
+        "toggle_overlay_edit": 0,
+    }
 
     def record_log(message, tag=None):
         calls["log"].append((message, tag))
@@ -228,25 +232,42 @@ def build_scanner(
         add_tab=add_tab or (lambda widget, title: calls["tabs"].append(title)),
         refresh_session_stats_snapshot=(
             refresh_session_stats_snapshot
-            or (lambda: calls.__setitem__("snapshot_refreshes", calls["snapshot_refreshes"] + 1))
+            or (
+                lambda: calls.__setitem__(
+                    "snapshot_refreshes", calls["snapshot_refreshes"] + 1
+                )
+            )
         ),
         refresh_session_tracked_item_stats_ui=(
             refresh_session_tracked_item_stats_ui
-            or (lambda: calls.__setitem__("tracked_item_refreshes", calls["tracked_item_refreshes"] + 1))
+            or (
+                lambda: calls.__setitem__(
+                    "tracked_item_refreshes", calls["tracked_item_refreshes"] + 1
+                )
+            )
         ),
         open_tracked_item_settings_dialog=(
             open_tracked_item_settings_dialog
-            or (lambda: calls.__setitem__("tracked_item_dialogs", calls["tracked_item_dialogs"] + 1))
+            or (
+                lambda: calls.__setitem__(
+                    "tracked_item_dialogs", calls["tracked_item_dialogs"] + 1
+                )
+            )
         ),
         is_recording=is_recording or (lambda: False),
         refresh_timeline=(
             refresh_timeline
-            or (lambda: calls.__setitem__("timeline_refreshes", calls["timeline_refreshes"] + 1))
+            or (
+                lambda: calls.__setitem__(
+                    "timeline_refreshes", calls["timeline_refreshes"] + 1
+                )
+            )
         ),
         is_shutting_down=is_shutting_down or (lambda: False),
         current_runtime_snapshot=current_runtime_snapshot or (lambda: None),
         reroll_warning_dialog=reroll_warning_dialog or _refuse("RerollWarningDialog"),
-        obs_reminder_dialog=obs_reminder_dialog or _refuse("ObsRecordingReminderDialog"),
+        obs_reminder_dialog=obs_reminder_dialog
+        or _refuse("ObsRecordingReminderDialog"),
     )
     if log_box is None:
         # Nothing asserts on the log through the widget by default, so the
@@ -265,7 +286,9 @@ def build_pair(*, provider=None, **scanner_kwargs):
     paths where a port pointed at the wrong object still passes a one-sided
     test.
     """
-    coordinator = scanner_kwargs.pop("coordinator", None) or SimpleNamespace(client=None)
+    coordinator = scanner_kwargs.pop("coordinator", None) or SimpleNamespace(
+        client=None
+    )
     holder: dict[str, Scanner] = {}
     run_control = build_run_control(
         client=lambda: coordinator.client,
@@ -274,7 +297,9 @@ def build_pair(*, provider=None, **scanner_kwargs):
         player_movement=lambda: holder["scanner"].handle_player_movement(),
         provider=provider,
     )
-    scanner = build_scanner(run_control=run_control, coordinator=coordinator, **scanner_kwargs)
+    scanner = build_scanner(
+        run_control=run_control, coordinator=coordinator, **scanner_kwargs
+    )
     holder["scanner"] = scanner
     return scanner, run_control
 

@@ -8,6 +8,7 @@ new mechanic this slice must get right is that the pre-existing outer
 ``except`` no longer double-records health for a failure ``read_memory_source``
 already recorded (section 12.5).
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401  -- puts `src/` on sys.path regardless of collection order
@@ -75,7 +76,9 @@ class CombatPairThroughThePassTests(unittest.TestCase):
         ``refresh_tasks._refresh_combat_metrics_task`` reproduces exactly this
         failure (streak becomes 2, not 1)."""
         client = _client(
-            get_run_timer=lambda: (_ for _ in ()).throw(MemoryReadError("run timer unavailable")),
+            get_run_timer=lambda: (_ for _ in ()).throw(
+                MemoryReadError("run timer unavailable")
+            ),
             get_killed_mobs=lambda: 37,
         )
         service, world = build_refresh_tasks(stats_client=client)

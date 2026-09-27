@@ -12,6 +12,7 @@ payload. Neither fix reads anything new -- the task already holds the value.
   the Twitch `!chaos` command reads the tracker at command time, chat could see
   a roll the app's own card had not shown yet.
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401  -- puts `src/` on sys.path regardless of collection order
@@ -110,10 +111,14 @@ class InGameOverlayKpsRepaintTests(unittest.TestCase):
         service, world = build_refresh_tasks(stats_client=combat_client())
 
         with patch.object(
-            config, "IN_GAME_OVERLAY", self.overlay_config(enabled=True, widget_enabled=False)
+            config,
+            "IN_GAME_OVERLAY",
+            self.overlay_config(enabled=True, widget_enabled=False),
         ):
             self.assertTrue(service._refresh_combat_metrics_task(context()))
-        with patch.object(config, "IN_GAME_OVERLAY", self.overlay_config(enabled=False)):
+        with patch.object(
+            config, "IN_GAME_OVERLAY", self.overlay_config(enabled=False)
+        ):
             self.assertTrue(service._refresh_combat_metrics_task(context()))
 
         self.assertEqual(world.in_game_kps_syncs, [])

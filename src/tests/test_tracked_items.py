@@ -42,7 +42,9 @@ class TrackedItemNamingTests(unittest.TestCase):
         self.assertIn("The One Ring", names)
         self.assertNotIn("Bobs Lantern", names)
 
-    def test_tracked_rule_display_label_prefers_live_alias_for_default_labels(self) -> None:
+    def test_tracked_rule_display_label_prefers_live_alias_for_default_labels(
+        self,
+    ) -> None:
         self.assertEqual(
             tracked_rule_display_label(
                 {"label": "Glove Power Map 1"},

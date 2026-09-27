@@ -51,7 +51,9 @@ def attach(app, **overrides) -> TemplateRuntimeFilters:
     """
     defaults = {
         "selected_template_names": lambda: [
-            name for name, cb in getattr(app, "checkboxes", {}).items() if _read_bool(cb)
+            name
+            for name, cb in getattr(app, "checkboxes", {}).items()
+            if _read_bool(cb)
         ],
         "refresh_stats": lambda: (
             app.refresh_stats_ui()

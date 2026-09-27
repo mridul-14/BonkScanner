@@ -32,7 +32,10 @@ class ConfigRepositoryTests(unittest.TestCase):
             repository = ConfigRepository(Path(directory) / "config.json")
             self.assertTrue(repository.commit({"value": 1}).success)
 
-            with patch("app.config_repository.os.replace", side_effect=PermissionError("read only")):
+            with patch(
+                "app.config_repository.os.replace",
+                side_effect=PermissionError("read only"),
+            ):
                 result = repository.commit({"value": 2})
 
             self.assertFalse(result.success)
@@ -44,7 +47,9 @@ class ConfigRepositoryTests(unittest.TestCase):
             repository = ConfigRepository(path)
             self.assertTrue(repository.commit({"value": 1}).success)
 
-            with patch.object(Path, "read_text", side_effect=OSError("readback failed")):
+            with patch.object(
+                Path, "read_text", side_effect=OSError("readback failed")
+            ):
                 result = repository.commit({"value": 2})
 
             self.assertFalse(result.success)
@@ -93,7 +98,9 @@ class ConfigRepositoryTests(unittest.TestCase):
         }
         calls = []
         for statement in tree.body:
-            if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            if isinstance(
+                statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+            ):
                 continue
             for node in ast.walk(statement):
                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
@@ -122,8 +129,9 @@ class ConfigRepositoryTests(unittest.TestCase):
                 ).success
             )
             try:
-                with patch.object(config, "get_game_reset_time", return_value=0.5), patch.object(
-                    config, "cleanup_legacy_native_hook_cache"
+                with (
+                    patch.object(config, "get_game_reset_time", return_value=0.5),
+                    patch.object(config, "cleanup_legacy_native_hook_cache"),
                 ):
                     result = config.initialize_config(repository)
                 self.assertTrue(result.existed)
@@ -136,8 +144,9 @@ class ConfigRepositoryTests(unittest.TestCase):
                 config.config_lock = previous["lock"]
                 config.config_path = previous["path"]
                 config.CONFIG_FILE_EXISTED_AT_STARTUP = previous["existed"]
-                with patch.object(config, "get_game_reset_time", return_value=None), patch.object(
-                    config, "cleanup_legacy_native_hook_cache"
+                with (
+                    patch.object(config, "get_game_reset_time", return_value=None),
+                    patch.object(config, "cleanup_legacy_native_hook_cache"),
                 ):
                     config._apply_loaded_config(
                         previous["snapshot"],

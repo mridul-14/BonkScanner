@@ -12,6 +12,7 @@ entry's address against exactly this quadruple (dictionary pointer, entries
 pointer, count, `_version`) in production since before the fast lane existed.
 This reuses that invariant across the whole dictionary instead of one entry.
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401  -- puts `src/` on sys.path regardless of collection order
@@ -254,7 +255,9 @@ class PassiveItemLayoutCacheTests(unittest.TestCase):
 
         self.assertIsNone(client._cached_item_layout)
 
-    def test_an_unreadable_cached_stack_rejects_the_pass_and_invalidates_layout(self) -> None:
+    def test_an_unreadable_cached_stack_rejects_the_pass_and_invalidates_layout(
+        self,
+    ) -> None:
         memory = build_memory(anvil_stack=4)
         client = client_for(memory)
         client._read_passive_item_dictionary(DICT)

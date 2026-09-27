@@ -124,7 +124,9 @@ class ItemNameNormalisationTests(unittest.TestCase):
             def __eq__(self, other):  # pragma: no cover
                 raise AssertionError("cache keyed on a str subclass")
 
-        self.assertEqual("Beer", item_metadata.normalize_item_name_for_display(Weird("Beer")))
+        self.assertEqual(
+            "Beer", item_metadata.normalize_item_name_for_display(Weird("Beer"))
+        )
 
     def test_the_caches_are_bounded(self) -> None:
         """Names come from game memory; a corrupt read must not grow forever."""
@@ -159,7 +161,13 @@ class StageSummaryEquivalenceTests(unittest.TestCase):
             self._snapshot(time_s=0, kills=0, items=()),
             self._snapshot(time_s=30, kills=100, items=("Beer",)),
             self._snapshot(time_s=60, kills=250, items=("Beer", "Key")),
-            self._snapshot(time_s=90, kills=400, items=("Beer x2", "Key"), stage_index=1, stage_ptr=2),
+            self._snapshot(
+                time_s=90,
+                kills=400,
+                items=("Beer x2", "Key"),
+                stage_index=1,
+                stage_ptr=2,
+            ),
         ]
 
         first = run_summary.build_stage_summary(snapshots)
@@ -170,12 +178,19 @@ class StageSummaryEquivalenceTests(unittest.TestCase):
     def test_growing_prefixes_are_consistent(self) -> None:
         """Scrubbing builds every prefix; none may poison a later one."""
         snapshots = [
-            self._snapshot(time_s=index * 10, kills=index * 50, items=("Beer",) * (index % 3 + 1))
+            self._snapshot(
+                time_s=index * 10, kills=index * 50, items=("Beer",) * (index % 3 + 1)
+            )
             for index in range(12)
         ]
 
-        forwards = [run_summary.build_stage_summary(snapshots[: i + 1]) for i in range(12)]
-        backwards = [run_summary.build_stage_summary(snapshots[: i + 1]) for i in reversed(range(12))]
+        forwards = [
+            run_summary.build_stage_summary(snapshots[: i + 1]) for i in range(12)
+        ]
+        backwards = [
+            run_summary.build_stage_summary(snapshots[: i + 1])
+            for i in reversed(range(12))
+        ]
 
         self.assertEqual(forwards, list(reversed(backwards)))
 

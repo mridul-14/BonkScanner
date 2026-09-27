@@ -11,6 +11,7 @@ no unit coverage there at all.
 Design: docs/updates/functional_updates.md, "Game-Time Synchronized KPS
 Calculation".
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401  -- puts `src/` on sys.path regardless of collection order

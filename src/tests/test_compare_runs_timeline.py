@@ -28,6 +28,7 @@ from ui.compare_overview import CompareRunsAxisView, CompareRunsLuckLootView
 from ui.metric_table import CompactMetricCardGridView, MetricTableView
 from ui.shared import LabeledSwitch, StagedLoadingSpinner
 from ui.tabs.compare_runs.tab import CompareRunsTab
+
 # `AXIS_PROGRESS` and `axis_positions` come from their owner rather than through
 # the timeline widget. The widget imported both and used neither: they were a
 # re-export this file was the only reader of, so the import survived in `ui/`
@@ -61,9 +62,15 @@ def _snapshot(
         map_seed=1234,
         stats={
             "Damage": stat,
-            "Luck": SimpleNamespace(value=damage / 10.0, display_value=str(damage / 10.0)),
-            "Difficulty": SimpleNamespace(value=damage / 20.0, display_value=str(damage / 20.0)),
-            "Movement Speed": SimpleNamespace(value=100.0 + damage, display_value=f"{100.0 + damage}%"),
+            "Luck": SimpleNamespace(
+                value=damage / 10.0, display_value=str(damage / 10.0)
+            ),
+            "Difficulty": SimpleNamespace(
+                value=damage / 20.0, display_value=str(damage / 20.0)
+            ),
+            "Movement Speed": SimpleNamespace(
+                value=100.0 + damage, display_value=f"{100.0 + damage}%"
+            ),
         },
         items=(),
         banishes=(),
@@ -83,8 +90,12 @@ def _vod(times, *, stages=None):
 def test_time_axis_uses_the_longer_recording() -> None:
     short = _vod((0.0, 10.0, 20.0))
     long = _vod((0.0, 20.0, 40.0))
-    assert axis_positions(short.snapshots, mode=AXIS_TIME, common_duration=40.0)[-1] == 0.5
-    assert axis_positions(long.snapshots, mode=AXIS_TIME, common_duration=40.0)[-1] == 1.0
+    assert (
+        axis_positions(short.snapshots, mode=AXIS_TIME, common_duration=40.0)[-1] == 0.5
+    )
+    assert (
+        axis_positions(long.snapshots, mode=AXIS_TIME, common_duration=40.0)[-1] == 1.0
+    )
 
 
 def test_progress_axis_normalizes_each_recording_independently() -> None:
@@ -176,12 +187,15 @@ def test_stage_delta_matches_equal_stage_numbers() -> None:
     b = _vod((0.0, 13.0, 25.0), stages=(0, 1, 1))
     model_a = scrubber.build_model(a.snapshots)
     model_b = scrubber.build_model(b.snapshots)
-    assert stage_start_deltas(
-        model_a,
-        model_b,
-        snapshot_times(a.snapshots),
-        snapshot_times(b.snapshots),
-    )[1] == 3.0
+    assert (
+        stage_start_deltas(
+            model_a,
+            model_b,
+            snapshot_times(a.snapshots),
+            snapshot_times(b.snapshots),
+        )[1]
+        == 3.0
+    )
 
 
 def test_structured_stats_are_flat_and_stage_table_has_required_metrics() -> None:
@@ -320,8 +334,7 @@ def test_stage_cards_use_a_pooled_two_column_grid() -> None:
 
     assert view.column_count == 2
     assert [
-        view._grid.getItemPosition(view._grid.indexOf(card))[:2]
-        for card in view._cards
+        view._grid.getItemPosition(view._grid.indexOf(card))[:2] for card in view._cards
     ] == [(0, 0), (0, 1), (1, 0), (1, 1)]
     assert tuple(view._cards) == pooled_cards
     assert tuple(tuple(card._cells) for card in view._cards) == pooled_cells
@@ -487,9 +500,11 @@ def test_workspace_exposes_all_full_width_tabs_and_renders_lazily() -> None:
     assert isinstance(compare._axis_view, CompareRunsAxisView)
     assert isinstance(compare._luck_loot_view, CompareRunsLuckLootView)
     timeline_card = compare._timeline.parentWidget()
-    slot_center_y = compare._series_slot_buttons[0].mapTo(
-        timeline_card, QPoint(0, compare._series_slot_buttons[0].height() // 2)
-    ).y()
+    slot_center_y = (
+        compare._series_slot_buttons[0]
+        .mapTo(timeline_card, QPoint(0, compare._series_slot_buttons[0].height() // 2))
+        .y()
+    )
     position_center_y = compare._timeline_position_label.mapTo(
         timeline_card, QPoint(0, compare._timeline_position_label.height() // 2)
     ).y()
@@ -504,9 +519,11 @@ def test_workspace_exposes_all_full_width_tabs_and_renders_lazily() -> None:
     assert isinstance(compare._compact_timeline_btn, LabeledSwitch)
     assert abs(slot_center_y - compact_center_y) <= 2
     assert abs(slot_center_y - position_center_y) <= 2
-    slot_bottom = compare._series_slot_buttons[0].mapTo(
-        timeline_card, QPoint(0, compare._series_slot_buttons[0].height())
-    ).y()
+    slot_bottom = (
+        compare._series_slot_buttons[0]
+        .mapTo(timeline_card, QPoint(0, compare._series_slot_buttons[0].height()))
+        .y()
+    )
     painted_track_top = timeline_top + int(compare._timeline._track_rect().top())
     assert painted_track_top - slot_bottom <= 10
     assert isinstance(compare._diff_stages_table, CompactMetricCardGridView)
@@ -564,9 +581,7 @@ def test_compare_runs_loading_spinner_stops_with_its_staged_page() -> None:
     spinner = page._loading_spinner
 
     assert isinstance(spinner, StagedLoadingSpinner)
-    assert page.findChild(
-        StagedLoadingSpinner, "CompareRunsLoadingSpinner"
-    ) is spinner
+    assert page.findChild(StagedLoadingSpinner, "CompareRunsLoadingSpinner") is spinner
     assert spinner.parentWidget() is page._loading_page
 
     tabs.resize(1200, 760)
@@ -687,7 +702,9 @@ def test_the_cap_checkboxes_drive_the_timeline() -> None:
             return None
 
     tabs = QTabWidget()
-    compare = CompareRunsTab(tabview=tabs, vod_library=Library(), is_active=lambda: True)
+    compare = CompareRunsTab(
+        tabview=tabs, vod_library=Library(), is_active=lambda: True
+    )
     compare.build()
     compare.build_now()  # no show in this test; see `StagedLoadingPage`
     compare._vod_a = _vod((0.0, 60.0), stages=(0, 1))
@@ -784,7 +801,10 @@ def test_recording_chooser_replaces_workspace_and_uses_available_height() -> Non
     first_row = compare._run_a_list_frame.itemWidget(first_item)
     assert first_row is not None
     assert first_row.objectName() == "RecordingRow"
-    assert first_row.findChild(QLabel, "RecordingRowName").text() == "Run 2026-07-18 16:33:12"
+    assert (
+        first_row.findChild(QLabel, "RecordingRowName").text()
+        == "Run 2026-07-18 16:33:12"
+    )
 
     second_row = compare._run_a_list_frame.itemWidget(compare._run_a_list_frame.item(1))
     assert second_row.findChild(QLabel, "RecordingRowName").text() == "950k"

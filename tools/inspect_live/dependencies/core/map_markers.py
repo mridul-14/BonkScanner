@@ -5,10 +5,11 @@ identifiers.  Keeping those identifiers and the world-to-map transform here
 prevents UI labels from becoming persisted values and lets the projection be
 tested without Qt or a running game.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 from typing import Any, Iterable
 
 
@@ -137,104 +138,108 @@ MAP_MARKER_STYLES = frozenset({"modern", "classic"})
 _CLASSIC_PICTOGRAM_OUTLINE_COLOR = "#F5F7FA"
 
 
-MAP_MARKER_ACTIONS: tuple[MapMarkerAction, ...] = tuple(
-    MapMarkerAction(
-        id=f"microwave_{rarity_id}",
-        family="microwave",
-        label="Microwave",
-        variant=rarity_label,
-        icon_name=f"microwave_{rarity_id}",
-        color=color,
-        outline_color=_CLASSIC_PICTOGRAM_OUTLINE_COLOR,
-        icon_file=f"filled/microwave_{rarity_id}.png",
-        classic_icon_file="microwave_dark.svg",
+MAP_MARKER_ACTIONS: tuple[MapMarkerAction, ...] = (
+    tuple(
+        MapMarkerAction(
+            id=f"microwave_{rarity_id}",
+            family="microwave",
+            label="Microwave",
+            variant=rarity_label,
+            icon_name=f"microwave_{rarity_id}",
+            color=color,
+            outline_color=_CLASSIC_PICTOGRAM_OUTLINE_COLOR,
+            icon_file=f"filled/microwave_{rarity_id}.png",
+            classic_icon_file="microwave_dark.svg",
+        )
+        for rarity_id, rarity_label, color in _RARITIES
     )
-    for rarity_id, rarity_label, color in _RARITIES
-) + tuple(
-    MapMarkerAction(
-        id=f"shady_guy_{rarity_id}",
-        family="shady_guy",
-        label="Shady Guy",
-        variant=rarity_label,
-        icon_name=f"shady_guy_{rarity_id}",
-        color=_SHADY_GUY_COLORS[rarity_id],
-        outline_color=_CLASSIC_PICTOGRAM_OUTLINE_COLOR,
-        icon_file=f"filled/shady_guy_{rarity_id}.png",
-        classic_icon_file="shady_guy_dark.svg",
+    + tuple(
+        MapMarkerAction(
+            id=f"shady_guy_{rarity_id}",
+            family="shady_guy",
+            label="Shady Guy",
+            variant=rarity_label,
+            icon_name=f"shady_guy_{rarity_id}",
+            color=_SHADY_GUY_COLORS[rarity_id],
+            outline_color=_CLASSIC_PICTOGRAM_OUTLINE_COLOR,
+            icon_file=f"filled/shady_guy_{rarity_id}.png",
+            classic_icon_file="shady_guy_dark.svg",
+        )
+        for rarity_id, rarity_label, _color in _RARITIES
     )
-    for rarity_id, rarity_label, _color in _RARITIES
-) + (
-    MapMarkerAction(
-        id="magnet_shrine",
-        family="magnet_shrine",
-        label="Magnet Shrine",
-        variant=None,
-        icon_name="magnet_shrine",
-        color="#3478F6",
-        outline_color=_CLASSIC_PICTOGRAM_OUTLINE_COLOR,
-        icon_file="filled/magnet_shrine.png",
-        classic_icon_file="magnet_dark.svg",
-    ),
-    MapMarkerAction(
-        id="moai",
-        family="moai",
-        label="Moai",
-        variant=None,
-        icon_name="moai",
-        color="#B7C0CA",
-        outline_color=_CLASSIC_PICTOGRAM_OUTLINE_COLOR,
-        icon_file="filled/moai.png",
-        classic_icon_file="moai_dark.svg",
-    ),
-    MapMarkerAction(
-        id="balance_shrine",
-        family="balance_shrine",
-        label="Bald Head",
-        variant=None,
-        icon_name="bald_head",
-        color="#D8BC78",
-        outline_color=_CLASSIC_PICTOGRAM_OUTLINE_COLOR,
-        icon_file="filled/bald_head.png",
-        classic_icon_file="balance_shrine_dark.svg",
-    ),
-    MapMarkerAction(
-        id="challenge_shrine",
-        family="challenge_shrine",
-        label="Challenge Shrine",
-        variant=None,
-        icon_name="challenge_shrine",
-        color="#EF6A5B",
-        outline_color=_CLASSIC_PICTOGRAM_OUTLINE_COLOR,
-        icon_file="filled/challenge_shrine.png",
-        classic_icon_file="challenge_dark.svg",
-    ),
-    MapMarkerAction(
-        id="boss_curse",
-        family="boss_curse",
-        label="Boss Curse",
-        variant=None,
-        icon_name="boss_curse",
-        color="#FF3B3B",
-        outline_color=_CLASSIC_PICTOGRAM_OUTLINE_COLOR,
-        icon_file="filled/boss_curse.png",
-        classic_icon_file="boss_curse_dark.svg",
-    ),
-    MapMarkerAction(
-        id="egg",
-        family="egg",
-        label="Egg",
-        variant=None,
-        icon_name="egg",
-        color="#BBD86A",
-    ),
-    MapMarkerAction(
-        id="sus_bush",
-        family="sus_bush",
-        label="Sus Bush",
-        variant=None,
-        icon_name="sus_bush",
-        color="#39B96C",
-    ),
+    + (
+        MapMarkerAction(
+            id="magnet_shrine",
+            family="magnet_shrine",
+            label="Magnet Shrine",
+            variant=None,
+            icon_name="magnet_shrine",
+            color="#3478F6",
+            outline_color=_CLASSIC_PICTOGRAM_OUTLINE_COLOR,
+            icon_file="filled/magnet_shrine.png",
+            classic_icon_file="magnet_dark.svg",
+        ),
+        MapMarkerAction(
+            id="moai",
+            family="moai",
+            label="Moai",
+            variant=None,
+            icon_name="moai",
+            color="#B7C0CA",
+            outline_color=_CLASSIC_PICTOGRAM_OUTLINE_COLOR,
+            icon_file="filled/moai.png",
+            classic_icon_file="moai_dark.svg",
+        ),
+        MapMarkerAction(
+            id="balance_shrine",
+            family="balance_shrine",
+            label="Bald Head",
+            variant=None,
+            icon_name="bald_head",
+            color="#D8BC78",
+            outline_color=_CLASSIC_PICTOGRAM_OUTLINE_COLOR,
+            icon_file="filled/bald_head.png",
+            classic_icon_file="balance_shrine_dark.svg",
+        ),
+        MapMarkerAction(
+            id="challenge_shrine",
+            family="challenge_shrine",
+            label="Challenge Shrine",
+            variant=None,
+            icon_name="challenge_shrine",
+            color="#EF6A5B",
+            outline_color=_CLASSIC_PICTOGRAM_OUTLINE_COLOR,
+            icon_file="filled/challenge_shrine.png",
+            classic_icon_file="challenge_dark.svg",
+        ),
+        MapMarkerAction(
+            id="boss_curse",
+            family="boss_curse",
+            label="Boss Curse",
+            variant=None,
+            icon_name="boss_curse",
+            color="#FF3B3B",
+            outline_color=_CLASSIC_PICTOGRAM_OUTLINE_COLOR,
+            icon_file="filled/boss_curse.png",
+            classic_icon_file="boss_curse_dark.svg",
+        ),
+        MapMarkerAction(
+            id="egg",
+            family="egg",
+            label="Egg",
+            variant=None,
+            icon_name="egg",
+            color="#BBD86A",
+        ),
+        MapMarkerAction(
+            id="sus_bush",
+            family="sus_bush",
+            label="Sus Bush",
+            variant=None,
+            icon_name="sus_bush",
+            color="#39B96C",
+        ),
+    )
 )
 
 MAP_MARKER_ACTION_BY_ID = {action.id: action for action in MAP_MARKER_ACTIONS}

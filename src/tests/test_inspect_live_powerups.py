@@ -78,7 +78,6 @@ class TestInspectLivePowerups(unittest.TestCase):
         self.assertEqual(il.format_clock_time(75.0, is_overtime=True), "+01:15")
         self.assertEqual(il.format_clock_time(125.4, is_overtime=True), "+02:05")
 
-
     def test_read_active_powerups_countdown(self) -> None:
         module_base = 0x180000000
 
@@ -112,13 +111,13 @@ class TestInspectLivePowerups(unittest.TestCase):
             my_time_static + il.CLASS_STATIC_FIELDS_OFFSET: my_time_static,
             my_time_static + il.MY_TIME_TIME_OFFSET: 1000.0,
             my_time_static + il.STAGE_TIMER_OFFSET: 120.0,
-
             # MapController: stage index = 0 (Forest, 600s total)
             map_ctrl_type_info: map_ctrl_static,
             map_ctrl_static + il.CLASS_STATIC_FIELDS_OFFSET: map_ctrl_static,
-            map_ctrl_static + il.MAP_CONTROLLER_STAGE_INDEX_OFFSET: struct.pack("<i", 0),
+            map_ctrl_static + il.MAP_CONTROLLER_STAGE_INDEX_OFFSET: struct.pack(
+                "<i", 0
+            ),
             map_ctrl_static + il.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: 0,
-
             # PlayerStats hierarchy
             player_stats_type_info: player_stats_static,
             player_stats_static + il.CLASS_STATIC_FIELDS_OFFSET: player_stats_static,
@@ -127,26 +126,24 @@ class TestInspectLivePowerups(unittest.TestCase):
             owner_stats + il.PLAYER_INVENTORY_OFFSET: player_inv,
             player_inv + il.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
             status_effects + il.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
-
             # Dictionary headers
             status_dict + il.DICT_ENTRIES_OFFSET: status_entries,
             status_dict + il.DICT_COUNT_OFFSET: struct.pack("<i", 2),
             status_entries + il.ARRAY_LENGTH_OFFSET: struct.pack("<i", 3),
-
             # Entry 0: Clock / Za Warudo (effect 4)
             entry0 + il.DICT_ENTRY_HASH_CODE_OFFSET: struct.pack("<i", 4),
             entry0 + il.DICT_ENTRY_KEY_OFFSET: struct.pack("<i", 4),
             entry0 + il.DICT_ENTRY_VALUE_OFFSET: effect_clock_ptr,
-            effect_clock_ptr + il.STATUS_EFFECT_EXPIRATION_OFFSET: 1015.0,  # 15s remaining
+            effect_clock_ptr
+            + il.STATUS_EFFECT_EXPIRATION_OFFSET: 1015.0,  # 15s remaining
             effect_clock_ptr + il.STATUS_EFFECT_ADDED_OFFSET: 1000.0,
-
             # Entry 1: Rage (effect 1)
             entry1 + il.DICT_ENTRY_HASH_CODE_OFFSET: struct.pack("<i", 1),
             entry1 + il.DICT_ENTRY_KEY_OFFSET: struct.pack("<i", 1),
             entry1 + il.DICT_ENTRY_VALUE_OFFSET: effect_rage_ptr,
-            effect_rage_ptr + il.STATUS_EFFECT_EXPIRATION_OFFSET: 1025.0,  # 25s remaining
+            effect_rage_ptr
+            + il.STATUS_EFFECT_EXPIRATION_OFFSET: 1025.0,  # 25s remaining
             effect_rage_ptr + il.STATUS_EFFECT_ADDED_OFFSET: 1000.0,
-
             # Entry 2: Free / Deleted slot (hash_code = -1)
             entry2 + il.DICT_ENTRY_HASH_CODE_OFFSET: struct.pack("<i", -1),
         }
@@ -199,12 +196,12 @@ class TestInspectLivePowerups(unittest.TestCase):
             my_time_static + il.CLASS_STATIC_FIELDS_OFFSET: my_time_static,
             my_time_static + il.MY_TIME_TIME_OFFSET: 1000.0,
             my_time_static + il.STAGE_TIMER_OFFSET: 650.0,
-
             map_ctrl_type_info: map_ctrl_static,
             map_ctrl_static + il.CLASS_STATIC_FIELDS_OFFSET: map_ctrl_static,
-            map_ctrl_static + il.MAP_CONTROLLER_STAGE_INDEX_OFFSET: struct.pack("<i", 0),
+            map_ctrl_static + il.MAP_CONTROLLER_STAGE_INDEX_OFFSET: struct.pack(
+                "<i", 0
+            ),
             map_ctrl_static + il.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: 0,
-
             player_stats_type_info: player_stats_static,
             player_stats_static + il.CLASS_STATIC_FIELDS_OFFSET: player_stats_static,
             player_stats_static + il.PLAYER_STATS_ROOT_OFFSET: root,
@@ -212,11 +209,9 @@ class TestInspectLivePowerups(unittest.TestCase):
             owner_stats + il.PLAYER_INVENTORY_OFFSET: player_inv,
             player_inv + il.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
             status_effects + il.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
-
             status_dict + il.DICT_ENTRIES_OFFSET: status_entries,
             status_dict + il.DICT_COUNT_OFFSET: struct.pack("<i", 1),
             status_entries + il.ARRAY_LENGTH_OFFSET: struct.pack("<i", 1),
-
             entry0 + il.DICT_ENTRY_HASH_CODE_OFFSET: struct.pack("<i", 4),
             entry0 + il.DICT_ENTRY_KEY_OFFSET: struct.pack("<i", 4),
             entry0 + il.DICT_ENTRY_VALUE_OFFSET: effect_ptr,
@@ -265,10 +260,8 @@ class TestInspectLivePowerups(unittest.TestCase):
             my_time_static + il.CLASS_STATIC_FIELDS_OFFSET: my_time_static,
             my_time_static + il.MY_TIME_TIME_OFFSET: 1000.0,
             my_time_static + il.STAGE_TIMER_OFFSET: 100.0,
-
             map_ctrl_type_info: map_ctrl_static,
             map_ctrl_static + il.CLASS_STATIC_FIELDS_OFFSET: map_ctrl_static,
-
             player_stats_type_info: player_stats_static,
             player_stats_static + il.CLASS_STATIC_FIELDS_OFFSET: player_stats_static,
             player_stats_static + il.PLAYER_STATS_ROOT_OFFSET: root,
@@ -276,11 +269,9 @@ class TestInspectLivePowerups(unittest.TestCase):
             owner_stats + il.PLAYER_INVENTORY_OFFSET: player_inv,
             player_inv + il.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
             status_effects + il.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
-
             status_dict + il.DICT_ENTRIES_OFFSET: status_entries,
             status_dict + il.DICT_COUNT_OFFSET: struct.pack("<i", 1),
             status_entries + il.ARRAY_LENGTH_OFFSET: struct.pack("<i", 1),
-
             entry0 + il.DICT_ENTRY_HASH_CODE_OFFSET: struct.pack("<i", 4),
             entry0 + il.DICT_ENTRY_KEY_OFFSET: struct.pack("<i", 4),
             entry0 + il.DICT_ENTRY_VALUE_OFFSET: effect_ptr,
@@ -318,10 +309,8 @@ class TestInspectLivePowerups(unittest.TestCase):
             my_time_static + il.CLASS_STATIC_FIELDS_OFFSET: my_time_static,
             my_time_static + il.MY_TIME_TIME_OFFSET: 1000.0,
             my_time_static + il.STAGE_TIMER_OFFSET: 100.0,
-
             map_ctrl_type_info: map_ctrl_static,
             map_ctrl_static + il.CLASS_STATIC_FIELDS_OFFSET: map_ctrl_static,
-
             player_stats_type_info: player_stats_static,
             player_stats_static + il.CLASS_STATIC_FIELDS_OFFSET: player_stats_static,
             player_stats_static + il.PLAYER_STATS_ROOT_OFFSET: root,
@@ -329,11 +318,9 @@ class TestInspectLivePowerups(unittest.TestCase):
             owner_stats + il.PLAYER_INVENTORY_OFFSET: player_inv,
             player_inv + il.PLAYER_STATUS_EFFECTS_OFFSET: status_effects,
             status_effects + il.PLAYER_STATUS_EFFECTS_DICT_OFFSET: status_dict,
-
             status_dict + il.DICT_ENTRIES_OFFSET: status_entries,
             status_dict + il.DICT_COUNT_OFFSET: struct.pack("<i", 1),
             status_entries + il.ARRAY_LENGTH_OFFSET: struct.pack("<i", 1),
-
             # Effect ID 5: Invulnerability
             entry0 + il.DICT_ENTRY_HASH_CODE_OFFSET: struct.pack("<i", 5),
             entry0 + il.DICT_ENTRY_KEY_OFFSET: struct.pack("<i", 5),
@@ -370,13 +357,11 @@ class TestInspectLivePowerups(unittest.TestCase):
             my_time_static + il.CLASS_STATIC_FIELDS_OFFSET: my_time_static,
             my_time_static + il.MY_TIME_TIME_OFFSET: 1000.0,
             my_time_static + il.STAGE_TIMER_OFFSET: 100.0,
-
             player_stats_type_info: player_stats_static,
             player_stats_static + il.CLASS_STATIC_FIELDS_OFFSET: player_stats_static,
             player_stats_static + il.PLAYER_STATS_ROOT_OFFSET: root,
             root + il.OWNER_STATS_OFFSET: owner_stats,
             owner_stats + il.PLAYER_INVENTORY_OFFSET: player_inv,
-
             # Item inventory with Za Warudo (ID 25)
             player_inv + 0x20: item_inv,
             item_inv + 0x10: items_dict,
@@ -402,7 +387,9 @@ class TestInspectLivePowerups(unittest.TestCase):
             is_ended=False,
             use_rich=False,
         )
-        self.assertEqual(line, "⚡ [POWER-UP] Clock / Za Warudo: Active until 02:45 (Clock: 02:15)")
+        self.assertEqual(
+            line, "⚡ [POWER-UP] Clock / Za Warudo: Active until 02:45 (Clock: 02:15)"
+        )
 
         rich_line = il.format_single_powerup_line(
             name="Clock / Za Warudo",
@@ -512,7 +499,9 @@ class TestInspectLivePowerups(unittest.TestCase):
         tracker.update(pu_data_4)
         self.assertEqual(tracker.displayed_lines[0]["status"], "ended")
 
-    def test_same_type_multiple_pickups_print_new_line_and_expire_independently(self) -> None:
+    def test_same_type_multiple_pickups_print_new_line_and_expire_independently(
+        self,
+    ) -> None:
         """When player picks another power-up of the same type, a new line is printed and each line expires at its own end time."""
         printed_lines: list[str] = []
 
@@ -626,6 +615,7 @@ class TestInspectLivePowerups(unittest.TestCase):
 
     def test_same_type_multiple_pickups_early_wipe_ends_all(self) -> None:
         """If an effect completely disappears before individual expiration times, all active lines are ended."""
+
         class MockConsole:
             def print(self, msg: str) -> None:
                 pass
@@ -634,13 +624,29 @@ class TestInspectLivePowerups(unittest.TestCase):
         pu_1 = {
             "my_time": 100.0,
             "stage_clock": "03:00",
-            "effects": [{"effect_id": 2, "name": "Speed", "end_clock": "02:30", "remaining_seconds": 30.0, "expiration_time": 130.0}],
+            "effects": [
+                {
+                    "effect_id": 2,
+                    "name": "Speed",
+                    "end_clock": "02:30",
+                    "remaining_seconds": 30.0,
+                    "expiration_time": 130.0,
+                }
+            ],
         }
         tracker.update(pu_1)
         pu_2 = {
             "my_time": 110.0,
             "stage_clock": "02:50",
-            "effects": [{"effect_id": 2, "name": "Speed", "end_clock": "02:00", "remaining_seconds": 50.0, "expiration_time": 160.0}],
+            "effects": [
+                {
+                    "effect_id": 2,
+                    "name": "Speed",
+                    "end_clock": "02:00",
+                    "remaining_seconds": 50.0,
+                    "expiration_time": 160.0,
+                }
+            ],
         }
         tracker.update(pu_2)
         self.assertEqual(len(tracker.displayed_lines), 2)
@@ -665,13 +671,29 @@ class TestInspectLivePowerups(unittest.TestCase):
         pu_1 = {
             "my_time": 100.0,
             "stage_clock": "03:00",
-            "effects": [{"effect_id": 4, "name": "Clock / Za Warudo", "end_clock": "02:30", "remaining_seconds": 30.0, "expiration_time": 130.0}],
+            "effects": [
+                {
+                    "effect_id": 4,
+                    "name": "Clock / Za Warudo",
+                    "end_clock": "02:30",
+                    "remaining_seconds": 30.0,
+                    "expiration_time": 130.0,
+                }
+            ],
         }
         tracker.update(pu_1)
         pu_2 = {
             "my_time": 115.0,
             "stage_clock": "02:45",
-            "effects": [{"effect_id": 4, "name": "Clock / Za Warudo", "end_clock": "02:00", "remaining_seconds": 45.0, "expiration_time": 160.0}],
+            "effects": [
+                {
+                    "effect_id": 4,
+                    "name": "Clock / Za Warudo",
+                    "end_clock": "02:00",
+                    "remaining_seconds": 45.0,
+                    "expiration_time": 160.0,
+                }
+            ],
         }
         tracker.update(pu_2)
 
@@ -679,7 +701,15 @@ class TestInspectLivePowerups(unittest.TestCase):
         pu_3 = {
             "my_time": 130.0,
             "stage_clock": "02:30",
-            "effects": [{"effect_id": 4, "name": "Clock / Za Warudo", "end_clock": "02:00", "remaining_seconds": 30.0, "expiration_time": 160.0}],
+            "effects": [
+                {
+                    "effect_id": 4,
+                    "name": "Clock / Za Warudo",
+                    "end_clock": "02:00",
+                    "remaining_seconds": 30.0,
+                    "expiration_time": 160.0,
+                }
+            ],
         }
         tracker.update(pu_3)
         self.assertEqual(tracker.displayed_lines[0]["status"], "ended")
@@ -703,7 +733,6 @@ class TestInspectLivePowerups(unittest.TestCase):
         tracker.on_console_cleared()
         self.assertFalse(tracker.intervening_prints)
 
-
     def test_powerup_display_tracker_held_za_warudo_lifecycle(self) -> None:
         """Tracker displays held Za Warudo, updates on count changes, and strikes out when consumed."""
         printed_lines: list[str] = []
@@ -715,7 +744,12 @@ class TestInspectLivePowerups(unittest.TestCase):
         tracker = il.PowerupDisplayTracker(console_obj=MockConsole())
 
         # 1. Player holds 1 Za Warudo item
-        pu_1 = {"my_time": 50.0, "stage_clock": "08:00", "za_warudo_held": 1, "effects": []}
+        pu_1 = {
+            "my_time": 50.0,
+            "stage_clock": "08:00",
+            "za_warudo_held": 1,
+            "effects": [],
+        }
         tracker.update(pu_1)
         self.assertEqual(len(tracker.displayed_lines), 1)
         self.assertEqual(tracker.displayed_lines[0]["status"], "active")
@@ -724,7 +758,12 @@ class TestInspectLivePowerups(unittest.TestCase):
         self.assertIn("Active Protection", printed_lines[0])
 
         # 2. Player buys a second Za Warudo (count increases to 2)
-        pu_2 = {"my_time": 70.0, "stage_clock": "07:40", "za_warudo_held": 2, "effects": []}
+        pu_2 = {
+            "my_time": 70.0,
+            "stage_clock": "07:40",
+            "za_warudo_held": 2,
+            "effects": [],
+        }
         tracker.update(pu_2)
         self.assertEqual(len(tracker.displayed_lines), 1)
         self.assertEqual(tracker.displayed_lines[0]["status"], "active")
@@ -738,7 +777,12 @@ class TestInspectLivePowerups(unittest.TestCase):
         self.assertEqual(len(printed_lines), 1)
 
         # 4. Lethal damage taken: all Za Warudo items consumed / broken (count -> 0)
-        pu_3 = {"my_time": 100.0, "stage_clock": "07:10", "za_warudo_held": 0, "effects": []}
+        pu_3 = {
+            "my_time": 100.0,
+            "stage_clock": "07:10",
+            "za_warudo_held": 0,
+            "effects": [],
+        }
         tracker.update(pu_3)
         self.assertEqual(tracker.displayed_lines[0]["status"], "ended")
 
@@ -807,7 +851,9 @@ class TestInspectLivePowerups(unittest.TestCase):
             "powerup_data": {
                 "stage_clock": "05:00",
                 "za_warudo_held": 1,
-                "effects": [{"name": "Rage", "remaining_seconds": 12.0, "end_clock": "04:48"}],
+                "effects": [
+                    {"name": "Rage", "remaining_seconds": 12.0, "end_clock": "04:48"}
+                ],
             },
         }
 

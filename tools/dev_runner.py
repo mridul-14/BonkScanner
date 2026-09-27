@@ -4,6 +4,7 @@ This intentionally has no third-party dependency.  The normal ``run.bat``
 stays detached and quiet; ``run_dev.bat`` keeps this process visible so a
 developer can see restarts and application errors.
 """
+
 from __future__ import annotations
 
 import ctypes
@@ -13,7 +14,6 @@ import sys
 import time
 from pathlib import Path
 from typing import Iterable
-
 
 POLL_SECONDS = 0.25
 DEBOUNCE_SECONDS = 0.45
@@ -86,7 +86,9 @@ def _post_windows_close(process_id: int) -> bool:
             window_handle,
             ctypes.byref(owner_process_id),
         )
-        if owner_process_id.value == process_id and user32.IsWindowVisible(window_handle):
+        if owner_process_id.value == process_id and user32.IsWindowVisible(
+            window_handle
+        ):
             user32.PostMessageW(window_handle, 0x0010, 0, 0)  # WM_CLOSE
             posted = True
         return True
@@ -146,7 +148,9 @@ def run(project_root: Path) -> int:
             time.sleep(POLL_SECONDS)
             exit_code = process.poll()
             if exit_code is not None:
-                print(f"[dev] BonkScanner exited with code {exit_code}; watcher stopped.")
+                print(
+                    f"[dev] BonkScanner exited with code {exit_code}; watcher stopped."
+                )
                 return int(exit_code)
 
             latest = scan_watch_files(project_root)

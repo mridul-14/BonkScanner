@@ -29,13 +29,16 @@ class OverlayStateTests(unittest.TestCase):
         )
 
         build = next(
-            widget for widget in overlay["widgets"]
+            widget
+            for widget in overlay["widgets"]
             if widget["id"] == "build_progression"
         )
         self.assertNotIn("width", build)
         self.assertNotIn("height", build)
 
-    def test_overlay_tracked_items_source_defaults_to_custom_for_compatibility(self) -> None:
+    def test_overlay_tracked_items_source_defaults_to_custom_for_compatibility(
+        self,
+    ) -> None:
         overlay = config.normalize_overlay_config(
             {
                 "tracked_items": [
@@ -429,7 +432,9 @@ class OverlayStateTests(unittest.TestCase):
             ("minute_avg", "run_avg"),
         )
 
-    def test_overlay_state_kps_widget_metrics_fallback_to_default_when_empty(self) -> None:
+    def test_overlay_state_kps_widget_metrics_fallback_to_default_when_empty(
+        self,
+    ) -> None:
         tracker = LiveRunTracker(clock=lambda: 123.0)
 
         state = build_overlay_state(
@@ -481,7 +486,9 @@ class OverlayStatusLoggingTests(unittest.TestCase):
         overlay = Overlay.__new__(Overlay)
         overlay._last_logged_overlay_status = None
         overlay.logged = []
-        overlay._log_port = lambda message, tag=None: overlay.logged.append((message, tag))
+        overlay._log_port = lambda message, tag=None: overlay.logged.append(
+            (message, tag)
+        )
         return overlay
 
     def test_restart_grace_window_logs_nothing(self) -> None:

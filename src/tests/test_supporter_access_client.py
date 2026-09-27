@@ -43,7 +43,9 @@ class SupporterAccessClientTests(unittest.TestCase):
 
         self.assertTrue(result.active)
         self.assertEqual(result.features, ("native_hook",))
-        self.assertEqual(post.call_args.kwargs["headers"]["Authorization"], f"Bearer {RAW_KEY}")
+        self.assertEqual(
+            post.call_args.kwargs["headers"]["Authorization"], f"Bearer {RAW_KEY}"
+        )
         self.assertFalse(post.call_args.kwargs["allow_redirects"])
 
     def test_invalid_key_and_rate_limit_are_distinct(self):

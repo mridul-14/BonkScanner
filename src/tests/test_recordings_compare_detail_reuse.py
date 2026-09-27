@@ -32,9 +32,7 @@ class RecordingCompareDetailReuseTests(unittest.TestCase):
 
     def test_rows_are_updated_and_hidden_without_recreation(self) -> None:
         tab = self._tab()
-        tab._render_compare_detail_rows(
-            (("Common", "Beer +1"), ("Rare", "Key +1"))
-        )
+        tab._render_compare_detail_rows((("Common", "Beer +1"), ("Rare", "Key +1")))
         original = tuple(tab._compare_detail_rows)
 
         tab._render_compare_detail_rows(

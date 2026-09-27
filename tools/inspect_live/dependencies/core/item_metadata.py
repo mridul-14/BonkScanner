@@ -36,10 +36,18 @@ ITEMS: tuple[ItemMetadata, ...] = (
     ItemMetadata(8, "PhantomShroud", "Phantom Shroud", "Phantom Shroud", "UNCOMMON"),
     ItemMetadata(9, "ForbiddenJuice", "Forbidden Juice", "Forbidden Juice", "COMMON"),
     ItemMetadata(10, "DemonBlade", "Demonic Blade", "Demon Blade", "UNCOMMON"),
-    ItemMetadata(11, "GrandmasSecretTonic", "Grandma's Secret Tonic", "Grandmas Secret Tonic", "RARE"),
+    ItemMetadata(
+        11,
+        "GrandmasSecretTonic",
+        "Grandma's Secret Tonic",
+        "Grandmas Secret Tonic",
+        "RARE",
+    ),
     ItemMetadata(12, "GiantFork", "Giant Fork", "Giant Fork", "LEGENDARY"),
     ItemMetadata(13, "MoldyCheese", "Moldy Cheese", "Moldy Cheese", "COMMON"),
-    ItemMetadata(14, "GoldenSneakers", "Golden Sneakers", "Golden Sneakers", "UNCOMMON"),
+    ItemMetadata(
+        14, "GoldenSneakers", "Golden Sneakers", "Golden Sneakers", "UNCOMMON"
+    ),
     ItemMetadata(15, "SpicyMeatball", "Spicy Meatball", "Spicy Meatball", "LEGENDARY"),
     ItemMetadata(16, "Chonkplate", "Chonkplate", "Chonkplate", "LEGENDARY"),
     ItemMetadata(17, "LightningOrb", "Lightning Orb", "Lightning Orb", "LEGENDARY"),
@@ -51,12 +59,16 @@ ITEMS: tuple[ItemMetadata, ...] = (
     ItemMetadata(23, "GoldenGlove", "Golden Glove", "Golden Glove", "COMMON"),
     ItemMetadata(24, "GoldenShield", "Golden Shield", "Golden Shield", "UNCOMMON"),
     ItemMetadata(25, "ZaWarudo", "Za Warudo", "Za Warudo", "LEGENDARY"),
-    ItemMetadata(26, "OverpoweredLamp", "Overpowered Lamp", "Overpowered Lamp", "LEGENDARY"),
+    ItemMetadata(
+        26, "OverpoweredLamp", "Overpowered Lamp", "Overpowered Lamp", "LEGENDARY"
+    ),
     ItemMetadata(27, "Feathers", "Feathers", "Feathers", "UNCOMMON"),
     ItemMetadata(28, "Ghost", "Ghost", "Ghost", "COMMON"),
     ItemMetadata(29, "SluttyCannon", "Slutty Cannon", "Slutty Cannon", "RARE"),
     ItemMetadata(30, "TurboSocks", "Turbo Socks", "Turbo Socks", "COMMON"),
-    ItemMetadata(31, "ShatteredWisdom", "Shattered Knowledge", "Shattered Wisdom", "RARE"),
+    ItemMetadata(
+        31, "ShatteredWisdom", "Shattered Knowledge", "Shattered Wisdom", "RARE"
+    ),
     ItemMetadata(32, "EchoShard", "Echo Shard", "Echo Shard", "UNCOMMON"),
     ItemMetadata(33, "SuckyMagnet", "Sucky Magnet", "Sucky Magnet", "LEGENDARY"),
     ItemMetadata(34, "Backpack", "Backpack", "Backpack", "UNCOMMON"),
@@ -86,13 +98,27 @@ ITEMS: tuple[ItemMetadata, ...] = (
     ItemMetadata(58, "Borgar", "Borgar", "Borgar", "COMMON"),
     ItemMetadata(59, "Medkit", "Medkit", "Medkit", "COMMON"),
     ItemMetadata(60, "GamerGoggles", "Gamer Goggles", "Gamer Goggles", "RARE"),
-    ItemMetadata(61, "UnstableTransfusion", "Unstable Transfusion", "Unstable Transfusion", "UNCOMMON"),
+    ItemMetadata(
+        61,
+        "UnstableTransfusion",
+        "Unstable Transfusion",
+        "Unstable Transfusion",
+        "UNCOMMON",
+    ),
     ItemMetadata(62, "BloodyCleaver", "Bloody Cleaver", "Bloody Cleaver", "LEGENDARY"),
-    ItemMetadata(63, "CreditCardRed", "Credit Card (Red)", "Credit Card Red", "UNCOMMON"),
-    ItemMetadata(64, "CreditCardGreen", "Credit Card (Green)", "Credit Card Green", "RARE"),
+    ItemMetadata(
+        63, "CreditCardRed", "Credit Card (Red)", "Credit Card Red", "UNCOMMON"
+    ),
+    ItemMetadata(
+        64, "CreditCardGreen", "Credit Card (Green)", "Credit Card Green", "RARE"
+    ),
     ItemMetadata(65, "BossBuster", "Boss Buster", "Boss Buster", "COMMON"),
-    ItemMetadata(66, "LeechingCrystal", "Leeching Crystal", "Leeching Crystal", "UNCOMMON"),
-    ItemMetadata(67, "TacticalGlasses", "Tactical Glasses", "Tactical Glasses", "COMMON"),
+    ItemMetadata(
+        66, "LeechingCrystal", "Leeching Crystal", "Leeching Crystal", "UNCOMMON"
+    ),
+    ItemMetadata(
+        67, "TacticalGlasses", "Tactical Glasses", "Tactical Glasses", "COMMON"
+    ),
     ItemMetadata(68, "Cactus", "Cactus", "Cactus", "COMMON"),
     ItemMetadata(69, "CageKey", "Golden key", "Cage Key", None),
     ItemMetadata(70, "IceCrystal", "Ice Crystal", "Ice Crystal", "COMMON"),
@@ -116,15 +142,14 @@ ITEMS: tuple[ItemMetadata, ...] = (
 )
 
 ITEM_ENUM_NAMES_BY_ID: dict[int, str] = {item.item_id: item.enum_name for item in ITEMS}
-ITEM_METADATA_BY_ENUM_NAME: dict[str, ItemMetadata] = {item.enum_name: item for item in ITEMS}
+ITEM_METADATA_BY_ENUM_NAME: dict[str, ItemMetadata] = {
+    item.enum_name: item for item in ITEMS
+}
 ITEM_UI_NAME_BY_ENUM_NAME: dict[str, str] = {
-    item.enum_name: item.ui_name
-    for item in ITEMS
-    if item.ui_name
+    item.enum_name: item.ui_name for item in ITEMS if item.ui_name
 }
 ITEM_SCANNER_NAME_BY_ENUM_NAME: dict[str, str] = {
-    item.enum_name: item.scanner_name
-    for item in ITEMS
+    item.enum_name: item.scanner_name for item in ITEMS
 }
 
 
@@ -143,7 +168,9 @@ for item in ITEMS:
         names.add(item.ui_name)
     for name in names:
         ITEM_RARITY_BY_NAME[name] = item.rarity
-    ITEM_DISPLAY_NAME_BY_CANONICAL_NAME[item.scanner_name] = item.ui_name or item.scanner_name
+    ITEM_DISPLAY_NAME_BY_CANONICAL_NAME[item.scanner_name] = (
+        item.ui_name or item.scanner_name
+    )
 
 
 ITEM_RARITY_NAME_ALIASES: dict[str, str] = {
@@ -160,7 +187,6 @@ ITEM_RARITY_FOLDED_NAME_ALIASES: dict[str, str] = {
     "cursedgrabbies": "glovecurse",
     "demonicblade": "demonblade",
     "flappyfeathers": "feathers",
-    "gasmask": "gasmask",
     "gasmask": "gasmask",
     "gloveblood": "gloveblood",
     "glovecursed": "glovecurse",
@@ -191,7 +217,9 @@ for item in ITEMS:
         continue
     for name in (item.enum_name, item.ui_name or "", item.scanner_name):
         if name:
-            ITEM_RARITY_NAME_BY_FOLDED_NAME[_fold_item_name_for_rarity(name)] = item.scanner_name
+            ITEM_RARITY_NAME_BY_FOLDED_NAME[_fold_item_name_for_rarity(name)] = (
+                item.scanner_name
+            )
 for folded, canonical_folded in ITEM_RARITY_FOLDED_NAME_ALIASES.items():
     canonical_name = ITEM_RARITY_NAME_BY_FOLDED_NAME.get(canonical_folded)
     if canonical_name:
@@ -273,7 +301,7 @@ def _normalize_item_name_for_rarity(item_name: str) -> str:
     if normalized in ITEM_RARITY_NAME_ALIASES:
         return ITEM_RARITY_NAME_ALIASES[normalized]
     if normalized.startswith("Gloves "):
-        normalized = f"Glove {normalized[len('Gloves '):]}"
+        normalized = f"Glove {normalized[len('Gloves ') :]}"
 
     folded = _fold_item_name_for_rarity(normalized)
     folded = ITEM_RARITY_FOLDED_NAME_ALIASES.get(folded, folded)

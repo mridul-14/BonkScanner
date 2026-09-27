@@ -10,6 +10,7 @@ taking their labels as an argument is what finally makes them cheap to test.
 That is the step-14c "exercises it / would catch it" gap, closed rather than
 carried, on code this step is responsible for moving.
 """
+
 from __future__ import annotations
 
 import unittest
@@ -111,9 +112,7 @@ class StageSummaryTests(unittest.TestCase):
         set_stage_summary_labels(
             labels, [{"label": "Stage 1", "kills": "9", "time": "01:00", "items": "2"}]
         )
-        self.assertEqual(
-            labels[0].text(), "Stage 1: Kills 9 | Time 01:00 | Items 2"
-        )
+        self.assertEqual(labels[0].text(), "Stage 1: Kills 9 | Time 01:00 | Items 2")
 
 
 class StageSummaryPortTests(unittest.TestCase):

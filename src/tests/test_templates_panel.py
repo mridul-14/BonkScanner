@@ -98,7 +98,9 @@ def _panel_with_filters(**filter_ports):
 
 
 class CheckboxSyncTests(unittest.TestCase):
-    def test_save_checkbox_state_updates_runtime_templates_without_restart(self) -> None:
+    def test_save_checkbox_state_updates_runtime_templates_without_restart(
+        self,
+    ) -> None:
         """Moved from `test_gui_run_control.py` by step 22c."""
         logs: list[tuple[object, dict]] = []
 
@@ -130,10 +132,12 @@ class CheckboxSyncTests(unittest.TestCase):
             self.assertEqual(filters.active_templates, ["Alpha", "Gamma"])
             self.assertEqual(filters.template_stats["Alpha"]["history"], [3])
             self.assertEqual(
-                filters.template_stats["Gamma"], {"rerolls_since_last": 0, "history": []}
+                filters.template_stats["Gamma"],
+                {"rerolls_since_last": 0, "history": []},
             )
             self.assertEqual(
-                filters.template_stats["Beta"], {"rerolls_since_last": 1, "history": [4]}
+                filters.template_stats["Beta"],
+                {"rerolls_since_last": 1, "history": [4]},
             )
             self.assertEqual(
                 logs,
@@ -252,12 +256,14 @@ class PersistenceFailureTests(unittest.TestCase):
         }
         previous = ["Alpha"]
 
-        with patch.object(config, "ACTIVE_TEMPLATES", previous), patch.dict(
-            config.user_config, {"ACTIVE_TEMPLATES": previous}, clear=False
-        ), patch.object(
-            config,
-            "save_config",
-            return_value=config.ConfigSaveResult(False, "disk full"),
+        with (
+            patch.object(config, "ACTIVE_TEMPLATES", previous),
+            patch.dict(config.user_config, {"ACTIVE_TEMPLATES": previous}, clear=False),
+            patch.object(
+                config,
+                "save_config",
+                return_value=config.ConfigSaveResult(False, "disk full"),
+            ),
         ):
             panel.save_checkbox_state()
 
@@ -276,12 +282,14 @@ class PersistenceFailureTests(unittest.TestCase):
         )
         templates = [{"id": 1, "name": "A"}, {"id": 2, "name": "B"}]
 
-        with patch.object(config, "TEMPLATES", templates), patch.dict(
-            config.user_config, {"TEMPLATES": templates}, clear=False
-        ), patch.object(
-            config,
-            "save_config",
-            return_value=config.ConfigSaveResult(False, "readback failed"),
+        with (
+            patch.object(config, "TEMPLATES", templates),
+            patch.dict(config.user_config, {"TEMPLATES": templates}, clear=False),
+            patch.object(
+                config,
+                "save_config",
+                return_value=config.ConfigSaveResult(False, "readback failed"),
+            ),
         ):
             changed = panel.save_template_order([2, 1])
 
@@ -304,12 +312,14 @@ class PersistenceFailureTests(unittest.TestCase):
             for tier in ("Light", "Good", "Perfect", "Perfect+")
         }
 
-        with patch.object(config, "SCORES_SYSTEM", previous), patch.dict(
-            config.user_config, {"SCORES_SYSTEM": previous}, clear=False
-        ), patch.object(
-            config,
-            "save_config",
-            return_value=config.ConfigSaveResult(False, "config unavailable"),
+        with (
+            patch.object(config, "SCORES_SYSTEM", previous),
+            patch.dict(config.user_config, {"SCORES_SYSTEM": previous}, clear=False),
+            patch.object(
+                config,
+                "save_config",
+                return_value=config.ConfigSaveResult(False, "config unavailable"),
+            ),
         ):
             panel.refresh_scores_ui()
 
@@ -329,8 +339,11 @@ class PersistenceFailureTests(unittest.TestCase):
         )
         panel._checkboxes = {"Alpha": FakeCheckbox(True)}
 
-        with patch.object(config, "ACTIVE_TEMPLATES", []), patch.object(
-            config, "save_config", return_value=config.ConfigSaveResult(True)
+        with (
+            patch.object(config, "ACTIVE_TEMPLATES", []),
+            patch.object(
+                config, "save_config", return_value=config.ConfigSaveResult(True)
+            ),
         ):
             panel.save_checkbox_state()
 
@@ -351,9 +364,11 @@ class PersistenceFailureTests(unittest.TestCase):
         scores = deepcopy(config.SCORES_SYSTEM)
         scores["active_tiers"] = ["Light", "Perfect+"]
 
-        with patch.object(config, "SCORES_SYSTEM", scores), \
-             patch.dict(config.user_config, {"SCORES_SYSTEM": scores}, clear=False), \
-             patch.object(config, "save_config") as save_config:
+        with (
+            patch.object(config, "SCORES_SYSTEM", scores),
+            patch.dict(config.user_config, {"SCORES_SYSTEM": scores}, clear=False),
+            patch.object(config, "save_config") as save_config,
+        ):
             panel.refresh_scores_ui()
 
         self.assertEqual(scores["active_tiers"], ["Light", "Perfect+"])
@@ -364,8 +379,10 @@ class PersistenceFailureTests(unittest.TestCase):
         rendered: list[str] = []
         panel, _filters = _panel_with_filters()
         panel._scores_desc_label = SimpleNamespace(setHtml=rendered.append)
-        panel._scores_checkboxes = {tier: FakeCheckbox(False) for tier in
-                                    ("Light", "Good", "Perfect", "Perfect+")}
+        panel._scores_checkboxes = {
+            tier: FakeCheckbox(False)
+            for tier in ("Light", "Good", "Perfect", "Perfect+")
+        }
 
         original_scores = deepcopy(config.SCORES_SYSTEM)
         updated_scores = deepcopy(config.SCORES_SYSTEM)
@@ -457,7 +474,9 @@ class DialogTests(unittest.TestCase):
         save_config.assert_not_called()
         self.assertEqual(dialog.delete_later_calls, 1)
 
-    def test_add_after_deleting_everything_keeps_custom_ids_outside_builtin_range(self) -> None:
+    def test_add_after_deleting_everything_keeps_custom_ids_outside_builtin_range(
+        self,
+    ) -> None:
         from PySide6.QtWidgets import QDialog
 
         dialog = RecordingDialog(
@@ -591,11 +610,15 @@ class TemplateOrderTests(unittest.TestCase):
 
         with patch.object(config, "TEMPLATES", templates):
             with patch.object(config, "ACTIVE_TEMPLATES", active):
-                with patch.dict(config.user_config, {"TEMPLATES": templates}, clear=False):
+                with patch.dict(
+                    config.user_config, {"TEMPLATES": templates}, clear=False
+                ):
                     with patch.object(config, "save_config") as save_config:
                         with patch.object(panel, "refresh_templates") as refresh:
                             changed = panel.save_template_order([3, 1, 2])
-                            reordered_ids = [template["id"] for template in config.TEMPLATES]
+                            reordered_ids = [
+                                template["id"] for template in config.TEMPLATES
+                            ]
                             active_after = list(config.ACTIVE_TEMPLATES)
 
         self.assertTrue(changed)
@@ -655,8 +678,15 @@ class PortTests(unittest.TestCase):
             and isinstance(node.value, ast.Name)
             and node.value.id == "self"
         }
-        for forbidden in ("window", "log", "layouts", "template_layout",
-                          "scores_desc_label", "checkboxes", "scores_checkboxes"):
+        for forbidden in (
+            "window",
+            "log",
+            "layouts",
+            "template_layout",
+            "scores_desc_label",
+            "checkboxes",
+            "scores_checkboxes",
+        ):
             self.assertNotIn(
                 forbidden,
                 reads,

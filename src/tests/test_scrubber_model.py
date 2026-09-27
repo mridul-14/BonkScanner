@@ -65,8 +65,12 @@ class StageBandTests(unittest.TestCase):
             _snapshot(stage_index=2, elapsed=120),
         ]
         bands = scrubber.build_stage_bands(snapshots)
-        self.assertEqual([band.label for band in bands], ["Stage 1", "Stage 2", "Stage 3"])
-        self.assertEqual([(band.start, band.end) for band in bands], [(0, 1), (2, 3), (4, 4)])
+        self.assertEqual(
+            [band.label for band in bands], ["Stage 1", "Stage 2", "Stage 3"]
+        )
+        self.assertEqual(
+            [(band.start, band.end) for band in bands], [(0, 1), (2, 3), (4, 4)]
+        )
 
     def test_band_carries_its_own_elapsed_span(self) -> None:
         snapshots = [
@@ -118,7 +122,9 @@ class StageBandTests(unittest.TestCase):
 
         bands = scrubber.build_stage_bands(snapshots)
 
-        self.assertEqual([band.label for band in bands], ["Stage 1", "Stage 2", "Stage 3"])
+        self.assertEqual(
+            [band.label for band in bands], ["Stage 1", "Stage 2", "Stage 3"]
+        )
 
     def test_a_run_with_no_observed_transition_is_one_band(self) -> None:
         """One band is a claim about the recording, and a true one."""
@@ -133,7 +139,9 @@ class DifficultyCapTests(unittest.TestCase):
     def test_base_cap_applies_before_the_ghosts_are_out(self) -> None:
         snapshots = [_snapshot(stage_index=1, stage_time=10.0)]
         steps = scrubber.build_cap_steps(snapshots, "Difficulty")
-        self.assertEqual([step.value for step in steps], [DIFFICULTY_CAP_BY_STAGE[1][0]])
+        self.assertEqual(
+            [step.value for step in steps], [DIFFICULTY_CAP_BY_STAGE[1][0]]
+        )
 
     def test_cap_drops_two_minutes_past_the_stage_duration(self) -> None:
         past = STAGE_DURATION_SECONDS[1] + GHOSTS_DELAY_SECONDS + 1.0
@@ -215,7 +223,9 @@ class SeriesTests(unittest.TestCase):
             _snapshot(Powerup_Multiplier=1.0, Powerup_Drop_Chance=1.0),
             _snapshot(Powerup_Multiplier=6.0, Powerup_Drop_Chance=3.0),
         ]
-        series = scrubber.build_series(snapshots, ("Powerup Multiplier", "Powerup Drop Chance"))
+        series = scrubber.build_series(
+            snapshots, ("Powerup Multiplier", "Powerup Drop Chance")
+        )
         self.assertEqual(series["Powerup Multiplier"].scale, 6.0)
         self.assertEqual(series["Powerup Drop Chance"].scale, 6.0)
         self.assertEqual(series["Powerup Drop Chance"].normalised(1), 0.5)
@@ -233,13 +243,20 @@ class SeriesTests(unittest.TestCase):
         self.assertIsNone(series.normalised(0))
 
     def test_items_series_counts_stacks(self) -> None:
-        snapshots = [_snapshot(items=("Anvil x1",)), _snapshot(items=("Anvil x3", "Key x2"))]
-        series = scrubber.build_series(snapshots, (scrubber.ITEMS_SERIES,))[scrubber.ITEMS_SERIES]
+        snapshots = [
+            _snapshot(items=("Anvil x1",)),
+            _snapshot(items=("Anvil x3", "Key x2")),
+        ]
+        series = scrubber.build_series(snapshots, (scrubber.ITEMS_SERIES,))[
+            scrubber.ITEMS_SERIES
+        ]
         self.assertEqual(series.values, (1.0, 5.0))
 
     def test_kills_series_keeps_a_missing_reading_as_none(self) -> None:
         snapshots = [_snapshot(kills=10), _snapshot(kills=None), _snapshot(kills=30)]
-        series = scrubber.build_series(snapshots, (scrubber.KILLS_SERIES,))[scrubber.KILLS_SERIES]
+        series = scrubber.build_series(snapshots, (scrubber.KILLS_SERIES,))[
+            scrubber.KILLS_SERIES
+        ]
         self.assertEqual(series.values, (10.0, None, 30.0))
         self.assertIsNone(series.normalised(1))
 
@@ -248,7 +265,9 @@ class MarkerTests(unittest.TestCase):
     def test_a_legendary_gain_is_marked(self) -> None:
         snapshots = [_snapshot(items=()), _snapshot(items=("Anvil x1",))]
         markers = scrubber.build_markers(snapshots)
-        self.assertEqual([(marker.index, marker.kind) for marker in markers], [(1, "legendary")])
+        self.assertEqual(
+            [(marker.index, marker.kind) for marker in markers], [(1, "legendary")]
+        )
 
     def test_a_rare_gain_uses_the_purple_timeline_marker(self) -> None:
         snapshots = [_snapshot(items=()), _snapshot(items=("Kevin x1",))]
@@ -274,7 +293,9 @@ class MarkerTests(unittest.TestCase):
             _snapshot(banishes=("Mirror",)),
         ]
         markers = scrubber.build_markers(snapshots)
-        self.assertEqual([(marker.index, marker.kind) for marker in markers], [(1, "banish")])
+        self.assertEqual(
+            [(marker.index, marker.kind) for marker in markers], [(1, "banish")]
+        )
 
 
 class ModelTests(unittest.TestCase):

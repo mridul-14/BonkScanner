@@ -46,14 +46,21 @@ class ViewPortRoutingTests(unittest.TestCase):
         for path in sorted((ROOT / "app").glob("*.py")):
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             for node in tree.body:
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in FORBIDDEN_RESOLVERS:
+                if (
+                    isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    and node.name in FORBIDDEN_RESOLVERS
+                ):
                     found.append(f"{path.name}:{node.lineno}:{node.name}")
         self.assertEqual(found, [])
 
     def test_megabonk_app_has_no_dynamic_attribute_forwarding(self) -> None:
         path = ROOT / "gui_app.py"
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        app = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "MegabonkApp")
+        app = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "MegabonkApp"
+        )
         methods = {node.name for node in app.body if isinstance(node, ast.FunctionDef)}
         self.assertNotIn("__getattr__", methods)
 
@@ -89,10 +96,15 @@ class ViewPortRoutingTests(unittest.TestCase):
         forbidden = {"_settings", "use_settings"}
         found = []
         for node in tree.body:
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in forbidden:
+            if (
+                isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.name in forbidden
+            ):
                 found.append(node.name)
             if isinstance(node, (ast.Assign, ast.AnnAssign)):
-                targets = node.targets if isinstance(node, ast.Assign) else (node.target,)
+                targets = (
+                    node.targets if isinstance(node, ast.Assign) else (node.target,)
+                )
                 found.extend(
                     target.id
                     for target in targets

@@ -18,14 +18,17 @@ class TwitchAuthTests(unittest.TestCase):
         thread = twitch_auth.TwitchAuthThread()
         thread._shutdown_server()
 
-        with patch.object(twitch_auth, "HTTPServer") as server, patch.object(
-            twitch_auth.webbrowser, "open"
+        with (
+            patch.object(twitch_auth, "HTTPServer") as server,
+            patch.object(twitch_auth.webbrowser, "open"),
         ):
             thread.run()
 
         server.assert_not_called()
 
-    def test_timeout_timer_is_cancelled_and_joined_before_qthread_disposal(self) -> None:
+    def test_timeout_timer_is_cancelled_and_joined_before_qthread_disposal(
+        self,
+    ) -> None:
         thread = twitch_auth.TwitchAuthThread()
         timer = MagicMock()
         timer.is_alive.return_value = True

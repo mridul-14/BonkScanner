@@ -61,7 +61,9 @@ class DeferredSectionTests(unittest.TestCase):
             "chaos_layout": self._layout(),
             "chaos_status_label": FakeTimelineWidget("chaos_status_label"),
             "damage_sources_layout": self._layout(),
-            "damage_sources_status_label": FakeTimelineWidget("damage_sources_status_label"),
+            "damage_sources_status_label": FakeTimelineWidget(
+                "damage_sources_status_label"
+            ),
         }
         self.visible = visible_sections
         return StatCardsView(
@@ -147,7 +149,9 @@ class DeferredSectionTests(unittest.TestCase):
             "chaos_layout": self._layout(),
             "chaos_status_label": FakeTimelineWidget("chaos_status_label"),
             "damage_sources_layout": self._layout(),
-            "damage_sources_status_label": FakeTimelineWidget("damage_sources_status_label"),
+            "damage_sources_status_label": FakeTimelineWidget(
+                "damage_sources_status_label"
+            ),
         }
         view = StatCardsView(**widgets)
 

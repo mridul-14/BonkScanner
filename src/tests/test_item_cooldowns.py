@@ -12,6 +12,7 @@ the game clock returned nine hits, of which one was this item, seven were
 sub-second proc timers (two of them at `0x3C`, exactly where the lantern keeps
 `cooldown`), and one was not a declared field at all.
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401  -- puts `src/` on sys.path regardless of collection order
@@ -187,7 +188,9 @@ class ItemCooldownReadTests(unittest.TestCase):
         a rendering decision, and a reader that silently floors at zero makes
         "just fired" indistinguishable from "no reading".
         """
-        (reading,) = read(client_for(build_memory(my_time=126.53, next_trigger=126.52))).readings
+        (reading,) = read(
+            client_for(build_memory(my_time=126.53, next_trigger=126.52))
+        ).readings
         self.assertLess(reading.next_trigger_time - 126.53, 0.0)
 
     def test_a_trigger_moves_the_mark_forward_by_one_cooldown(self) -> None:
@@ -304,7 +307,9 @@ class ItemCooldownBindingTests(unittest.TestCase):
 
     def test_a_missing_dictionary_still_reports_the_clock(self) -> None:
         memory = build_memory(my_time=17.5)
-        memory.pointers[INVENTORY_CONTAINER + PlayerStatsClient.PASSIVE_ITEM_DICT_OFFSET] = 0
+        memory.pointers[
+            INVENTORY_CONTAINER + PlayerStatsClient.PASSIVE_ITEM_DICT_OFFSET
+        ] = 0
         memory.unreadable.add(OWNER_STATS + PlayerStatsClient.PLAYER_INVENTORY_OFFSET)
         client = client_for(memory)
 
@@ -364,7 +369,9 @@ class DrainedDictionaryTests(unittest.TestCase):
         memory.pointers[0x39001000 + C.ITEM_INVENTORY_ITEMS_DICT_OFFSET] = 0
         client = client_for(memory)
 
-        self.assertEqual(client._resolve_preferred_passive_item_dict(OWNER_STATS), drained)
+        self.assertEqual(
+            client._resolve_preferred_passive_item_dict(OWNER_STATS), drained
+        )
 
     def test_a_stale_layout_from_another_dictionary_is_not_reused(self) -> None:
         """The memo belongs to one dictionary and may not outlive it.

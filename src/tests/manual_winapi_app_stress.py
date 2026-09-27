@@ -164,7 +164,11 @@ class StressReport:
 
     @property
     def passed(self) -> bool:
-        return bool(self.cycles) and all(cycle.passed for cycle in self.cycles) and not self.new_relevant_events
+        return (
+            bool(self.cycles)
+            and all(cycle.passed for cycle in self.cycles)
+            and not self.new_relevant_events
+        )
 
 
 def _window_text(hwnd: int) -> str:
@@ -201,13 +205,17 @@ def _wait_for_window(
     while time.monotonic() - started < timeout:
         return_code = process.poll()
         if return_code is not None:
-            raise RuntimeError(f"process exited before its window appeared (exit code {return_code})")
+            raise RuntimeError(
+                f"process exited before its window appeared (exit code {return_code})"
+            )
         for hwnd, owner_pid, title in _visible_windows():
             if token in title:
                 return hwnd, owner_pid, title, time.monotonic() - started
         time.sleep(0.05)
     matching = [entry for entry in _visible_windows() if token in entry[2]]
-    raise TimeoutError(f"window was not found within {timeout:.1f}s; matching={matching!r}")
+    raise TimeoutError(
+        f"window was not found within {timeout:.1f}s; matching={matching!r}"
+    )
 
 
 def _assert_responsive(hwnd: int, timeout_ms: int = 2000) -> None:
@@ -236,7 +244,9 @@ def _send_win32_scan_code_key(vk_code: int, hold_seconds: float) -> None:
     if os.name != "nt":
         raise OSError("Win32 scan-code input requires Windows")
 
-    pointer_int = ctypes.c_ulonglong if ctypes.sizeof(ctypes.c_void_p) == 8 else ctypes.c_ulong
+    pointer_int = (
+        ctypes.c_ulonglong if ctypes.sizeof(ctypes.c_void_p) == 8 else ctypes.c_ulong
+    )
 
     class KeyboardInput(ctypes.Structure):
         _fields_ = [
@@ -378,7 +388,9 @@ def _read_crash_events(limit: int = 300) -> list[EventRecord]:
     )
     if completed.returncode != 0:
         detail = _decode_command_output(completed.stderr).strip()
-        raise RuntimeError(f"wevtutil failed with code {completed.returncode}: {detail}")
+        raise RuntimeError(
+            f"wevtutil failed with code {completed.returncode}: {detail}"
+        )
     payload = _decode_command_output(completed.stdout).strip()
     if not payload:
         return []
@@ -403,8 +415,16 @@ def _read_crash_events(limit: int = 300) -> list[EventRecord]:
             EventRecord(
                 record_id=int(record_id_element.text or 0),
                 event_id=int(event_id_element.text or 0),
-                provider=str(provider_element.attrib.get("Name", "") if provider_element is not None else ""),
-                created_utc=str(time_element.attrib.get("SystemTime", "") if time_element is not None else ""),
+                provider=str(
+                    provider_element.attrib.get("Name", "")
+                    if provider_element is not None
+                    else ""
+                ),
+                created_utc=str(
+                    time_element.attrib.get("SystemTime", "")
+                    if time_element is not None
+                    else ""
+                ),
                 data=data,
             )
         )
@@ -528,7 +548,9 @@ def _run_cycle(
             result.exit_code = process.wait(timeout=exit_timeout)
             result.exit_seconds = round(time.monotonic() - close_started, 3)
         except subprocess.TimeoutExpired:
-            result.errors.append(f"process did not exit within {exit_timeout:.1f}s after WM_CLOSE")
+            result.errors.append(
+                f"process did not exit within {exit_timeout:.1f}s after WM_CLOSE"
+            )
     except Exception as exc:
         result.errors.append(f"{type(exc).__name__}: {exc}")
     finally:
@@ -594,10 +616,14 @@ def _seed_child_config(
         with config_source.open("r", encoding="utf-8") as stream:
             loaded = load_legacy_json(stream)
         if not isinstance(loaded, dict):
-            raise ValueError(f"config source must contain a JSON object: {config_source}")
+            raise ValueError(
+                f"config source must contain a JSON object: {config_source}"
+            )
         seed = deepcopy(loaded)
 
-    overlay = deepcopy(seed.get("OVERLAY")) if isinstance(seed.get("OVERLAY"), dict) else {}
+    overlay = (
+        deepcopy(seed.get("OVERLAY")) if isinstance(seed.get("OVERLAY"), dict) else {}
+    )
     overlay.update({"enabled": False, "auto_start": False})
     in_game_overlay = (
         deepcopy(seed.get("IN_GAME_OVERLAY"))
@@ -614,16 +640,18 @@ def _seed_child_config(
     if config_source is None:
         twitch_bot["username"] = ""
 
-    seed.update({
-        "AUTO_REROLL_SETUP_GUIDE_ACKNOWLEDGED": True,
-        "AUTO_REROLL_SETUP_GUIDE_VERSION": 2,
-        "AUTO_START_RECORDING": False,
-        "SKIP_REROLL_WARNING": True,
-        "SHOW_OBS_REMINDER_ON_START_SCANNER": False,
-        "OVERLAY": overlay,
-        "IN_GAME_OVERLAY": in_game_overlay,
-        "TWITCH_BOT": twitch_bot,
-    })
+    seed.update(
+        {
+            "AUTO_REROLL_SETUP_GUIDE_ACKNOWLEDGED": True,
+            "AUTO_REROLL_SETUP_GUIDE_VERSION": 2,
+            "AUTO_START_RECORDING": False,
+            "SKIP_REROLL_WARNING": True,
+            "SHOW_OBS_REMINDER_ON_START_SCANNER": False,
+            "OVERLAY": overlay,
+            "IN_GAME_OVERLAY": in_game_overlay,
+            "TWITCH_BOT": twitch_bot,
+        }
+    )
     if force_reroll_profile:
         impossible_name = "WINAPI LIVE FORCED REROLL"
         seed.update(
@@ -721,7 +749,9 @@ def _schedule_runtime_exercise(app, config_dir: Path) -> None:
             state.update(
                 {
                     "attached_game_pid": attached_pid,
-                    "scanner_worker_alive": bool(worker is not None and worker.is_alive()),
+                    "scanner_worker_alive": bool(
+                        worker is not None and worker.is_alive()
+                    ),
                     "scanner_ready": bool(scanner.is_ready_to_start),
                     "obs_server_running": bool(overlay.overlay_server.is_running),
                     "in_game_overlay_created": bool(in_game_window is not None),
@@ -746,7 +776,9 @@ def _schedule_runtime_exercise(app, config_dir: Path) -> None:
                 publish()
                 return
             if time.monotonic() - started_at >= 6.0:
-                state.setdefault("errors", []).append("runtime owners did not become ready")
+                state.setdefault("errors", []).append(
+                    "runtime owners did not become ready"
+                )
                 publish()
                 return
         except BaseException as exc:
@@ -787,7 +819,11 @@ def _child_main(args: argparse.Namespace) -> int:
     # Only stdlib modules have been imported before the journal is installed.
     repository_root = _repository_root()
     sys.path.insert(0, str(repository_root / "src"))
-    from infra.crash_journal import install_crash_journal, log_runtime_event, mark_clean_exit
+    from infra.crash_journal import (
+        install_crash_journal,
+        log_runtime_event,
+        mark_clean_exit,
+    )
 
     install_crash_journal()
     event_loop_failed = False
@@ -841,7 +877,9 @@ def _parent_main(args: argparse.Namespace) -> int:
     artifact_dir.mkdir(parents=True, exist_ok=False)
 
     baseline_events = _read_crash_events()
-    baseline_record_id = max((record.record_id for record in baseline_events), default=0)
+    baseline_record_id = max(
+        (record.record_id for record in baseline_events), default=0
+    )
     report = StressReport(
         started_utc=datetime.now(timezone.utc).isoformat(),
         artifact_dir=str(artifact_dir),
@@ -906,8 +944,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--title-token", default="", help=argparse.SUPPRESS)
     parser.add_argument("--config-dir", default="", help=argparse.SUPPRESS)
     parser.add_argument("--config-source", default="", help=argparse.SUPPRESS)
-    parser.add_argument("--force-reroll-profile", action="store_true", help=argparse.SUPPRESS)
-    parser.add_argument("--exercise-runtime", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--force-reroll-profile", action="store_true", help=argparse.SUPPRESS
+    )
+    parser.add_argument(
+        "--exercise-runtime", action="store_true", help=argparse.SUPPRESS
+    )
     return parser
 
 

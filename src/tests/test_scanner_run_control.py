@@ -65,24 +65,39 @@ class RunControlTests(unittest.TestCase):
 
         run_control.apply_run_control_mode()
 
-        self.assertIsInstance(run_control.run_control_provider, KeyboardRunControlProvider)
+        self.assertIsInstance(
+            run_control.run_control_provider, KeyboardRunControlProvider
+        )
 
     def test_check_admin_rights_logs_keyboard_warnings_without_admin(self) -> None:
         run_control = build_run_control()
 
-        with patch.object(gui_run_control.os, "name", "nt"), \
-                patch.object(gui_run_control.process, "is_running_as_admin", lambda: False):
+        with (
+            patch.object(gui_run_control.os, "name", "nt"),
+            patch.object(gui_run_control.process, "is_running_as_admin", lambda: False),
+        ):
             run_control.check_admin_rights()
 
         messages = [message for message, _tag in run_control.calls["log"]]
-        self.assertTrue(any("WARNING: Script is not running as Administrator" in m for m in messages))
-        self.assertTrue(any("Hotkeys may not work while the game window is active" in m for m in messages))
+        self.assertTrue(
+            any(
+                "WARNING: Script is not running as Administrator" in m for m in messages
+            )
+        )
+        self.assertTrue(
+            any(
+                "Hotkeys may not work while the game window is active" in m
+                for m in messages
+            )
+        )
 
     def test_game_window_focus_requires_foreground_pid_match(self) -> None:
         run_control = build_run_control()
         run_control.get_game_process_id = lambda: 1234
         fake_gui = SimpleNamespace(GetForegroundWindow=lambda: 111)
-        fake_process = SimpleNamespace(GetWindowThreadProcessId=lambda _window: (10, 5678))
+        fake_process = SimpleNamespace(
+            GetWindowThreadProcessId=lambda _window: (10, 5678)
+        )
 
         with patch_everywhere("win32gui", fake_gui):
             with patch_everywhere("win32process", fake_process):
@@ -92,13 +107,17 @@ class RunControlTests(unittest.TestCase):
         run_control = build_run_control()
         run_control.get_game_process_id = lambda: None
         fake_gui = SimpleNamespace(GetForegroundWindow=lambda: 111)
-        fake_process = SimpleNamespace(GetWindowThreadProcessId=lambda _window: (10, 1234))
+        fake_process = SimpleNamespace(
+            GetWindowThreadProcessId=lambda _window: (10, 1234)
+        )
 
         with patch_everywhere("win32gui", fake_gui):
             with patch_everywhere("win32process", fake_process):
                 self.assertFalse(run_control.is_game_window_active(PROCESS_NAME))
 
-    def test_game_window_focus_can_match_foreground_window_without_scanner_pid(self) -> None:
+    def test_game_window_focus_can_match_foreground_window_without_scanner_pid(
+        self,
+    ) -> None:
         run_control = build_run_control()
         run_control._process_id_matches_name = lambda process_id, process_name: (
             process_id == 1234 and process_name == PROCESS_NAME
@@ -107,14 +126,20 @@ class RunControlTests(unittest.TestCase):
             111 if process_id == 1234 and process_name == PROCESS_NAME else None
         )
         fake_gui = SimpleNamespace(GetForegroundWindow=lambda: 111)
-        fake_process = SimpleNamespace(GetWindowThreadProcessId=lambda _window: (10, 1234))
+        fake_process = SimpleNamespace(
+            GetWindowThreadProcessId=lambda _window: (10, 1234)
+        )
 
         with patch_everywhere("win32gui", fake_gui):
             with patch_everywhere("win32process", fake_process):
                 self.assertTrue(run_control.is_game_window_active(PROCESS_NAME))
 
-    def test_game_window_focus_recovers_after_game_restarts_with_a_new_pid(self) -> None:
-        client = SimpleNamespace(memory=SimpleNamespace(_pm=SimpleNamespace(process_id=1234)))
+    def test_game_window_focus_recovers_after_game_restarts_with_a_new_pid(
+        self,
+    ) -> None:
+        client = SimpleNamespace(
+            memory=SimpleNamespace(_pm=SimpleNamespace(process_id=1234))
+        )
         run_control = build_run_control(client=lambda: client)
         run_control._process_id_matches_name = lambda process_id, process_name: (
             process_id == 5678 and process_name == PROCESS_NAME
@@ -123,13 +148,17 @@ class RunControlTests(unittest.TestCase):
             222 if process_id == 5678 and process_name == PROCESS_NAME else None
         )
         fake_gui = SimpleNamespace(GetForegroundWindow=lambda: 222)
-        fake_process = SimpleNamespace(GetWindowThreadProcessId=lambda _window: (10, 5678))
+        fake_process = SimpleNamespace(
+            GetWindowThreadProcessId=lambda _window: (10, 5678)
+        )
 
         with patch_everywhere("win32gui", fake_gui):
             with patch_everywhere("win32process", fake_process):
                 self.assertTrue(run_control.is_game_window_active(PROCESS_NAME))
 
-    def test_bring_game_window_to_front_uses_alt_attach_fallback_after_direct_failure(self) -> None:
+    def test_bring_game_window_to_front_uses_alt_attach_fallback_after_direct_failure(
+        self,
+    ) -> None:
         fake_gui = FakeForegroundGui()
         fake_process = FakeForegroundProcess()
         fake_user32 = FakeUser32()
@@ -140,7 +169,9 @@ class RunControlTests(unittest.TestCase):
         with patch_everywhere("win32gui", fake_gui):
             with patch_everywhere("win32process", fake_process):
                 with patch.object(ctypes, "windll", fake_windll):
-                    self.assertTrue(run_control.bring_game_window_to_front(PROCESS_NAME))
+                    self.assertTrue(
+                        run_control.bring_game_window_to_front(PROCESS_NAME)
+                    )
 
         self.assertEqual(fake_gui.show_window_calls, [(111, 5)])
         self.assertEqual(fake_gui.set_foreground_calls, [111, 111])
@@ -149,7 +180,9 @@ class RunControlTests(unittest.TestCase):
             fake_user32.attach_calls,
             [(10, 20, True), (10, 30, True), (10, 20, False), (10, 30, False)],
         )
-        self.assertEqual(fake_user32.keybd_event_calls, [(0x12, 0, 0, 0), (0x12, 0, 0x0002, 0)])
+        self.assertEqual(
+            fake_user32.keybd_event_calls, [(0x12, 0, 0, 0), (0x12, 0, 0x0002, 0)]
+        )
         self.assertEqual(run_control.calls["log"], [])
 
     def test_alt_attach_fallback_detaches_threads_when_foreground_fails(self) -> None:
@@ -170,7 +203,9 @@ class RunControlTests(unittest.TestCase):
             [(10, 20, True), (10, 30, True), (10, 20, False), (10, 30, False)],
         )
 
-    def test_find_game_window_falls_back_to_name_lookup_without_scanner_pid(self) -> None:
+    def test_find_game_window_falls_back_to_name_lookup_without_scanner_pid(
+        self,
+    ) -> None:
         run_control = build_run_control()
         run_control.find_game_window_by_name = lambda process_name: (
             222 if process_name == PROCESS_NAME else None
@@ -178,7 +213,9 @@ class RunControlTests(unittest.TestCase):
 
         self.assertEqual(run_control.find_game_window(PROCESS_NAME), 222)
 
-    def test_find_game_window_by_name_prefers_largest_matching_main_window(self) -> None:
+    def test_find_game_window_by_name_prefers_largest_matching_main_window(
+        self,
+    ) -> None:
         run_control = build_run_control()
         run_control._process_id_matches_name = lambda process_id, process_name: (
             process_name == "megabonk.exe" and process_id in {2001, 2002}
@@ -189,7 +226,9 @@ class RunControlTests(unittest.TestCase):
         titles = {11: "Megabonk Helper", 22: "Megabonk", 33: "Settings"}
         process_by_window = {11: (10, 2001), 22: (10, 2001), 33: (10, 2002)}
         fake_gui = SimpleNamespace(
-            EnumWindows=lambda callback, extra: [callback(window, extra) for window in windows],
+            EnumWindows=lambda callback, extra: [
+                callback(window, extra) for window in windows
+            ],
             IsWindowVisible=lambda _window: True,
             GetWindowRect=lambda window: rects[window],
             GetWindowText=lambda window: titles[window],
@@ -245,12 +284,14 @@ class HotkeyRegistrationTests(unittest.TestCase):
             def stop(self) -> None:
                 pass
 
-        with patch_everywhere("keyboard", FakeKeyboardModule()), \
-                patch.object(gui_run_control, "ModifierAwareHotkeyManager", Manager), \
-                patch.object(config, "HOTKEY", "f6"), \
-                patch.object(config, "PLAYER_STATS_RECORD_HOTKEY", "f8"), \
-                patch.object(config, "IN_GAME_OVERLAY_EDIT_HOTKEY", "f9"), \
-                patch.object(config, "STOP_SCANNING_ON_PLAYER_MOVEMENT", False):
+        with (
+            patch_everywhere("keyboard", FakeKeyboardModule()),
+            patch.object(gui_run_control, "ModifierAwareHotkeyManager", Manager),
+            patch.object(config, "HOTKEY", "f6"),
+            patch.object(config, "PLAYER_STATS_RECORD_HOTKEY", "f8"),
+            patch.object(config, "IN_GAME_OVERLAY_EDIT_HOTKEY", "f9"),
+            patch.object(config, "STOP_SCANNING_ON_PLAYER_MOVEMENT", False),
+        ):
             build_run_control(toggle_overlay_edit=None).setup_hotkeys()
             build_run_control(toggle_overlay_edit=lambda: None).setup_hotkeys()
 
@@ -258,7 +299,9 @@ class HotkeyRegistrationTests(unittest.TestCase):
 
     def test_the_overlay_edit_hotkey_reaches_the_wired_port(self) -> None:
         toggles: list[str] = []
-        run_control = build_run_control(toggle_overlay_edit=lambda: toggles.append("edit"))
+        run_control = build_run_control(
+            toggle_overlay_edit=lambda: toggles.append("edit")
+        )
 
         run_control.hotkey_toggle_in_game_overlay_edit()
 
@@ -273,17 +316,21 @@ class HotkeyRegistrationTests(unittest.TestCase):
                 pass
 
             def start(self, bindings) -> None:
-                registered.append([
-                    (binding.hotkey, binding.require_game_window)
-                    for binding in bindings
-                ])
+                registered.append(
+                    [
+                        (binding.hotkey, binding.require_game_window)
+                        for binding in bindings
+                    ]
+                )
 
             def stop(self) -> None:
                 pass
 
-        with patch_everywhere("keyboard", FakeKeyboardModule()), \
-                patch.object(gui_run_control, "ModifierAwareHotkeyManager", Manager), \
-                patch.object(config, "STOP_SCANNING_ON_PLAYER_MOVEMENT", True):
+        with (
+            patch_everywhere("keyboard", FakeKeyboardModule()),
+            patch.object(gui_run_control, "ModifierAwareHotkeyManager", Manager),
+            patch.object(config, "STOP_SCANNING_ON_PLAYER_MOVEMENT", True),
+        ):
             build_run_control().setup_hotkeys()
 
         movement_bindings = registered[0][-5:]
@@ -293,9 +340,11 @@ class HotkeyRegistrationTests(unittest.TestCase):
         )
 
         registered.clear()
-        with patch_everywhere("keyboard", FakeKeyboardModule()), \
-                patch.object(gui_run_control, "ModifierAwareHotkeyManager", Manager), \
-                patch.object(config, "STOP_SCANNING_ON_PLAYER_MOVEMENT", False):
+        with (
+            patch_everywhere("keyboard", FakeKeyboardModule()),
+            patch.object(gui_run_control, "ModifierAwareHotkeyManager", Manager),
+            patch.object(config, "STOP_SCANNING_ON_PLAYER_MOVEMENT", False),
+        ):
             build_run_control().setup_hotkeys()
 
         self.assertNotIn("w", [hotkey for hotkey, _required in registered[0]])
@@ -305,7 +354,9 @@ class HotkeyRegistrationTests(unittest.TestCase):
         run_control = build_run_control()
         run_control.get_game_process_id = lambda: 1234
         fake_gui = SimpleNamespace(GetForegroundWindow=lambda: 111)
-        fake_process = SimpleNamespace(GetWindowThreadProcessId=lambda _window: (10, 5678))
+        fake_process = SimpleNamespace(
+            GetWindowThreadProcessId=lambda _window: (10, 5678)
+        )
 
         with patch_everywhere("keyboard", fake_keyboard):
             with patch_everywhere("win32gui", fake_gui):
@@ -315,14 +366,18 @@ class HotkeyRegistrationTests(unittest.TestCase):
                             run_control.setup_hotkeys()
 
                             hook = fake_keyboard.hook_calls[0]
-                            hook(SimpleNamespace(
-                                scan_code=fake_keyboard.key_to_scan_codes("w")[0],
-                                event_type="down",
-                            ))
-                            hook(SimpleNamespace(
-                                scan_code=fake_keyboard.key_to_scan_codes("f6")[0],
-                                event_type="down",
-                            ))
+                            hook(
+                                SimpleNamespace(
+                                    scan_code=fake_keyboard.key_to_scan_codes("w")[0],
+                                    event_type="down",
+                                )
+                            )
+                            hook(
+                                SimpleNamespace(
+                                    scan_code=fake_keyboard.key_to_scan_codes("f6")[0],
+                                    event_type="down",
+                                )
+                            )
 
         self.assertEqual(run_control.calls["toggle_scan"], 0)
 
@@ -356,7 +411,9 @@ class ScanLifecycleTests(unittest.TestCase):
         scanner.refresh_stats_ui = lambda: repaints.append(1)
         return repaints
 
-    def test_toggle_main_loop_clears_stale_scan_event_before_starting_worker(self) -> None:
+    def test_toggle_main_loop_clears_stale_scan_event_before_starting_worker(
+        self,
+    ) -> None:
         scanner = build_scanner(selected_template_names=lambda: ["LIGHT"])
         self._quiet(scanner)
         scanner.stop_event.set()
@@ -445,10 +502,12 @@ class ScanLifecycleTests(unittest.TestCase):
             toggle_btn=lambda: toggle,
         )
 
-        with patch.dict(config.user_config, {"SKIP_REROLL_WARNING": True}), \
-                patch.object(config, "SHOW_OBS_REMINDER_ON_START_SCANNER", False), \
-                patch.object(config, "EVALUATION_MODE", "templates"), \
-                patch.object(threading, "Thread", FakeThread):
+        with (
+            patch.dict(config.user_config, {"SKIP_REROLL_WARNING": True}),
+            patch.object(config, "SHOW_OBS_REMINDER_ON_START_SCANNER", False),
+            patch.object(config, "EVALUATION_MODE", "templates"),
+            patch.object(threading, "Thread", FakeThread),
+        ):
             scanner.toggle_main_loop()
 
             self.assertTrue(scanner._start_pending)
@@ -478,10 +537,12 @@ class ScanLifecycleTests(unittest.TestCase):
         scanner = build_scanner(selected_template_names=lambda: ["LIGHT"])
         self._quiet(scanner)
 
-        with patch.dict(config.user_config, {"SKIP_REROLL_WARNING": True}), \
-                patch.object(config, "SHOW_OBS_REMINDER_ON_START_SCANNER", False), \
-                patch.object(config, "EVALUATION_MODE", "templates"), \
-                patch.object(threading, "Thread", FailingThread):
+        with (
+            patch.dict(config.user_config, {"SKIP_REROLL_WARNING": True}),
+            patch.object(config, "SHOW_OBS_REMINDER_ON_START_SCANNER", False),
+            patch.object(config, "EVALUATION_MODE", "templates"),
+            patch.object(threading, "Thread", FailingThread),
+        ):
             scanner.toggle_main_loop()
 
         self.assertIsNone(scanner.scanner_thread)
@@ -494,16 +555,20 @@ class ScanLifecycleTests(unittest.TestCase):
             )
         )
 
-    def test_start_preparation_failure_is_contained_before_worker_creation(self) -> None:
+    def test_start_preparation_failure_is_contained_before_worker_creation(
+        self,
+    ) -> None:
         scanner = build_scanner(selected_template_names=lambda: ["LIGHT"])
         scanner.refresh_stats_ui = lambda: (_ for _ in ()).throw(
             RuntimeError("session stats unavailable")
         )
 
-        with patch.dict(config.user_config, {"SKIP_REROLL_WARNING": True}), \
-                patch.object(config, "SHOW_OBS_REMINDER_ON_START_SCANNER", False), \
-                patch.object(config, "EVALUATION_MODE", "templates"), \
-                patch.object(threading, "Thread", FakeThread):
+        with (
+            patch.dict(config.user_config, {"SKIP_REROLL_WARNING": True}),
+            patch.object(config, "SHOW_OBS_REMINDER_ON_START_SCANNER", False),
+            patch.object(config, "EVALUATION_MODE", "templates"),
+            patch.object(threading, "Thread", FakeThread),
+        ):
             scanner.toggle_main_loop()
 
         self.assertIsNone(scanner.scanner_thread)
@@ -600,7 +665,9 @@ class ScanLifecycleTests(unittest.TestCase):
 
         self.assertIsNone(scanner.scanner_thread)
         messages = [message for message, _tag in scanner.calls["log"]]
-        self.assertTrue(any("must select at least one template" in str(m) for m in messages))
+        self.assertTrue(
+            any("must select at least one template" in str(m) for m in messages)
+        )
 
     def test_enabled_guard_fails_closed_when_keyboard_hook_is_unavailable(self) -> None:
         scanner = build_scanner(selected_template_names=lambda: ["LIGHT"])
@@ -623,11 +690,13 @@ class ScanLifecycleTests(unittest.TestCase):
         self._quiet(scanner)
         scanner._run_control.player_movement_guard_available = False
 
-        with patch.dict(config.user_config, {"SKIP_REROLL_WARNING": True}), \
-                patch.object(config, "STOP_SCANNING_ON_PLAYER_MOVEMENT", False), \
-                patch.object(config, "SHOW_OBS_REMINDER_ON_START_SCANNER", False), \
-                patch.object(config, "EVALUATION_MODE", "templates"), \
-                patch.object(threading, "Thread", FakeThread):
+        with (
+            patch.dict(config.user_config, {"SKIP_REROLL_WARNING": True}),
+            patch.object(config, "STOP_SCANNING_ON_PLAYER_MOVEMENT", False),
+            patch.object(config, "SHOW_OBS_REMINDER_ON_START_SCANNER", False),
+            patch.object(config, "EVALUATION_MODE", "templates"),
+            patch.object(threading, "Thread", FakeThread),
+        ):
             scanner.toggle_main_loop()
 
         self.assertTrue(scanner.scanner_thread.started)
@@ -649,7 +718,10 @@ class ScanLifecycleTests(unittest.TestCase):
         def start_once():
             with patch.dict(
                 config.user_config,
-                {"SKIP_REROLL_WARNING": True, "SHOW_OBS_REMINDER_ON_START_SCANNER": True},
+                {
+                    "SKIP_REROLL_WARNING": True,
+                    "SHOW_OBS_REMINDER_ON_START_SCANNER": True,
+                },
             ):
                 with patch.object(config, "SHOW_OBS_REMINDER_ON_START_SCANNER", True):
                     with patch.object(config, "EVALUATION_MODE", "templates"):
@@ -695,7 +767,8 @@ class ScanLifecycleTests(unittest.TestCase):
         self.assertTrue(scanner.is_running)
         self.assertTrue(scanner.scan_event.is_set())
         self.assertIn(
-            ("[*] Scan started. Looking for selected target...", None), scanner.calls["log"]
+            ("[*] Scan started. Looking for selected target...", None),
+            scanner.calls["log"],
         )
 
     def test_hotkey_refuses_late_forest_and_desert_stages(self) -> None:
@@ -777,7 +850,9 @@ class ScanLifecycleTests(unittest.TestCase):
         self.assertFalse(scanner.is_running)
         self.assertFalse(scanner.scan_event.is_set())
 
-    def test_hotkey_immediately_pauses_when_a_movement_key_is_already_held(self) -> None:
+    def test_hotkey_immediately_pauses_when_a_movement_key_is_already_held(
+        self,
+    ) -> None:
         scanner = build_scanner()
         scanner.scanner_thread = AliveThread()
         scanner.is_ready_to_start = True
@@ -938,7 +1013,9 @@ class ScanLifecycleTests(unittest.TestCase):
         messages = [str(message) for message, _tag in scanner.calls["log"]]
         self.assertTrue(any("Press Start first" in m for m in messages))
 
-    def test_the_scan_hotkey_refuses_while_the_scanner_is_still_connecting(self) -> None:
+    def test_the_scan_hotkey_refuses_while_the_scanner_is_still_connecting(
+        self,
+    ) -> None:
         scanner = build_scanner()
         scanner.scanner_thread = AliveThread()
         scanner.is_ready_to_start = False
@@ -966,7 +1043,9 @@ class FocusWaitTests(unittest.TestCase):
 
         self.assertEqual(sleeps, [0.3])
         messages = [str(message) for message, _tag in run_control.calls["log"]]
-        self.assertIn("[WAIT] Game window is not active. Auto-reroll paused...", messages)
+        self.assertIn(
+            "[WAIT] Game window is not active. Auto-reroll paused...", messages
+        )
         self.assertIn("[+] Game window active again. Auto-reroll resumed.", messages)
 
     def test_the_focus_wait_gives_up_when_the_scan_is_paused(self) -> None:
@@ -1000,8 +1079,8 @@ class FocusWaitTests(unittest.TestCase):
             ),
         )
         del scanner  # the subject is run control; the pair is here for the port
-        run_control.wait_for_game_window_focus = (
-            lambda process_name: focus_checks.append(process_name) or True
+        run_control.wait_for_game_window_focus = lambda process_name: (
+            focus_checks.append(process_name) or True
         )
         run_control.bring_game_window_to_front = lambda _process_name: self.fail(
             "keyboard mode should not bring window forward"
@@ -1054,11 +1133,13 @@ class BackgroundLoopTests(unittest.TestCase):
             set_counters=MagicMock(side_effect=RuntimeError("deleted stats label"))
         )
 
-        with patch.dict(config.user_config, {"SKIP_REROLL_WARNING": True}), \
-                patch.object(config, "SHOW_OBS_REMINDER_ON_START_SCANNER", False), \
-                patch.object(config, "EVALUATION_MODE", "templates"), \
-                patch.object(threading, "Thread", FakeThread), \
-                patch.object(gui_scanner, "log_runtime_event") as runtime_log:
+        with (
+            patch.dict(config.user_config, {"SKIP_REROLL_WARNING": True}),
+            patch.object(config, "SHOW_OBS_REMINDER_ON_START_SCANNER", False),
+            patch.object(config, "EVALUATION_MODE", "templates"),
+            patch.object(threading, "Thread", FakeThread),
+            patch.object(gui_scanner, "log_runtime_event") as runtime_log,
+        ):
             scanner.toggle_main_loop()
 
         self.assertTrue(scanner.scanner_thread.started)
@@ -1119,15 +1200,20 @@ class BackgroundLoopTests(unittest.TestCase):
         scanner.is_ready_to_start = True
         run_control.is_game_window_active = lambda _process_name: True
         run_control.wait_for_game_window_focus = lambda _process_name: True
-        run_control.handle_confirmed_target_window = (
-            lambda _process_name: scanner.stop_event.set() or True
+        run_control.handle_confirmed_target_window = lambda _process_name: (
+            scanner.stop_event.set() or True
         )
 
-        with patch_everywhere("adapt_map_stats", lambda raw_stats: raw_stats), patch.object(
-            gui_scanner,
-            "evaluate_candidate",
-            lambda stats, _active, context=None: (
-                {"name": "Perfect", "color": "GREEN"} if stats["Moais"] == 4 else None
+        with (
+            patch_everywhere("adapt_map_stats", lambda raw_stats: raw_stats),
+            patch.object(
+                gui_scanner,
+                "evaluate_candidate",
+                lambda stats, _active, context=None: (
+                    {"name": "Perfect", "color": "GREEN"}
+                    if stats["Moais"] == 4
+                    else None
+                ),
             ),
         ):
             scanner.background_loop()
@@ -1169,8 +1255,8 @@ class BackgroundLoopTests(unittest.TestCase):
         scanner.is_ready_to_start = True
         run_control.is_game_window_active = lambda _process_name: True
         run_control.wait_for_game_window_focus = lambda _process_name: True
-        run_control.handle_confirmed_target_window = (
-            lambda _process_name: scanner.stop_event.set() or True
+        run_control.handle_confirmed_target_window = lambda _process_name: (
+            scanner.stop_event.set() or True
         )
 
         def evaluate(stats, _active, context=None):
@@ -1178,10 +1264,13 @@ class BackgroundLoopTests(unittest.TestCase):
             evaluations.append(stats)
             return {"name": "Recovered target", "color": "GREEN"}
 
-        with patch.object(gui_scanner, "adapt_map_stats", lambda raw: raw), patch.object(
-            gui_scanner,
-            "evaluate_candidate",
-            evaluate,
+        with (
+            patch.object(gui_scanner, "adapt_map_stats", lambda raw: raw),
+            patch.object(
+                gui_scanner,
+                "evaluate_candidate",
+                evaluate,
+            ),
         ):
             scanner.background_loop()
 
@@ -1261,15 +1350,19 @@ class BackgroundLoopTests(unittest.TestCase):
         run_control.is_game_window_active = lambda _process_name: True
         run_control.wait_for_game_window_focus = lambda _process_name: True
 
-        with patch.object(config, "STOP_SCANNING_ON_PLAYER_MOVEMENT", True), \
-                patch.object(gui_scanner, "adapt_map_stats", lambda raw: raw), \
-                patch.object(gui_scanner, "evaluate_candidate", evaluate):
+        with (
+            patch.object(config, "STOP_SCANNING_ON_PLAYER_MOVEMENT", True),
+            patch.object(gui_scanner, "adapt_map_stats", lambda raw: raw),
+            patch.object(gui_scanner, "evaluate_candidate", evaluate),
+        ):
             scanner.background_loop()
 
         self.assertEqual(observed, {"paused": True})
         self.assertEqual(restart_calls, [])
 
-    def test_player_movement_after_target_focus_wait_prevents_target_action(self) -> None:
+    def test_player_movement_after_target_focus_wait_prevents_target_action(
+        self,
+    ) -> None:
         target_actions: list[str] = []
         scanner, run_control = build_pair()
 
@@ -1301,17 +1394,19 @@ class BackgroundLoopTests(unittest.TestCase):
         scanner.is_ready_to_start = True
         run_control.is_game_window_active = lambda _process_name: True
         run_control.wait_for_game_window_focus = wait_for_focus
-        run_control.handle_confirmed_target_window = (
-            lambda _process_name: target_actions.append("target") or True
+        run_control.handle_confirmed_target_window = lambda _process_name: (
+            target_actions.append("target") or True
         )
 
-        with patch.object(config, "STOP_SCANNING_ON_PLAYER_MOVEMENT", True), \
-                patch.object(gui_scanner, "adapt_map_stats", lambda raw: raw), \
-                patch.object(
-                    gui_scanner,
-                    "evaluate_candidate",
-                    lambda _stats, _active, context=None: {"name": "Perfect"},
-                ):
+        with (
+            patch.object(config, "STOP_SCANNING_ON_PLAYER_MOVEMENT", True),
+            patch.object(gui_scanner, "adapt_map_stats", lambda raw: raw),
+            patch.object(
+                gui_scanner,
+                "evaluate_candidate",
+                lambda _stats, _active, context=None: {"name": "Perfect"},
+            ),
+        ):
             scanner.background_loop()
 
         self.assertEqual(focus_calls, 2)
@@ -1320,7 +1415,9 @@ class BackgroundLoopTests(unittest.TestCase):
     def test_background_loop_reconnects_new_game_pid_and_keeps_scanning(self) -> None:
         class FakeClient:
             def __init__(self, process_id: int) -> None:
-                self.memory = SimpleNamespace(_pm=SimpleNamespace(process_id=process_id))
+                self.memory = SimpleNamespace(
+                    _pm=SimpleNamespace(process_id=process_id)
+                )
                 self.closed = False
                 self.wait_calls = 0
 
@@ -1346,20 +1443,25 @@ class BackgroundLoopTests(unittest.TestCase):
         run_control.is_game_window_active = lambda _process_name: True
         run_control.wait_for_game_window_focus = lambda _process_name: True
         run_control.foreground_game_process_id = lambda _process_name: 5678
-        run_control.handle_confirmed_target_window = (
-            lambda _process_name: scanner.stop_event.set() or True
+        run_control.handle_confirmed_target_window = lambda _process_name: (
+            scanner.stop_event.set() or True
         )
 
         def create_client(*, process_name: str) -> FakeClient:
             created_clients.append(process_name)
             return new_client
 
-        with patch.object(gui_scanner, "GameDataClient", create_client), patch.object(
-            gui_scanner, "adapt_map_stats", lambda raw_stats: raw_stats
-        ), patch.object(
-            gui_scanner,
-            "evaluate_candidate",
-            lambda _stats, _active, context=None: {"name": "Perfect", "color": "GREEN"},
+        with (
+            patch.object(gui_scanner, "GameDataClient", create_client),
+            patch.object(gui_scanner, "adapt_map_stats", lambda raw_stats: raw_stats),
+            patch.object(
+                gui_scanner,
+                "evaluate_candidate",
+                lambda _stats, _active, context=None: {
+                    "name": "Perfect",
+                    "color": "GREEN",
+                },
+            ),
         ):
             scanner.background_loop()
 
@@ -1406,7 +1508,9 @@ class BackgroundLoopTests(unittest.TestCase):
     def test_reroll_map_returns_false_when_scan_is_paused(self) -> None:
         scanner, run_control = build_pair(
             provider=SimpleNamespace(
-                restart_run=lambda: self.fail("restart_run should not be called while paused"),
+                restart_run=lambda: self.fail(
+                    "restart_run should not be called while paused"
+                ),
             ),
         )
         scanner.client = None
@@ -1420,7 +1524,9 @@ class BackgroundLoopTests(unittest.TestCase):
         self.assertFalse(scanner.reroll_map())
 
         messages = [str(message) for message, _tag in scanner.calls["log"]]
-        self.assertTrue(any("Run control provider is not available" in m for m in messages))
+        self.assertTrue(
+            any("Run control provider is not available" in m for m in messages)
+        )
 
     def test_the_lost_connection_branch_clears_scan_event_and_the_client(self) -> None:
         """The three exceptional branches differ only *inside* the loop.
@@ -1451,26 +1557,33 @@ class BackgroundLoopTests(unittest.TestCase):
         run_control.wait_for_game_window_focus = lambda _process_name: True
 
         def reconnect(*, process_name):
-            sampled.update({
-                "is_running": scanner.is_running,
-                "is_ready_to_start": scanner.is_ready_to_start,
-                "scan_event": scanner.scan_event.is_set(),
-                "client_is_none": scanner.client is None,
-            })
+            sampled.update(
+                {
+                    "is_running": scanner.is_running,
+                    "is_ready_to_start": scanner.is_ready_to_start,
+                    "scan_event": scanner.scan_event.is_set(),
+                    "client_is_none": scanner.client is None,
+                }
+            )
             scanner.stop_event.set()
             scanner.scan_event.set()
             return FakeClient()
 
-        with patch.object(gui_scanner, "GameDataClient", reconnect), \
-                patch.object(time, "sleep", lambda _seconds: None):
+        with (
+            patch.object(gui_scanner, "GameDataClient", reconnect),
+            patch.object(time, "sleep", lambda _seconds: None),
+        ):
             scanner.background_loop()
 
-        self.assertEqual(sampled, {
-            "is_running": False,
-            "is_ready_to_start": False,
-            "scan_event": False,
-            "client_is_none": True,
-        })
+        self.assertEqual(
+            sampled,
+            {
+                "is_running": False,
+                "is_ready_to_start": False,
+                "scan_event": False,
+                "client_is_none": True,
+            },
+        )
         self.assertEqual(closes, ["closed", "closed"])
 
 
@@ -1478,7 +1591,9 @@ class SessionStatsTests(unittest.TestCase):
     def test_log_reroll_stats_tracks_session_and_persistent_totals(self) -> None:
         refreshed: list[int] = []
         scanner = build_scanner(
-            refresh_session_stats_snapshot=lambda: refreshed.append(scanner.session_rerolls),
+            refresh_session_stats_snapshot=lambda: refreshed.append(
+                scanner.session_rerolls
+            ),
         )
         scanner.session_rerolls = 3
         scanner.template_stats = {"Perfect": {"rerolls_since_last": 2, "history": []}}
@@ -1488,7 +1603,9 @@ class SessionStatsTests(unittest.TestCase):
                 scanner.log_reroll_stats()
 
                 self.assertEqual(scanner.session_rerolls, 4)
-                self.assertEqual(scanner.template_stats["Perfect"]["rerolls_since_last"], 3)
+                self.assertEqual(
+                    scanner.template_stats["Perfect"]["rerolls_since_last"], 3
+                )
                 self.assertEqual(config.TOTAL_REROLLS, 11)
                 self.assertEqual(config.user_config["TOTAL_REROLLS"], 11)
                 save_config.assert_not_called()
@@ -1502,9 +1619,7 @@ class SessionStatsTests(unittest.TestCase):
         scanner = build_scanner()
         scanner.session_rerolls = 8
         scanner.active_templates = ["Alpha"]
-        scanner.template_stats = {
-            "Alpha": {"rerolls_since_last": 3, "history": [2, 4]}
-        }
+        scanner.template_stats = {"Alpha": {"rerolls_since_last": 3, "history": [2, 4]}}
         delivered = {}
 
         class View:
@@ -1524,10 +1639,13 @@ class SessionStatsTests(unittest.TestCase):
                 delivered["averages"] = rows
 
         scanner._stats_view = View()
-        with patch.object(config, "EVALUATION_MODE", "templates"), patch.object(
-            config,
-            "TEMPLATES",
-            [{"name": "Alpha", "color": "BLUE"}],
+        with (
+            patch.object(config, "EVALUATION_MODE", "templates"),
+            patch.object(
+                config,
+                "TEMPLATES",
+                [{"name": "Alpha", "color": "BLUE"}],
+            ),
         ):
             scanner.refresh_stats_ui()
 
@@ -1693,10 +1811,18 @@ class BoundaryStructureTests(unittest.TestCase):
 
     FORBIDDEN = {
         # `gui_layout`'s widgets -- step 26's, reached through ports.
-        "window", "tabview", "log_box", "status_label", "toggle_btn",
+        "window",
+        "tabview",
+        "log_box",
+        "status_label",
+        "toggle_btn",
         # other owners' runtimes, reached by `MegabonkApp.on_closing` instead.
-        "player_stats_vod_recorder", "twitch_auth_thread", "coordinator",
-        "close_overlay_server", "stop_in_game_overlay", "stop_twitch_bot",
+        "player_stats_vod_recorder",
+        "twitch_auth_thread",
+        "coordinator",
+        "close_overlay_server",
+        "stop_in_game_overlay",
+        "stop_twitch_bot",
         "destroy",
         # `_invoker` and `_is_shutting_down` are deliberately absent: both are
         # ports (`can_log`, `is_shutting_down`) stored under names that read
@@ -1737,7 +1863,10 @@ class BoundaryStructureTests(unittest.TestCase):
                 )
 
     def test_the_two_mixins_are_gone(self) -> None:
-        for module, gone in ((gui_scanner, "ScannerMixin"), (gui_run_control, "RunControlMixin")):
+        for module, gone in (
+            (gui_scanner, "ScannerMixin"),
+            (gui_run_control, "RunControlMixin"),
+        ):
             self.assertFalse(
                 hasattr(module, gone),
                 f"{gone} is back; step 25 converted it into a component",
@@ -1769,7 +1898,8 @@ class BoundaryStructureTests(unittest.TestCase):
             """
             tree = ast.parse(inspect.getsource(module))
             tree = next(
-                node for node in tree.body
+                node
+                for node in tree.body
                 if isinstance(node, ast.ClassDef) and node.name == class_name
             )
             for node in ast.walk(tree):

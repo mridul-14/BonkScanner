@@ -59,7 +59,9 @@ class DamageSourceCardReuseTests(unittest.TestCase):
         return [label.text() for label in card.findChildren(QLabel)]
 
     def test_a_card_is_created_per_source(self) -> None:
-        self.view.display_damage_sources((_source("katana", 30.0), _source("orb", 10.0)))
+        self.view.display_damage_sources(
+            (_source("katana", 30.0), _source("orb", 10.0))
+        )
 
         self.assertEqual(len(self.cards), 2)
         self.assertIn("Katana", self._texts(self.cards[0]))
@@ -67,10 +69,14 @@ class DamageSourceCardReuseTests(unittest.TestCase):
 
     def test_the_same_widgets_survive_a_rerender(self) -> None:
         """The point of the change: no teardown between frames."""
-        self.view.display_damage_sources((_source("katana", 30.0), _source("orb", 10.0)))
+        self.view.display_damage_sources(
+            (_source("katana", 30.0), _source("orb", 10.0))
+        )
         first, second = self.cards
 
-        self.view.display_damage_sources((_source("katana", 90.0), _source("orb", 20.0)))
+        self.view.display_damage_sources(
+            (_source("katana", 90.0), _source("orb", 20.0))
+        )
 
         self.assertIs(self.cards[0], first)
         self.assertIs(self.cards[1], second)
@@ -86,7 +92,9 @@ class DamageSourceCardReuseTests(unittest.TestCase):
 
     def test_the_pool_grows_when_a_source_appears(self) -> None:
         self.view.display_damage_sources((_source("katana", 30.0),))
-        self.view.display_damage_sources((_source("katana", 30.0), _source("orb", 10.0)))
+        self.view.display_damage_sources(
+            (_source("katana", 30.0), _source("orb", 10.0))
+        )
 
         self.assertEqual(len(self.cards), 2)
         self.assertIn("Orb", self._texts(self.cards[1]))
@@ -105,7 +113,9 @@ class DamageSourceCardReuseTests(unittest.TestCase):
 
     def test_ranks_follow_the_new_order(self) -> None:
         """Sources are sorted by damage, so reuse must rewrite the rank too."""
-        self.view.display_damage_sources((_source("katana", 30.0), _source("orb", 10.0)))
+        self.view.display_damage_sources(
+            (_source("katana", 30.0), _source("orb", 10.0))
+        )
         self.view.display_damage_sources((_source("katana", 5.0), _source("orb", 90.0)))
 
         self.assertIn("Orb", self._texts(self.cards[0]))
@@ -133,13 +143,19 @@ class DamageSourceCardReuseTests(unittest.TestCase):
         self.assertIn("Bow", self._texts(self.cards[0]))
 
     def test_the_total_line_follows_the_sources(self) -> None:
-        self.view.display_damage_sources((_source("katana", 30.0), _source("orb", 10.0)))
+        self.view.display_damage_sources(
+            (_source("katana", 30.0), _source("orb", 10.0))
+        )
         summary = self.view._damage_sources_summary
-        self.assertIn("2 sources", [label.text() for label in summary.findChildren(QLabel)])
+        self.assertIn(
+            "2 sources", [label.text() for label in summary.findChildren(QLabel)]
+        )
 
         self.view.display_damage_sources((_source("katana", 30.0),))
 
-        self.assertIn("1 source", [label.text() for label in summary.findChildren(QLabel)])
+        self.assertIn(
+            "1 source", [label.text() for label in summary.findChildren(QLabel)]
+        )
 
     def test_an_unknown_damage_is_not_displayed_or_totalled_as_zero(self) -> None:
         self.view.display_damage_sources(

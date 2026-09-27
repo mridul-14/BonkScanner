@@ -46,7 +46,9 @@ def test_templates_panel_builds_approved_single_line_rows(qtbot) -> None:
     assert all("\n" not in row.conditions_label.text() for row in rows)
 
 
-def test_templates_panel_reports_a_capped_content_width_and_elides_overflow(qtbot) -> None:
+def test_templates_panel_reports_a_capped_content_width_and_elides_overflow(
+    qtbot,
+) -> None:
     tabs = QTabWidget()
     qtbot.addWidget(tabs)
     panel = build_templates_panel(left_tabview=tabs)
@@ -114,8 +116,8 @@ def test_drag_source_becomes_an_empty_placeholder_until_drag_finishes(qtbot) -> 
     content = (row.drag_handle, row.checkbox, row.name_label, row.conditions_label)
     hidden_during_drag = []
     with patch("ui.tabs.templates.panel.QDrag") as drag_type:
-        drag_type.return_value.exec.side_effect = lambda _action: hidden_during_drag.append(
-            [widget.isHidden() for widget in content]
+        drag_type.return_value.exec.side_effect = lambda _action: (
+            hidden_during_drag.append([widget.isHidden() for widget in content])
         )
         row.start_drag()
 
@@ -308,7 +310,9 @@ def test_delete_dialog_can_remove_a_builtin_and_cleans_active_names(qtbot) -> No
     save_config.assert_called_once_with(config.user_config)
 
 
-def test_restore_adds_only_missing_builtins_to_the_end_and_keeps_them_inactive(qtbot) -> None:
+def test_restore_adds_only_missing_builtins_to_the_end_and_keeps_them_inactive(
+    qtbot,
+) -> None:
     custom = {"id": 9, "name": "Custom", "color": "#123456"}
     existing_builtin = dict(config.DEFAULT_TEMPLATES[2])
     templates = [custom, existing_builtin]

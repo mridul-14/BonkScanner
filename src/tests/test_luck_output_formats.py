@@ -8,6 +8,7 @@ unavailable state dropping half a line instead of filling it with dashes.
 Kept in one module rather than split per surface because the point of most of
 them is that the surfaces agree.
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401  -- puts `src/` on sys.path regardless of collection order
@@ -47,7 +48,8 @@ def _loot(
 ) -> LootStatsSnapshot:
     return LootStatsSnapshot(
         actual=actual or {"LEGENDARY": 116, "RARE": 78, "UNCOMMON": 38, "COMMON": 45},
-        expected=expected or {"LEGENDARY": 118.4, "RARE": 78.0, "UNCOMMON": 36.2, "COMMON": 45.0},
+        expected=expected
+        or {"LEGENDARY": 118.4, "RARE": 78.0, "UNCOMMON": 36.2, "COMMON": 45.0},
         acquisitions=277,
         map_chest_opens=77,
         available=available,
@@ -104,7 +106,7 @@ class TwitchLuckLineTests(unittest.TestCase):
         line = format_luck(_runtime(luck=3.0), _template)
 
         self.assertTrue(line.startswith("Luck: "))
-        groups = line[len("Luck: "):].split(" | ")
+        groups = line[len("Luck: ") :].split(" | ")
         self.assertEqual(4, len(groups))
         for group in groups:
             self.assertIn(" (exp ", group)
@@ -121,7 +123,7 @@ class TwitchLuckLineTests(unittest.TestCase):
         table instead of exposing internal memory keys.
         """
         line = format_luck(_runtime(), _template)
-        names = [group.split()[0] for group in line[len("Luck: "):].split(" | ")]
+        names = [group.split()[0] for group in line[len("Luck: ") :].split(" | ")]
 
         self.assertEqual(["Legendary", "Epic", "Rare", "Common"], names)
         # The two schemes agree on the outer tiers and disagree on both middle
@@ -159,7 +161,7 @@ class TwitchLuckLineTests(unittest.TestCase):
         self.assertNotIn("exp", line)
         self.assertNotIn("--", line)
         self.assertNotIn("116", line)
-        groups = line[len("Luck: "):].split(" | ")
+        groups = line[len("Luck: ") :].split(" | ")
         self.assertEqual(4, len(groups))
         for group in groups:
             self.assertTrue(group.endswith("%"), group)
@@ -211,7 +213,9 @@ class ExpectedFrameLayoutTests(unittest.TestCase):
         for layout in ("column", "row"):
             with self.subTest(layout=layout):
                 cells = self._cells(
-                    build_luck_expected_overlay_html(self.ACTUAL, self.EXPECTED, layout=layout)
+                    build_luck_expected_overlay_html(
+                        self.ACTUAL, self.EXPECTED, layout=layout
+                    )
                 )
                 self.assertEqual(4, len(cells))
                 for cell, tier in zip(cells, LUCK_RARITY_ORDER):
@@ -219,7 +223,9 @@ class ExpectedFrameLayoutTests(unittest.TestCase):
                     self.assertIn(str(self.ACTUAL[tier]), cell)
 
     def test_column_carries_a_dot_and_row_does_not(self) -> None:
-        column = build_luck_expected_overlay_html(self.ACTUAL, self.EXPECTED, layout="column")
+        column = build_luck_expected_overlay_html(
+            self.ACTUAL, self.EXPECTED, layout="column"
+        )
         row = build_luck_expected_overlay_html(self.ACTUAL, self.EXPECTED, layout="row")
 
         self.assertEqual(4, column.count("&#9679;"))
@@ -259,7 +265,14 @@ class ExpectedFrameLayoutTests(unittest.TestCase):
             html = build_luck_expected_overlay_html(
                 self.ACTUAL, self.EXPECTED, layout=layout
             )
-            for word in ("Legendary", "Epic", "Rare", "Common", "LEGENDARY", "UNCOMMON"):
+            for word in (
+                "Legendary",
+                "Epic",
+                "Rare",
+                "Common",
+                "LEGENDARY",
+                "UNCOMMON",
+            ):
                 self.assertNotIn(word, html)
 
     def test_the_tenths_rule_reaches_the_overlay_too(self) -> None:
@@ -287,19 +300,26 @@ class LuckExpectedStatusTextTests(unittest.TestCase):
 
     def test_a_measurable_run_draws_the_figures(self) -> None:
         self.assertEqual(
-            "", resolve_luck_expected_status_text(available=True, availability_decided=True)
+            "",
+            resolve_luck_expected_status_text(
+                available=True, availability_decided=True
+            ),
         )
 
     def test_decided_unavailable_names_the_missed_start(self) -> None:
         self.assertEqual(
             LUCK_EXPECTED_UNAVAILABLE_MESSAGE,
-            resolve_luck_expected_status_text(available=False, availability_decided=True),
+            resolve_luck_expected_status_text(
+                available=False, availability_decided=True
+            ),
         )
 
     def test_undecided_says_it_is_still_waiting_not_that_it_failed(self) -> None:
         self.assertEqual(
             LUCK_EXPECTED_PENDING_MESSAGE,
-            resolve_luck_expected_status_text(available=False, availability_decided=False),
+            resolve_luck_expected_status_text(
+                available=False, availability_decided=False
+            ),
         )
 
 
@@ -315,7 +335,10 @@ class ObsLuckPayloadTests(unittest.TestCase):
     def _payload(self, *, config_widget: dict | None = None, **runtime_kwargs) -> dict:
         overlay_config = {
             "widgets": [
-                dict({"id": "luck_rarity", "enabled": True, "order": 10}, **(config_widget or {}))
+                dict(
+                    {"id": "luck_rarity", "enabled": True, "order": 10},
+                    **(config_widget or {}),
+                )
             ]
         }
         return build_overlay_state_from_snapshot(
@@ -336,11 +359,18 @@ class ObsLuckPayloadTests(unittest.TestCase):
             [tier["label"] for tier in payload["tiers"]],
         )
 
-    def test_the_figures_are_formatted_by_the_same_rules_as_everywhere_else(self) -> None:
+    def test_the_figures_are_formatted_by_the_same_rules_as_everywhere_else(
+        self,
+    ) -> None:
         payload = self._payload(
             loot=_loot(
                 actual={"LEGENDARY": 1, "RARE": 0, "UNCOMMON": 3, "COMMON": 7},
-                expected={"LEGENDARY": 0.8, "RARE": 0.4, "UNCOMMON": 2.6, "COMMON": 47.2},
+                expected={
+                    "LEGENDARY": 0.8,
+                    "RARE": 0.4,
+                    "UNCOMMON": 2.6,
+                    "COMMON": 47.2,
+                },
             )
         )
         by_tier = {tier["rarity"]: tier for tier in payload["tiers"]}
@@ -352,7 +382,11 @@ class ObsLuckPayloadTests(unittest.TestCase):
     def test_both_toggles_come_from_the_obs_widgets_own_config(self) -> None:
         """Not mirrored from the in-game widget: "show it to chat but not to me"."""
         payload = self._payload(
-            config_widget={"show_bar": False, "show_expected": True, "expected_layout": "row"}
+            config_widget={
+                "show_bar": False,
+                "show_expected": True,
+                "expected_layout": "row",
+            }
         )
 
         self.assertFalse(payload["show_bar"])
@@ -366,7 +400,9 @@ class ObsLuckPayloadTests(unittest.TestCase):
 
         self.assertFalse(payload["available"])
         self.assertFalse(payload["show_expected"])
-        self.assertTrue(all(tier["chance_text"].endswith("%") for tier in payload["tiers"]))
+        self.assertTrue(
+            all(tier["chance_text"].endswith("%") for tier in payload["tiers"])
+        )
 
     def test_a_decided_unmeasurable_run_carries_the_missed_start_message(self) -> None:
         payload = self._payload(
@@ -386,7 +422,9 @@ class ObsLuckPayloadTests(unittest.TestCase):
 
         self.assertEqual(LUCK_EXPECTED_PENDING_MESSAGE, payload["status_message"])
 
-    def test_the_toggle_being_off_carries_no_message_even_when_unmeasurable(self) -> None:
+    def test_the_toggle_being_off_carries_no_message_even_when_unmeasurable(
+        self,
+    ) -> None:
         """The block is hidden by the user's own choice here, not by the run --
         drawing a message would be answering a question nobody asked."""
         payload = self._payload(
@@ -403,7 +441,8 @@ class ObsLuckPayloadTests(unittest.TestCase):
 
     def test_an_unknown_layout_in_the_config_falls_back_to_column(self) -> None:
         self.assertEqual(
-            "column", self._payload(config_widget={"expected_layout": "grid"})["expected_layout"]
+            "column",
+            self._payload(config_widget={"expected_layout": "grid"})["expected_layout"],
         )
 
     def test_the_row_layout_drops_the_tenths_and_column_keeps_them(self) -> None:
@@ -471,7 +510,9 @@ class InGameOverlayLuckWiringTests(unittest.TestCase):
             def set_probabilities(self, probabilities, *, show_bar):
                 pass
 
-            def set_expected(self, actual, expected, *, show_expected, layout, status_message=None):
+            def set_expected(
+                self, actual, expected, *, show_expected, layout, status_message=None
+            ):
                 calls.append(
                     {
                         "actual": actual,
@@ -494,9 +535,7 @@ class InGameOverlayLuckWiringTests(unittest.TestCase):
                 }
             }
         }
-        projection = SimpleNamespace(
-            latest_snapshot=None, luck=3.0, loot_stats=_loot()
-        )
+        projection = SimpleNamespace(latest_snapshot=None, luck=3.0, loot_stats=_loot())
 
         with patch.object(config, "IN_GAME_OVERLAY", overlay_config):
             InGameOverlay._refresh_in_game_overlay_luck_widget(owner, projection)
@@ -505,7 +544,9 @@ class InGameOverlayLuckWiringTests(unittest.TestCase):
         self.assertTrue(calls[0]["show_expected"], "the frame must actually turn on")
         self.assertEqual(116, calls[0]["actual"]["LEGENDARY"])
         self.assertEqual("row", calls[0]["layout"])
-        self.assertFalse(calls[0]["status_message"], "a measurable run has nothing to say")
+        self.assertFalse(
+            calls[0]["status_message"], "a measurable run has nothing to say"
+        )
 
     def test_an_unmeasurable_run_still_reaches_the_widget_switched_off(self) -> None:
         from gui_in_game_overlay import InGameOverlay
@@ -516,7 +557,9 @@ class InGameOverlayLuckWiringTests(unittest.TestCase):
             def set_probabilities(self, probabilities, *, show_bar):
                 pass
 
-            def set_expected(self, actual, expected, *, show_expected, layout, status_message=None):
+            def set_expected(
+                self, actual, expected, *, show_expected, layout, status_message=None
+            ):
                 calls.append((show_expected, status_message))
 
         owner = SimpleNamespace(
@@ -547,7 +590,9 @@ class InGameOverlayLuckWiringTests(unittest.TestCase):
             def set_probabilities(self, probabilities, *, show_bar):
                 pass
 
-            def set_expected(self, actual, expected, *, show_expected, layout, status_message=None):
+            def set_expected(
+                self, actual, expected, *, show_expected, layout, status_message=None
+            ):
                 calls.append((show_expected, status_message))
 
         owner = SimpleNamespace(
@@ -576,7 +621,9 @@ class InGameOverlayLuckWiringTests(unittest.TestCase):
             def set_probabilities(self, probabilities, *, show_bar):
                 pass
 
-            def set_expected(self, actual, expected, *, show_expected, layout, status_message=None):
+            def set_expected(
+                self, actual, expected, *, show_expected, layout, status_message=None
+            ):
                 calls.append((show_expected, status_message))
 
         owner = SimpleNamespace(

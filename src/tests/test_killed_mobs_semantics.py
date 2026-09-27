@@ -15,6 +15,7 @@ type info, static fields, dictionary or entries array, or an invalid entry count
 single "does it raise" test would pass just as well if the semantic change had
 never been made.
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401
@@ -85,7 +86,9 @@ class ScriptedReader:
 
     def read_mono_string(self, address: int):
         c = PlayerStatsClient
-        index = (address - (self.entries + c.DICT_ENTRY_START_OFFSET)) // c.DICT_ENTRY_SIZE
+        index = (
+            address - (self.entries + c.DICT_ENTRY_START_OFFSET)
+        ) // c.DICT_ENTRY_SIZE
         if 0 <= index < len(self.names):
             return self.names[index]
         return None

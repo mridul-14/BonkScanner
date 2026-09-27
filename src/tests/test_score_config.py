@@ -38,7 +38,9 @@ class AutomaticScoreThresholdTests(unittest.TestCase):
 
         self.assertGreater(
             config.calculate_auto_thresholds(rewarded, self.multipliers)["Perfect+"],
-            config.calculate_auto_thresholds(self.default_weights, self.multipliers)["Perfect+"],
+            config.calculate_auto_thresholds(self.default_weights, self.multipliers)[
+                "Perfect+"
+            ],
         )
 
     def test_no_positive_points_collapse_to_zero_for_ui_validation(self) -> None:

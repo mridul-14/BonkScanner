@@ -126,8 +126,9 @@ class LeftRailTests(unittest.TestCase):
             {"name": "PERFECT", "color": "YELLOW"},
         ]
 
-        with patch.object(config, "TEMPLATES", templates), patch.object(
-            config, "ACTIVE_TEMPLATES", ["PERFECT", "LIGHT"]
+        with (
+            patch.object(config, "TEMPLATES", templates),
+            patch.object(config, "ACTIVE_TEMPLATES", ["PERFECT", "LIGHT"]),
         ):
             entries = _template_rail_entries()
 
@@ -231,8 +232,8 @@ def test_collapsed_drag_hides_the_source_dot_until_drag_finishes(qtbot) -> None:
                 tile = rail._dots_holder.tiles()[0]
                 hidden_during_drag = []
                 with patch("ui.layout.QDrag") as drag_type:
-                    drag_type.return_value.exec.side_effect = (
-                        lambda _action: hidden_during_drag.append(tile.dot.isHidden())
+                    drag_type.return_value.exec.side_effect = lambda _action: (
+                        hidden_during_drag.append(tile.dot.isHidden())
                     )
                     tile.start_drag()
 

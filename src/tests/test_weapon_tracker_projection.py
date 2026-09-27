@@ -88,7 +88,9 @@ class WeaponTrackerProjectionTests(unittest.TestCase):
 
     def test_aegis_damage_includes_thorns_before_damage_multiplier(self) -> None:
         row = calculate_weapon_tracker_row(
-            _weapon(weapon_id=7, name="Aegis", values={12: 10.0}, upgrade_stat_ids=(12,)),
+            _weapon(
+                weapon_id=7, name="Aegis", values={12: 10.0}, upgrade_stat_ids=(12,)
+            ),
             _globals(),
             ("damage",),
         )
@@ -97,7 +99,9 @@ class WeaponTrackerProjectionTests(unittest.TestCase):
 
     def test_shotgun_uses_underlying_projectile_stat_projection(self) -> None:
         row = calculate_weapon_tracker_row(
-            _weapon(weapon_id=29, name="Shotgun", values={16: 2.0}, upgrade_stat_ids=(16,)),
+            _weapon(
+                weapon_id=29, name="Shotgun", values={16: 2.0}, upgrade_stat_ids=(16,)
+            ),
             _globals(**{"Projectile Count": 5.0}),
             ("projectile_count",),
         )
@@ -191,7 +195,9 @@ class WeaponTrackerProjectionTests(unittest.TestCase):
             ("damage", "projectile_count", "crit_chance"),
         )
 
-        self.assertEqual([metric.key for metric in row.metrics], ["damage", "crit_chance"])
+        self.assertEqual(
+            [metric.key for metric in row.metrics], ["damage", "crit_chance"]
+        )
         self.assertEqual(row.metrics[0].value, 80.0)
 
     def test_weapon_without_matching_metrics_is_hidden(self) -> None:
@@ -206,8 +212,15 @@ class WeaponTrackerProjectionTests(unittest.TestCase):
     def test_inventory_filter_preserves_reader_order(self) -> None:
         rows = calculate_weapon_tracker_rows(
             (
-                _weapon(weapon_id=29, name="Shotgun", values={12: 1.0}, upgrade_stat_ids=(12,)),
-                _weapon(weapon_id=7, name="Aegis", values={12: 1.0}, upgrade_stat_ids=(12,)),
+                _weapon(
+                    weapon_id=29,
+                    name="Shotgun",
+                    values={12: 1.0},
+                    upgrade_stat_ids=(12,),
+                ),
+                _weapon(
+                    weapon_id=7, name="Aegis", values={12: 1.0}, upgrade_stat_ids=(12,)
+                ),
             ),
             _globals(),
             ("damage",),

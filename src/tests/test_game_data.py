@@ -6,7 +6,13 @@ import time
 import unittest
 from unittest.mock import patch
 
-from core.game_state import MapGenerationState, MapStat, RuntimeGameMode, RuntimeGameState, StatValue
+from core.game_state import (
+    MapGenerationState,
+    MapStat,
+    RuntimeGameMode,
+    RuntimeGameState,
+    StatValue,
+)
 from infra.memory.game_data_client import GameDataClient
 from infra.memory.reader import MemoryReadError
 
@@ -123,45 +129,65 @@ def build_runtime_state_memory(
         loading_screen_type_info: loading_screen_class,
         player_movement_type_info: player_movement_class,
         music_controller_type_info: music_controller_class,
-        game_manager_class + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: game_manager_static,
-        map_controller_class + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: map_controller_static,
+        game_manager_class
+        + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: game_manager_static,
+        map_controller_class
+        + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: map_controller_static,
         my_time_class + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: my_time_static,
-        loading_screen_class + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: loading_screen_static,
-        player_movement_class + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: player_movement_static,
-        music_controller_class + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: music_controller_static,
-        game_manager_static + GameDataClient.GAME_MANAGER_INSTANCE_OFFSET: game_manager_instance,
-        map_controller_static + GameDataClient.MAP_CONTROLLER_CURRENT_MAP_OFFSET: current_map,
-        map_controller_static + GameDataClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: current_stage,
-        map_controller_static + GameDataClient.MAP_CONTROLLER_RUN_CONFIG_OFFSET: run_config,
-        player_movement_static + GameDataClient.PLAYER_MOVEMENT_INSTANCE_OFFSET: player_movement_instance,
-        music_controller_static + GameDataClient.MUSIC_CONTROLLER_INSTANCE_OFFSET: music_controller_instance,
+        loading_screen_class
+        + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: loading_screen_static,
+        player_movement_class
+        + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: player_movement_static,
+        music_controller_class
+        + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: music_controller_static,
+        game_manager_static
+        + GameDataClient.GAME_MANAGER_INSTANCE_OFFSET: game_manager_instance,
+        map_controller_static
+        + GameDataClient.MAP_CONTROLLER_CURRENT_MAP_OFFSET: current_map,
+        map_controller_static
+        + GameDataClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: current_stage,
+        map_controller_static
+        + GameDataClient.MAP_CONTROLLER_RUN_CONFIG_OFFSET: run_config,
+        player_movement_static
+        + GameDataClient.PLAYER_MOVEMENT_INSTANCE_OFFSET: player_movement_instance,
+        music_controller_static
+        + GameDataClient.MUSIC_CONTROLLER_INSTANCE_OFFSET: music_controller_instance,
     }
     integers = {
-        map_controller_static + GameDataClient.MAP_CONTROLLER_INDEX_OFFSET: current_stage_index,
+        map_controller_static
+        + GameDataClient.MAP_CONTROLLER_INDEX_OFFSET: current_stage_index,
     }
     if music_controller_instance:
         pointers.update(
             {
-                music_controller_instance + GameDataClient.MUSIC_CONTROLLER_MENU_TRACK_OFFSET: music_menu_track,
-                music_controller_instance + GameDataClient.MUSIC_CONTROLLER_CURRENT_TRACK_OFFSET: music_current_track,
+                music_controller_instance
+                + GameDataClient.MUSIC_CONTROLLER_MENU_TRACK_OFFSET: music_menu_track,
+                music_controller_instance
+                + GameDataClient.MUSIC_CONTROLLER_CURRENT_TRACK_OFFSET: music_current_track,
             }
         )
     bytes_ = {
         my_time_static + GameDataClient.MY_TIME_PAUSED_OFFSET: int(is_paused),
-        loading_screen_static + GameDataClient.LOADING_SCREEN_IS_LOADING_OFFSET: int(is_loading),
+        loading_screen_static + GameDataClient.LOADING_SCREEN_IS_LOADING_OFFSET: int(
+            is_loading
+        ),
     }
     if game_manager_instance:
         bytes_.update(
             {
-                game_manager_instance + GameDataClient.GAME_MANAGER_IS_PLAYING_OFFSET: int(is_playing),
-                game_manager_instance + GameDataClient.GAME_MANAGER_IS_GAME_OVER_OFFSET: int(is_game_over),
+                game_manager_instance
+                + GameDataClient.GAME_MANAGER_IS_PLAYING_OFFSET: int(is_playing),
+                game_manager_instance
+                + GameDataClient.GAME_MANAGER_IS_GAME_OVER_OFFSET: int(is_game_over),
             }
         )
     floats = {
         my_time_static + GameDataClient.MY_TIME_RUN_TIMER_OFFSET: run_timer,
         my_time_static + GameDataClient.MY_TIME_STAGE_TIMER_OFFSET: stage_timer,
-        my_time_static + GameDataClient.MY_TIME_FINAL_SWARM_TIMER_OFFSET: final_swarm_timer,
-        my_time_static + GameDataClient.MY_TIME_DIFFICULTY_TIMER_OFFSET: difficulty_timer,
+        my_time_static
+        + GameDataClient.MY_TIME_FINAL_SWARM_TIMER_OFFSET: final_swarm_timer,
+        my_time_static
+        + GameDataClient.MY_TIME_DIFFICULTY_TIMER_OFFSET: difficulty_timer,
         my_time_static + GameDataClient.MY_TIME_CRYPT_TIMER_OFFSET: crypt_timer,
     }
     return FakeMemory(
@@ -309,7 +335,9 @@ class GameDataClientTests(unittest.TestCase):
             (0x20000200, 0x20000300, 6, 42),
         )
 
-    def test_get_map_stats_rejects_a_partial_snapshot_after_entry_read_error(self) -> None:
+    def test_get_map_stats_rejects_a_partial_snapshot_after_entry_read_error(
+        self,
+    ) -> None:
         client = GameDataClient(memory=self.build_memory())
 
         with self.assertRaisesRegex(MemoryReadError, "broken i32"):
@@ -379,7 +407,9 @@ class GameDataClientTests(unittest.TestCase):
 
     def test_get_map_generation_state_reads_static_fields(self) -> None:
         base = 0x10000000
-        map_generation_type_info = base + GameDataClient.MAP_GENERATION_CONTROLLER_TYPE_INFO_OFFSET
+        map_generation_type_info = (
+            base + GameDataClient.MAP_GENERATION_CONTROLLER_TYPE_INFO_OFFSET
+        )
         map_controller_type_info = base + GameDataClient.MAP_CONTROLLER_TYPE_INFO_OFFSET
         map_generation_class = 0x20000000
         map_controller_class = 0x20000100
@@ -393,18 +423,25 @@ class GameDataClientTests(unittest.TestCase):
             pointers={
                 map_generation_type_info: map_generation_class,
                 map_controller_type_info: map_controller_class,
-                map_generation_class + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: map_generation_static,
-                map_controller_class + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: map_controller_static,
-                map_controller_static + GameDataClient.MAP_CONTROLLER_CURRENT_MAP_OFFSET: current_map,
-                map_controller_static + GameDataClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: current_stage,
+                map_generation_class
+                + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: map_generation_static,
+                map_controller_class
+                + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: map_controller_static,
+                map_controller_static
+                + GameDataClient.MAP_CONTROLLER_CURRENT_MAP_OFFSET: current_map,
+                map_controller_static
+                + GameDataClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: current_stage,
             },
             integers={
-                map_generation_static + GameDataClient.MAP_GENERATION_MAP_SEED_OFFSET: 12345,
+                map_generation_static
+                + GameDataClient.MAP_GENERATION_MAP_SEED_OFFSET: 12345,
                 map_controller_static + GameDataClient.MAP_CONTROLLER_INDEX_OFFSET: 2,
             },
             bytes_={
-                map_generation_static + GameDataClient.MAP_GENERATION_IS_GENERATING_OFFSET: 1,
-                map_controller_static + GameDataClient.MAP_CONTROLLER_RESETING_OFFSET: 1,
+                map_generation_static
+                + GameDataClient.MAP_GENERATION_IS_GENERATING_OFFSET: 1,
+                map_controller_static
+                + GameDataClient.MAP_CONTROLLER_RESETING_OFFSET: 1,
             },
         )
         client = GameDataClient(memory=memory)
@@ -421,7 +458,9 @@ class GameDataClientTests(unittest.TestCase):
             ),
         )
 
-    def test_get_map_generation_state_reports_unreadable_stage_index_as_none(self) -> None:
+    def test_get_map_generation_state_reports_unreadable_stage_index_as_none(
+        self,
+    ) -> None:
         """The split guard must be able to tell "index is 0" from "index unknown".
 
         0 is a real stage on every map, and on Graveyard it is the only one, so
@@ -436,8 +475,10 @@ class GameDataClientTests(unittest.TestCase):
             module_base=base,
             pointers={
                 map_controller_type_info: map_controller_class,
-                map_controller_class + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: map_controller_static,
-                map_controller_static + GameDataClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: 0x40000100,
+                map_controller_class
+                + GameDataClient.CLASS_STATIC_FIELDS_OFFSET: map_controller_static,
+                map_controller_static
+                + GameDataClient.MAP_CONTROLLER_CURRENT_STAGE_OFFSET: 0x40000100,
             },
             # No MAP_CONTROLLER_INDEX_OFFSET entry: the read fails.
         )
@@ -529,7 +570,9 @@ class GameDataClientTests(unittest.TestCase):
         self.assertFalse(state.is_main_menu)
         self.assertTrue(state.is_paused)
 
-    def test_runtime_activity_state_reuses_static_paths_and_reads_dynamic_flags(self) -> None:
+    def test_runtime_activity_state_reuses_static_paths_and_reads_dynamic_flags(
+        self,
+    ) -> None:
         memory = build_runtime_state_memory(
             game_manager_instance=0x40000000,
             is_playing=True,
@@ -545,11 +588,15 @@ class GameDataClientTests(unittest.TestCase):
         memory.module_offset = count_module_offset
         client = GameDataClient(memory=memory)
 
-        self.assertEqual(client.get_runtime_activity_state().mode, RuntimeGameMode.IN_GAME)
+        self.assertEqual(
+            client.get_runtime_activity_state().mode, RuntimeGameMode.IN_GAME
+        )
         self.assertEqual(len(module_offsets), 5)
 
         memory.bytes[0x40000000 + GameDataClient.GAME_MANAGER_IS_GAME_OVER_OFFSET] = 1
-        self.assertEqual(client.get_runtime_activity_state().mode, RuntimeGameMode.GAME_OVER)
+        self.assertEqual(
+            client.get_runtime_activity_state().mode, RuntimeGameMode.GAME_OVER
+        )
         self.assertEqual(len(module_offsets), 5)
 
     def test_get_runtime_game_state_leaves_game_over_unknown(self) -> None:
@@ -566,7 +613,9 @@ class GameDataClientTests(unittest.TestCase):
         self.assertEqual(state.mode, RuntimeGameMode.GAME_OVER)
         self.assertTrue(state.is_game_over_run)
 
-    def test_get_runtime_game_state_detects_manual_menu_after_game_manager_survives(self) -> None:
+    def test_get_runtime_game_state_detects_manual_menu_after_game_manager_survives(
+        self,
+    ) -> None:
         memory = build_runtime_state_memory(
             game_manager_instance=0x40000000,
             is_playing=True,
@@ -618,7 +667,9 @@ class GameDataClientTests(unittest.TestCase):
         )
 
         self.assertEqual(
-            client.wait_for_map_ready(previous_seed=1, timeout=1.0, poll_interval=0.001),
+            client.wait_for_map_ready(
+                previous_seed=1, timeout=1.0, poll_interval=0.001
+            ),
             stable_stats,
         )
 
@@ -637,7 +688,9 @@ class GameDataClientTests(unittest.TestCase):
         )
 
         self.assertEqual(
-            client.wait_for_map_ready(previous_seed=1, timeout=1.0, poll_interval=0.001),
+            client.wait_for_map_ready(
+                previous_seed=1, timeout=1.0, poll_interval=0.001
+            ),
             stable_stats,
         )
 
@@ -671,7 +724,9 @@ class GameDataClientTests(unittest.TestCase):
         self.assertEqual(client.stat_reads, 3)
         self.assertEqual(client.last_ready_state, ready_state)
 
-    def test_wait_for_map_ready_requires_the_dictionary_revision_to_stabilize(self) -> None:
+    def test_wait_for_map_ready_requires_the_dictionary_revision_to_stabilize(
+        self,
+    ) -> None:
         ready_state = MapGenerationState(
             is_generating=False,
             map_seed=2,
@@ -774,7 +829,9 @@ class GameDataClientTests(unittest.TestCase):
         self.assertEqual(client.stat_reads, 4)
         self.assertEqual(client._last_accepted_activity_revision, new_revision)
 
-    def test_wait_for_map_ready_allows_the_current_revision_on_a_first_scan(self) -> None:
+    def test_wait_for_map_ready_allows_the_current_revision_on_a_first_scan(
+        self,
+    ) -> None:
         ready_state = MapGenerationState(
             is_generating=False,
             map_seed=2,
@@ -872,7 +929,9 @@ class GameDataClientTests(unittest.TestCase):
             )
         self.assertEqual(client.stat_reads, 6)
 
-    def test_wait_for_map_ready_stabilizes_optional_bald_heads_before_returning(self) -> None:
+    def test_wait_for_map_ready_stabilizes_optional_bald_heads_before_returning(
+        self,
+    ) -> None:
         ready_state = MapGenerationState(
             is_generating=False,
             map_seed=2,
@@ -917,11 +976,15 @@ class GameDataClientTests(unittest.TestCase):
         )
 
         self.assertEqual(
-            client.wait_for_map_ready(previous_seed=1, timeout=1.0, poll_interval=0.001),
+            client.wait_for_map_ready(
+                previous_seed=1, timeout=1.0, poll_interval=0.001
+            ),
             stable_stats,
         )
 
-    def test_wait_for_map_ready_treats_missing_previous_stat_as_zero_change(self) -> None:
+    def test_wait_for_map_ready_treats_missing_previous_stat_as_zero_change(
+        self,
+    ) -> None:
         ready_state = MapGenerationState(
             is_generating=False,
             map_seed=1,
@@ -946,7 +1009,9 @@ class GameDataClientTests(unittest.TestCase):
             new_stats,
         )
 
-    def test_wait_for_map_ready_does_not_treat_same_missing_stat_as_change(self) -> None:
+    def test_wait_for_map_ready_does_not_treat_same_missing_stat_as_change(
+        self,
+    ) -> None:
         ready_state = MapGenerationState(
             is_generating=False,
             map_seed=1,
@@ -971,7 +1036,9 @@ class GameDataClientTests(unittest.TestCase):
                 poll_interval=0.001,
             )
 
-    def test_wait_for_map_ready_ignores_missing_bald_heads_in_previous_stats(self) -> None:
+    def test_wait_for_map_ready_ignores_missing_bald_heads_in_previous_stats(
+        self,
+    ) -> None:
         ready_state = MapGenerationState(
             is_generating=False,
             map_seed=1,
@@ -995,7 +1062,9 @@ class GameDataClientTests(unittest.TestCase):
                 poll_interval=0.001,
             )
 
-    def test_wait_for_map_ready_can_use_previous_stats_without_state_identity(self) -> None:
+    def test_wait_for_map_ready_can_use_previous_stats_without_state_identity(
+        self,
+    ) -> None:
         ready_state = MapGenerationState(
             is_generating=False,
             map_seed=1,
@@ -1019,7 +1088,9 @@ class GameDataClientTests(unittest.TestCase):
             new_stats,
         )
 
-    def test_wait_for_map_ready_ignores_old_map_teardown_until_seed_changes(self) -> None:
+    def test_wait_for_map_ready_ignores_old_map_teardown_until_seed_changes(
+        self,
+    ) -> None:
         previous_state = MapGenerationState(
             is_generating=False,
             map_seed=1,
@@ -1059,7 +1130,9 @@ class GameDataClientTests(unittest.TestCase):
             new_stats,
         )
 
-    def test_wait_for_map_ready_detects_pointer_change_without_seed_change(self) -> None:
+    def test_wait_for_map_ready_detects_pointer_change_without_seed_change(
+        self,
+    ) -> None:
         previous_state = MapGenerationState(
             is_generating=False,
             map_seed=1,
@@ -1112,7 +1185,9 @@ class GameDataClientTests(unittest.TestCase):
                 poll_interval=0.001,
             )
 
-    def test_wait_for_map_ready_ignores_missing_seed_and_pointers_as_change(self) -> None:
+    def test_wait_for_map_ready_ignores_missing_seed_and_pointers_as_change(
+        self,
+    ) -> None:
         previous_state = MapGenerationState(
             is_generating=False,
             map_seed=1,
@@ -1149,7 +1224,9 @@ class GameDataClientTests(unittest.TestCase):
 
         start = time.monotonic()
         with self.assertRaisesRegex(TimeoutError, "Last state"):
-            client.wait_for_map_ready(previous_seed=1, timeout=0.01, poll_interval=0.001)
+            client.wait_for_map_ready(
+                previous_seed=1, timeout=0.01, poll_interval=0.001
+            )
         self.assertLess(time.monotonic() - start, 0.5)
 
 

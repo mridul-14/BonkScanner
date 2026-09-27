@@ -80,8 +80,11 @@ class RunControlTests(unittest.TestCase):
             reset_hold_duration=0.3,
         )
 
-        with self.assertRaisesRegex(RunControlError, "Keyboard restart control is unavailable"):
+        with self.assertRaisesRegex(
+            RunControlError, "Keyboard restart control is unavailable"
+        ):
             provider.restart_run()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -26,7 +26,9 @@ class ProcessMemoryTests(unittest.TestCase):
         return ProcessMemory(
             "fake.exe",
             _pm=FakePymem(payload),
-            _module_from_name=lambda _handle, _name: types.SimpleNamespace(lpBaseOfDll=0x10000000),
+            _module_from_name=lambda _handle, _name: types.SimpleNamespace(
+                lpBaseOfDll=0x10000000
+            ),
         )
 
     def test_read_mono_string_decodes_utf16(self) -> None:

@@ -29,9 +29,7 @@ class InGameOverlayRenderTests(unittest.TestCase):
         )
 
     def test_weapon_tracker_compact_is_one_row_without_level_or_heading(self) -> None:
-        html = build_weapon_tracker_overlay_html(
-            self._weapon_rows(), layout="compact"
-        )
+        html = build_weapon_tracker_overlay_html(self._weapon_rows(), layout="compact")
 
         self.assertIn("Katana", html)
         self.assertIn("DMG", html)
@@ -43,9 +41,7 @@ class InGameOverlayRenderTests(unittest.TestCase):
         self.assertEqual(html.count("<tr>"), 1)
 
     def test_weapon_tracker_detailed_shows_level_and_metric_rows(self) -> None:
-        html = build_weapon_tracker_overlay_html(
-            self._weapon_rows(), layout="detailed"
-        )
+        html = build_weapon_tracker_overlay_html(self._weapon_rows(), layout="detailed")
 
         self.assertIn("Katana", html)
         self.assertIn("Lv.4", html)
@@ -179,7 +175,9 @@ class InGameOverlayRenderTests(unittest.TestCase):
         self.assertIn("#ff4d4d", html)
         self.assertNotIn("12.5x", html)
 
-    def test_stats_overlay_caps_graveyard_difficulty_like_tier_one_stage_zero(self) -> None:
+    def test_stats_overlay_caps_graveyard_difficulty_like_tier_one_stage_zero(
+        self,
+    ) -> None:
         snapshot = SimpleNamespace(
             stats={
                 "Difficulty": SimpleNamespace(value=5.0, display_value="500%"),
@@ -283,7 +281,9 @@ class InGameOverlayRenderTests(unittest.TestCase):
         self.assertIn("Wave Active", html)
         self.assertNotIn("Wave Active:", html)
 
-    def test_event_timer_does_not_use_timeline_marker_as_map_duration_at_game_start(self) -> None:
+    def test_event_timer_does_not_use_timeline_marker_as_map_duration_at_game_start(
+        self,
+    ) -> None:
         # stage_time_seconds is a live timeline marker. At game start it may
         # contain a small/current marker, but the stage still has its full
         # 600-second event schedule ahead of it.
@@ -350,7 +350,9 @@ class InGameOverlayRenderTests(unittest.TestCase):
 
         self.assertIn("Event Timer (preview)", html)
 
-    def test_event_timer_formats_boss_warning_with_static_timestamp_for_fractional_seconds(self) -> None:
+    def test_event_timer_formats_boss_warning_with_static_timestamp_for_fractional_seconds(
+        self,
+    ) -> None:
         html = build_event_timer_overlay_html(
             0,
             170.6,
@@ -361,7 +363,9 @@ class InGameOverlayRenderTests(unittest.TestCase):
 
         self.assertIn("Boss at 7:00", html)
 
-    def test_event_timer_keeps_active_wave_duration_static_for_fractional_seconds(self) -> None:
+    def test_event_timer_keeps_active_wave_duration_static_for_fractional_seconds(
+        self,
+    ) -> None:
         html = build_event_timer_overlay_html(
             0,
             250.4,

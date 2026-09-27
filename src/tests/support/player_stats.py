@@ -50,7 +50,9 @@ class RecordingStatCardsView:
     def invalidate(self) -> None:
         self.invalidations += 1
 
-    def display_weapons(self, weapons, *, status_text: str | None = None, general_stats=None) -> None:
+    def display_weapons(
+        self, weapons, *, status_text: str | None = None, general_stats=None
+    ) -> None:
         self.weapons.append((tuple(weapons or ()), status_text))
         self.weapon_globals.append(general_stats)
 
@@ -60,7 +62,9 @@ class RecordingStatCardsView:
     def display_chaos_tome(self, chaos_tome, *, status_text: str | None = None) -> None:
         self.chaos.append((chaos_tome, status_text))
 
-    def display_charge_shrines(self, shrines, *, status_text: str | None = None, scope=None) -> None:
+    def display_charge_shrines(
+        self, shrines, *, status_text: str | None = None, scope=None
+    ) -> None:
         self.shrines.append((shrines, status_text))
 
     def display_character_passive(
@@ -68,7 +72,9 @@ class RecordingStatCardsView:
     ) -> None:
         self.character_passives.append((character_passive, status_text))
 
-    def display_damage_sources(self, damage_sources, *, status_text: str | None = None) -> None:
+    def display_damage_sources(
+        self, damage_sources, *, status_text: str | None = None
+    ) -> None:
         self.damage_sources.append((tuple(damage_sources or ()), status_text))
 
 
@@ -157,7 +163,9 @@ def build_stat_cards_view() -> tuple[StatCardsView, dict]:
         "chaos_layout": FakeCardsLayout(),
         "chaos_status_label": FakeTimelineWidget("chaos_status_label"),
         "damage_sources_layout": FakeCardsLayout(),
-        "damage_sources_status_label": FakeTimelineWidget("damage_sources_status_label"),
+        "damage_sources_status_label": FakeTimelineWidget(
+            "damage_sources_status_label"
+        ),
     }
     return StatCardsView(**widgets), widgets
 

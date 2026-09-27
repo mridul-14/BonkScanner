@@ -12,6 +12,7 @@ territory:
    before the first kill, which reaches ``core/run_summary.build_stage_summary``
    (section 12.9's required differential).
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401
@@ -220,7 +221,9 @@ class FastRunTimerTests(unittest.TestCase):
         observed = []
         for timer in (11.0, 12.0, 13.0):
             tracker.update_fast_run_timer(timer)
-            observed.append(tracker._fast_stage_summary_snapshot_unlocked().game_time_seconds)
+            observed.append(
+                tracker._fast_stage_summary_snapshot_unlocked().game_time_seconds
+            )
 
         self.assertEqual(observed, [11.0, 12.0, 13.0])
         self.assertEqual(len(tracker._recent_kills_history), 0)
@@ -257,7 +260,9 @@ class CombatTaskIndependentPublicationTests(unittest.TestCase):
         world.tracker.track_kills = lambda t, k: world.tracked_kills.append((t, k))
         return service, world
 
-    def test_a_genuine_kills_failure_publishes_the_timer_and_withholds_kps(self) -> None:
+    def test_a_genuine_kills_failure_publishes_the_timer_and_withholds_kps(
+        self,
+    ) -> None:
         """A *structural* failure, not the lazy absence of the "kills" entry --
         section 12.1 explicitly supersedes using that absence as a failure
         fixture, because after this slice it is the value zero."""
@@ -298,11 +303,13 @@ class CombatTaskIndependentPublicationTests(unittest.TestCase):
         )
         # Scripted so the group span exceeds the accepted limit.
         ticks = iter([0.0, 0.0, KPS_GROUP_SPAN_LIMIT_SECONDS * 3] + [10.0] * 20)
-        context = RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: next(ticks))
+        context = RefreshTickContext(
+            pass_id=1, started_at=0.0, clock=lambda: next(ticks)
+        )
 
         feature_failures = []
-        world.tracker.mark_feature_failed = (
-            lambda feature, error: feature_failures.append((feature, error))
+        world.tracker.mark_feature_failed = lambda feature, error: (
+            feature_failures.append((feature, error))
         )
 
         self.assertFalse(service._refresh_combat_metrics_task(context))
@@ -343,7 +350,9 @@ class CombatTaskIndependentPublicationTests(unittest.TestCase):
         # pair of its own. The group span must cover the *group's* two members
         # and nothing else -- run_timer [1.02, 1.04], mob_kills [1.04, 1.06].
         ticks = iter([1.0, 1.01, 1.02, 1.04, 1.04, 1.06] + [1.06] * 20)
-        context = RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: next(ticks))
+        context = RefreshTickContext(
+            pass_id=1, started_at=0.0, clock=lambda: next(ticks)
+        )
 
         service._refresh_combat_metrics_task(context)
 

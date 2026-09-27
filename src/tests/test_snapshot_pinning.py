@@ -81,6 +81,7 @@ def build_refresh_app(*, snapshots, selected, pinned, should_capture=False):
     app.player_stats_auto_recording_suppressed = False
 
     rendered = {"live": 0, "snapshot": [], "snapshot_stage_rows": []}
+
     # Three doubles, because step 19 split the one nine-operation port into the
     # three features that actually implement it. Faking them separately is the
     # point: a single object satisfying all nine is what let the app layer
@@ -92,7 +93,9 @@ def build_refresh_app(*, snapshots, selected, pinned, should_capture=False):
         rendered["live_capture"] = kwargs.get("live_capture", False)
 
     app._player_stats_view = SimpleNamespace(
-        display_player_stats=lambda *a, **k: rendered.__setitem__("live", rendered["live"] + 1),
+        display_player_stats=lambda *a, **k: rendered.__setitem__(
+            "live", rendered["live"] + 1
+        ),
         display_player_stats_snapshot=display_snapshot,
         refresh_player_stats_timeline_ui=lambda *a, **k: None,
         set_recording_status_text=lambda text: None,
@@ -114,10 +117,32 @@ def build_refresh_app(*, snapshots, selected, pinned, should_capture=False):
     # now, so the whole-tuple stub lands on the resolved service rather than the
     # app double. The resolver takes the `__dict__` branch (no coordinator) and
     # caches the same instance the refresh path re-resolves.
-    player_stats_memory(app).read_full_sample = lambda _context=None: FullPlayerSample(*(
-        {}, (), True, (), True, (), True, (), True, (), True,
-        21.5, None, None, 37, 2, 111, 0, None, (), True, False,
-    ))
+    player_stats_memory(app).read_full_sample = lambda _context=None: FullPlayerSample(
+        *(
+            {},
+            (),
+            True,
+            (),
+            True,
+            (),
+            True,
+            (),
+            True,
+            (),
+            True,
+            21.5,
+            None,
+            None,
+            37,
+            2,
+            111,
+            0,
+            None,
+            (),
+            True,
+            False,
+        )
+    )
     # A real `RunLifecycle` with its game-state read faked, not a stubbed
     # method: `state_for_refresh` with a cold cache falls through to the
     # uncached read, so this drives the service's own branch rather than
@@ -154,9 +179,12 @@ class PinnedSnapshotSurvivesRefreshTests(unittest.TestCase):
     def _refresh(self, app):
         # `build_vod_capture_payload` reads a real RuntimeStateSnapshot; the
         # capture payload is not what these tests are about.
-        with patch.object(config, "AUTO_START_RECORDING", False), patch(
-            "app.player_stats_refresh.build_vod_capture_payload",
-            lambda *a, **k: VodCapturePayload(stats={}),
+        with (
+            patch.object(config, "AUTO_START_RECORDING", False),
+            patch(
+                "app.player_stats_refresh.build_vod_capture_payload",
+                lambda *a, **k: VodCapturePayload(stats={}),
+            ),
         ):
             return MegabonkApp.refresh_live_player_stats_now(app)
 
@@ -332,7 +360,9 @@ class FastTaskStageSummaryPinTests(unittest.TestCase):
                     mark_feature_available=lambda feature: None,
                 )
                 self._player_stats_view = SimpleNamespace(
-                    set_stage_summary_rows=lambda rows: recorded["stage_rows"].append(rows),
+                    set_stage_summary_rows=lambda rows: recorded["stage_rows"].append(
+                        rows
+                    ),
                     set_mob_kills_text=lambda text: recorded["mob_kills"].append(text),
                     set_in_game_time_text=(
                         lambda text: recorded["in_game_time"].append(text)
@@ -369,10 +399,12 @@ class FastTaskStageSummaryPinTests(unittest.TestCase):
         for pinned, expected in ((True, 0), (False, 1)):
             owner, recorded = self.build_owner(pinned=pinned)
             owner.live_run_tracker.update_powerups = lambda snapshot: True
-            owner._player_stats_view.refresh_powerups_card = (
-                lambda: recorded["powerups"].append(1)
+            owner._player_stats_view.refresh_powerups_card = lambda: recorded[
+                "powerups"
+            ].append(1)
+            refresh_tasks(owner)._refresh_powerups_task(
+                RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
             )
-            refresh_tasks(owner)._refresh_powerups_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0))
             self.assertEqual(expected, len(recorded["powerups"]))
 
     def test_event_timer_task_does_not_repaint_stage_summary_while_pinned(self) -> None:
@@ -380,19 +412,27 @@ class FastTaskStageSummaryPinTests(unittest.TestCase):
         from tests.support.legacy_runtime import refresh_tasks
 
         owner, recorded = self.build_owner(pinned=True)
-        refresh_tasks(owner)._refresh_event_timer_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0))
+        refresh_tasks(owner)._refresh_event_timer_task(
+            RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+        )
         self.assertEqual([], recorded["stage_rows"])
 
         owner, recorded = self.build_owner(pinned=False)
-        refresh_tasks(owner)._refresh_event_timer_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0))
+        refresh_tasks(owner)._refresh_event_timer_task(
+            RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+        )
         self.assertEqual([[{"stage": "live"}]], recorded["stage_rows"])
 
-    def test_combat_metrics_task_does_not_repaint_stage_summary_while_pinned(self) -> None:
+    def test_combat_metrics_task_does_not_repaint_stage_summary_while_pinned(
+        self,
+    ) -> None:
         from app.refresh_coordinator import RefreshTickContext
         from tests.support.legacy_runtime import refresh_tasks
 
         owner, recorded = self.build_owner(pinned=True)
-        refresh_tasks(owner)._refresh_combat_metrics_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0))
+        refresh_tasks(owner)._refresh_combat_metrics_task(
+            RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+        )
         self.assertEqual([], recorded["stage_rows"])
         self.assertEqual([], recorded["mob_kills"])
         # The run clock is written earlier in the task than the other two, so it
@@ -400,7 +440,9 @@ class FastTaskStageSummaryPinTests(unittest.TestCase):
         self.assertEqual([], recorded["in_game_time"])
 
         owner, recorded = self.build_owner(pinned=False)
-        refresh_tasks(owner)._refresh_combat_metrics_task(RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0))
+        refresh_tasks(owner)._refresh_combat_metrics_task(
+            RefreshTickContext(pass_id=1, started_at=0.0, clock=lambda: 0.0)
+        )
         self.assertEqual([[{"stage": "live"}]], recorded["stage_rows"])
         self.assertEqual(1, len(recorded["mob_kills"]))
         self.assertEqual(["In-Game Time: 00:30"], recorded["in_game_time"])

@@ -23,6 +23,7 @@ matches what the recordings show: `950k.jsonl` tracks `keys_count` correctly
 from 1 to 7 across 670 snapshots holding a Key, and `970k.jsonl` predates the
 field entirely. No recorded run carries the signature of this bug.
 """
+
 from __future__ import annotations
 
 import src  # noqa: F401  -- puts `src/` on sys.path regardless of collection order
@@ -190,7 +191,9 @@ class DrainedDictionaryKeyCountTests(unittest.TestCase):
             "the Key address survived a switch to a different dictionary",
         )
 
-    def test_a_dictionary_with_an_allocated_but_empty_entry_array_is_skipped(self) -> None:
+    def test_a_dictionary_with_an_allocated_but_empty_entry_array_is_skipped(
+        self,
+    ) -> None:
         """The second drained shape, and the one the other tests miss.
 
         Live, the container route showed `entries=0x0` -- a null array, caught
@@ -211,7 +214,9 @@ class DrainedDictionaryKeyCountTests(unittest.TestCase):
         client = client_for(memory)
 
         self.assertFalse(client._dictionary_has_entries(DRAINED_DICT))
-        self.assertEqual(client._resolve_preferred_passive_item_dict(OWNER_STATS), LIVE_DICT)
+        self.assertEqual(
+            client._resolve_preferred_passive_item_dict(OWNER_STATS), LIVE_DICT
+        )
         self.assertEqual(client._get_cached_key_count(OWNER_STATS), 1)
 
     def test_both_routes_empty_reports_no_key_rather_than_failing(self) -> None:

@@ -14,8 +14,6 @@ from __future__ import annotations
 import time
 from typing import Callable
 
-from infra.memory.reader import MemoryReadError, ProcessMemory
-
 from core.game_state import (
     MapGenerationState,
     MapStat,
@@ -24,6 +22,7 @@ from core.game_state import (
     RuntimeGameState,
     StatValue,
 )
+from infra.memory.reader import MemoryReadError, ProcessMemory
 
 __all__ = [
     "GameDataClient",
@@ -115,7 +114,9 @@ class GameDataClient:
         memory: MemoryReader | None = None,
     ) -> None:
         if memory is None and not process_name:
-            raise ValueError("process_name is required when memory backend is not provided.")
+            raise ValueError(
+                "process_name is required when memory backend is not provided."
+            )
 
         self.module_name = module_name
         self._owns_memory = memory is None
@@ -261,7 +262,9 @@ class GameDataClient:
         elif looks_like_manual_menu:
             mode = RuntimeGameMode.MAIN_MENU
         elif game_manager_ptr and is_playing:
-            mode = RuntimeGameMode.PAUSED_IN_GAME if is_paused else RuntimeGameMode.IN_GAME
+            mode = (
+                RuntimeGameMode.PAUSED_IN_GAME if is_paused else RuntimeGameMode.IN_GAME
+            )
         elif not game_manager_ptr and not is_loading:
             mode = RuntimeGameMode.MAIN_MENU
         else:
@@ -385,7 +388,9 @@ class GameDataClient:
         elif looks_like_manual_menu:
             mode = RuntimeGameMode.MAIN_MENU
         elif game_manager_ptr and is_playing and not is_game_over:
-            mode = RuntimeGameMode.PAUSED_IN_GAME if is_paused else RuntimeGameMode.IN_GAME
+            mode = (
+                RuntimeGameMode.PAUSED_IN_GAME if is_paused else RuntimeGameMode.IN_GAME
+            )
         elif not game_manager_ptr and not is_loading:
             mode = RuntimeGameMode.MAIN_MENU
 
@@ -446,7 +451,11 @@ class GameDataClient:
             value is not None
             for value in (baseline_seed, baseline_map_ptr, baseline_stage_ptr)
         )
-        baseline_stats = self._normalize_ready_stats(previous_stats) if previous_stats is not None else None
+        baseline_stats = (
+            self._normalize_ready_stats(previous_stats)
+            if previous_stats is not None
+            else None
+        )
         stable_stats: dict[MapStat, StatValue] | None = None
         ready_raw_stats: dict[MapStat, StatValue] | None = None
         accepted_activity_revision = getattr(
@@ -539,7 +548,9 @@ class GameDataClient:
                     # value.
                     stability_stats = dict(stats)
                     last_stats_count = len(stats)
-                    zero_defaulted_stats = self.EXPECTED_READY_STATS.difference(stats.keys())
+                    zero_defaulted_stats = self.EXPECTED_READY_STATS.difference(
+                        stats.keys()
+                    )
                     if baseline_stats is None:
                         baseline_stats = ready_stats
                     elif ready_stats != baseline_stats and not has_baseline_identity:
@@ -573,7 +584,8 @@ class GameDataClient:
                             stable_stats_seen = True
                         elif (
                             stable_stats_since is not None
-                            and observed_at - stable_stats_since >= stats_stability_duration
+                            and observed_at - stable_stats_since
+                            >= stats_stability_duration
                         ):
                             self.last_ready_state = last_state
                             self._last_accepted_activity_revision = (
@@ -624,7 +636,9 @@ class GameDataClient:
         if not class_ptr:
             return activities
 
-        static_fields = self.memory.read_ptr(class_ptr + self.CLASS_STATIC_FIELDS_OFFSET)
+        static_fields = self.memory.read_ptr(
+            class_ptr + self.CLASS_STATIC_FIELDS_OFFSET
+        )
         if not static_fields:
             return activities
 
@@ -650,15 +664,17 @@ class GameDataClient:
         # confirm that it advances for both halves of a restart. Reading the
         # structural revision on both sides prevents a mixed snapshot when the
         # game mutates or replaces the dictionary during our traversal.
-        version = self.memory.read_i32(
-            interactables_dict + self.DICT_VERSION_OFFSET
-        )
+        version = self.memory.read_i32(interactables_dict + self.DICT_VERSION_OFFSET)
 
         for index in range(count):
-            interactables_entry = entries + self.ENTRY_BASE_OFFSET + (index * self.ENTRY_SIZE)
+            interactables_entry = (
+                entries + self.ENTRY_BASE_OFFSET + (index * self.ENTRY_SIZE)
+            )
 
             key_ptr = self.memory.read_ptr(interactables_entry + self.ENTRY_KEY_OFFSET)
-            value_ptr = self.memory.read_ptr(interactables_entry + self.ENTRY_VALUE_OFFSET)
+            value_ptr = self.memory.read_ptr(
+                interactables_entry + self.ENTRY_VALUE_OFFSET
+            )
 
             if not key_ptr or not value_ptr:
                 continue
@@ -670,7 +686,9 @@ class GameDataClient:
                 )
 
             max_value = self.memory.read_i32(value_ptr + self.CONTAINER_MAX_OFFSET)
-            current_value = self.memory.read_i32(value_ptr + self.CONTAINER_CURRENT_OFFSET)
+            current_value = self.memory.read_i32(
+                value_ptr + self.CONTAINER_CURRENT_OFFSET
+            )
 
             activities[label] = StatValue(current=current_value, max=max_value)
 
@@ -680,9 +698,7 @@ class GameDataClient:
         entries_after = self.memory.read_ptr(
             interactables_dict + self.DICT_ENTRIES_OFFSET
         )
-        count_after = self.memory.read_i32(
-            interactables_dict + self.DICT_COUNT_OFFSET
-        )
+        count_after = self.memory.read_i32(interactables_dict + self.DICT_COUNT_OFFSET)
         version_after = self.memory.read_i32(
             interactables_dict + self.DICT_VERSION_OFFSET
         )
@@ -702,7 +718,9 @@ class GameDataClient:
 
     def _read_static_fields(self, type_info_offset: int) -> int:
         try:
-            type_info_address = self.memory.module_offset(self.module_name, type_info_offset)
+            type_info_address = self.memory.module_offset(
+                self.module_name, type_info_offset
+            )
             class_ptr = self.memory.read_ptr(type_info_address)
             if not class_ptr:
                 return 0
@@ -711,13 +729,17 @@ class GameDataClient:
             return 0
 
     def _read_static_fields_strict(self, type_info_offset: int) -> int:
-        type_info_address = self.memory.module_offset(self.module_name, type_info_offset)
+        type_info_address = self.memory.module_offset(
+            self.module_name, type_info_offset
+        )
         class_ptr = self.memory.read_ptr(type_info_address)
         if not class_ptr:
             raise MemoryReadError(
                 f"Type info is not initialized at module offset 0x{type_info_offset:X}."
             )
-        static_fields = self.memory.read_ptr(class_ptr + self.CLASS_STATIC_FIELDS_OFFSET)
+        static_fields = self.memory.read_ptr(
+            class_ptr + self.CLASS_STATIC_FIELDS_OFFSET
+        )
         if not static_fields:
             raise MemoryReadError(
                 f"Static fields are not initialized for module offset 0x{type_info_offset:X}."

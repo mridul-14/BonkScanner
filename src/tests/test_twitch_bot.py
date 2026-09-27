@@ -54,17 +54,23 @@ from core.stats.types import DisabledItemsReadResult, DisabledItemsReadStatus
 from core.tracker.live_run import LiveRunTracker
 from core.tracker.snapshots import LiveRunSnapshot, PowerupMapContext
 
+
 class TestTwitchBotWorker(unittest.TestCase):
     def setUp(self):
         self.run_tracker = MagicMock()
+
         def runtime_snapshot():
             latest = self.run_tracker.latest_snapshot()
             chaos_level = self.run_tracker.chaos_tome_level()
             chaos_parts = self.run_tracker.chaos_tome_summary_parts()
-            chaos = None if chaos_level is None else SimpleNamespace(
-                level=chaos_level,
-                stats=(),
-                legacy_parts=chaos_parts,
+            chaos = (
+                None
+                if chaos_level is None
+                else SimpleNamespace(
+                    level=chaos_level,
+                    stats=(),
+                    legacy_parts=chaos_parts,
+                )
             )
             disabled = self.run_tracker.get_disabled_items()
             return SimpleNamespace(
@@ -87,6 +93,7 @@ class TestTwitchBotWorker(unittest.TestCase):
                 powerups_recent=self.run_tracker.recent_powerups_snapshot(),
                 legacy_disabled=disabled,
             )
+
         self.run_tracker.runtime_snapshot.side_effect = runtime_snapshot
         self.bot = TwitchBotWorker(self.run_tracker)
         self.bot.log_message = MagicMock()
@@ -249,7 +256,9 @@ class TestTwitchBotWorker(unittest.TestCase):
         self.bot.running = True
         self.bot.log_message = MagicMock()
         self.bot.status_updated = MagicMock()
-        self.bot._run_bot_loop = MagicMock(side_effect=RuntimeError("credential backend failed"))
+        self.bot._run_bot_loop = MagicMock(
+            side_effect=RuntimeError("credential backend failed")
+        )
 
         self.bot.run()
 
@@ -348,8 +357,9 @@ class TestTwitchBotWorker(unittest.TestCase):
         }
         line = "@badges=subscriber/1 :user!user@host PRIVMSG #channel :!scanner"
 
-        with patch.dict(config.TWITCH_BOT, settings), patch(
-            "time.monotonic", return_value=100.0
+        with (
+            patch.dict(config.TWITCH_BOT, settings),
+            patch("time.monotonic", return_value=100.0),
         ):
             self.bot._handle_line(line, "channel")
 
@@ -376,10 +386,13 @@ class TestTwitchBotWorker(unittest.TestCase):
             "commands": {"scanner": True},
         }
         first_user = "@badges=subscriber/1 :user!user@host PRIVMSG #channel :!scanner"
-        second_user = "@badges=subscriber/1 :other!other@host PRIVMSG #channel :!scanner"
+        second_user = (
+            "@badges=subscriber/1 :other!other@host PRIVMSG #channel :!scanner"
+        )
 
-        with patch.dict(config.TWITCH_BOT, settings), patch(
-            "time.monotonic", side_effect=[100.0, 101.0, 102.0, 130.0]
+        with (
+            patch.dict(config.TWITCH_BOT, settings),
+            patch("time.monotonic", side_effect=[100.0, 101.0, 102.0, 130.0]),
         ):
             self.bot._handle_line(first_user, "channel")
             self.bot._handle_line(first_user, "channel")
@@ -402,8 +415,9 @@ class TestTwitchBotWorker(unittest.TestCase):
         }
         line = "@badges=subscriber/1 :user!user@host PRIVMSG #channel :!scanner"
 
-        with patch.dict(config.TWITCH_BOT, settings), patch(
-            "time.monotonic", return_value=100.0
+        with (
+            patch.dict(config.TWITCH_BOT, settings),
+            patch("time.monotonic", return_value=100.0),
         ):
             self.bot._handle_line(line, "channel")
 
@@ -544,7 +558,9 @@ class TestTwitchBotWorker(unittest.TestCase):
                     stats={"Damage": SimpleNamespace(display_value="150%")},
                 ),
             ),
-            latest_snapshot=lambda: (_ for _ in ()).throw(AssertionError("legacy getter")),
+            latest_snapshot=lambda: (_ for _ in ()).throw(
+                AssertionError("legacy getter")
+            ),
         )
         bot = TwitchBotWorker(tracker)
         bot._send_chat = MagicMock()
@@ -556,6 +572,7 @@ class TestTwitchBotWorker(unittest.TestCase):
 
     def test_access_tier_mods_vips(self):
         from app.config import TWITCH_BOT
+
         old_tier = TWITCH_BOT.get("access_tier")
         TWITCH_BOT["access_tier"] = "Mods & VIPs"
         self.assertTrue(self.bot._check_access("badges=moderator/1,subscriber/0"))
@@ -566,6 +583,7 @@ class TestTwitchBotWorker(unittest.TestCase):
 
     def test_access_tier_subs_mods(self):
         from app.config import TWITCH_BOT
+
         old_tier = TWITCH_BOT.get("access_tier")
         TWITCH_BOT["access_tier"] = "Subs & Mods"
         self.assertTrue(self.bot._check_access("badges=moderator/1"))
@@ -576,6 +594,7 @@ class TestTwitchBotWorker(unittest.TestCase):
 
     def test_cooldown_per_command(self):
         from app.config import TWITCH_BOT
+
         old_tier = TWITCH_BOT.get("access_tier")
         old_global_cooldown = TWITCH_BOT.get("global_cooldown_seconds")
         old_cooldown = TWITCH_BOT.get("cooldown_seconds")
@@ -586,7 +605,7 @@ class TestTwitchBotWorker(unittest.TestCase):
         TWITCH_BOT["cooldown_seconds"] = 5
         TWITCH_BOT["commands"] = {"stats": True, "bans": True}
 
-        with patch('time.time', return_value=100.0):
+        with patch("time.time", return_value=100.0):
             self.bot.last_command_times = {}
             self.bot._handle_stats = MagicMock()
             line = "@badges=moderator/1 :user!user@user.tmi.twitch.tv PRIVMSG #channel :!stats"
@@ -601,14 +620,14 @@ class TestTwitchBotWorker(unittest.TestCase):
             self.bot._handle_stats.assert_not_called()
 
             # Sending a DIFFERENT command after 1 second -> blocked by configured global cooldown
-            with patch('time.time', return_value=101.0):
+            with patch("time.time", return_value=101.0):
                 self.bot._handle_bans = MagicMock()
                 line_bans = "@badges=moderator/1 :user!user@user.tmi.twitch.tv PRIVMSG #channel :!bans"
                 self.bot._handle_line(line_bans, "channel")
                 self.bot._handle_bans.assert_not_called()
 
             # Sending a DIFFERENT command after 3 seconds -> passes global, passes its own cooldown
-            with patch('time.time', return_value=103.0):
+            with patch("time.time", return_value=103.0):
                 self.bot._handle_line(line_bans, "channel")
                 self.bot._handle_bans.assert_called_once()
 
@@ -619,6 +638,7 @@ class TestTwitchBotWorker(unittest.TestCase):
 
     def test_command_aliases_share_the_same_cooldown(self):
         from app.config import TWITCH_BOT
+
         old_tier = TWITCH_BOT.get("access_tier")
         old_global_cooldown = TWITCH_BOT.get("global_cooldown_seconds")
         old_cooldown = TWITCH_BOT.get("cooldown_seconds")
@@ -671,17 +691,21 @@ class TestTwitchBotWorker(unittest.TestCase):
 
     def test_safe_formatter_missing_keys(self):
         from twitch_bot import SafeFormatter
+
         fmt = SafeFormatter()
         res = fmt.format("Hello {name}, your age is {age}", name="John")
         self.assertEqual(res, "Hello John, your age is --")
 
     def test_safe_formatter_invalid_format_spec(self):
         from app.config import TWITCH_BOT
+
         old_templates = TWITCH_BOT.get("templates")
 
         # stats has an invalid format spec or missing key that fails to format with invalid specs
         TWITCH_BOT["templates"] = {"stats": "Live Stats: {Damage:invalid_spec}"}
-        res = self.bot._format_template("stats", "Default Stats: {Damage}", Damage="100")
+        res = self.bot._format_template(
+            "stats", "Default Stats: {Damage}", Damage="100"
+        )
         self.assertEqual(res, "Default Stats: 100")
 
         TWITCH_BOT["templates"] = old_templates
@@ -707,7 +731,9 @@ class TestTwitchBotWorker(unittest.TestCase):
 
         self.bot._handle_session("channel")
 
-        self.bot._send_chat.assert_called_once_with("channel", "Session stats are not available yet.")
+        self.bot._send_chat.assert_called_once_with(
+            "channel", "Session stats are not available yet."
+        )
 
     def test_twitch_tracked_items_source_defaults_to_custom(self):
         from app.config import normalize_twitch_bot_config
@@ -786,7 +812,9 @@ class TestTwitchBotWorker(unittest.TestCase):
         bot._send_chat = MagicMock()
         return bot
 
-    def test_powerups_over_a_real_tracker_never_says_none_active_while_a_buff_runs(self):
+    def test_powerups_over_a_real_tracker_never_says_none_active_while_a_buff_runs(
+        self,
+    ):
         """End to end: tracker -> runtime_snapshot -> chat, at three read ages.
 
         This is the wiring the live run could not exercise -- 353 recorded
@@ -848,7 +876,9 @@ class TestTwitchBotWorker(unittest.TestCase):
         their own schedule -- but the active set must not be invented.
         """
         self.bot._send_chat = MagicMock()
-        self.run_tracker.recent_powerups_snapshot.return_value = self._powerups_snapshot()
+        self.run_tracker.recent_powerups_snapshot.return_value = (
+            self._powerups_snapshot()
+        )
         self.run_tracker.latest_snapshot.return_value = SimpleNamespace(
             stats={
                 "Powerup Multiplier": SimpleNamespace(value=1.5, display_value="1.5x")
@@ -860,15 +890,17 @@ class TestTwitchBotWorker(unittest.TestCase):
         self.bot._send_chat.assert_called_once_with(
             "channel",
             "Powerups: refreshing, try again in a moment | "
-            "Durations: standard 22s, clock 18s (PM 1.5x)"
+            "Durations: standard 22s, clock 18s (PM 1.5x)",
         )
 
     def test_handle_powerups_uses_tracker_snapshot_when_available(self):
         self.bot._send_chat = MagicMock()
         self.run_tracker.latest_snapshot.return_value = SimpleNamespace(stats={})
-        self.run_tracker.recent_powerups_snapshot.return_value = self._powerups_snapshot(
-            available=True,
-            active=(self._rage(),),
+        self.run_tracker.recent_powerups_snapshot.return_value = (
+            self._powerups_snapshot(
+                available=True,
+                active=(self._rage(),),
+            )
         )
 
         self.bot._handle_powerups("channel")
@@ -887,9 +919,11 @@ class TestTwitchBotWorker(unittest.TestCase):
         """
         self.bot._send_chat = MagicMock()
         self.run_tracker.latest_snapshot.return_value = SimpleNamespace(stats={})
-        self.run_tracker.recent_powerups_snapshot.return_value = self._powerups_snapshot(
-            stale=True,
-            active=(self._rage(),),
+        self.run_tracker.recent_powerups_snapshot.return_value = (
+            self._powerups_snapshot(
+                stale=True,
+                active=(self._rage(),),
+            )
         )
 
         self.bot._handle_powerups("channel")
@@ -903,7 +937,10 @@ class TestTwitchBotWorker(unittest.TestCase):
     def test_handle_chaos_uses_tracker_totals(self):
         self.bot._send_chat = MagicMock()
         self.run_tracker.chaos_tome_level.return_value = 5
-        self.run_tracker.chaos_tome_summary_parts.return_value = ["DMG +16.8%", "Luck +14%"]
+        self.run_tracker.chaos_tome_summary_parts.return_value = [
+            "DMG +16.8%",
+            "Luck +14%",
+        ]
 
         self.bot._handle_chaos("channel")
 
@@ -915,7 +952,10 @@ class TestTwitchBotWorker(unittest.TestCase):
     def test_handle_chaos_rounds_flat_values_to_whole_numbers(self):
         self.bot._send_chat = MagicMock()
         self.run_tracker.chaos_tome_level.return_value = 547
-        self.run_tracker.chaos_tome_summary_parts.return_value = ["HP +1062.6", "Pickup +16.4"]
+        self.run_tracker.chaos_tome_summary_parts.return_value = [
+            "HP +1062.6",
+            "Pickup +16.4",
+        ]
 
         self.bot._handle_chaos("channel")
 
@@ -1057,7 +1097,8 @@ class TestTwitchBotWorker(unittest.TestCase):
         self.bot._handle_dice("channel")
 
         self.bot._send_chat.assert_called_once_with(
-            "channel", "Dice passive is not active for this run (current character: Fox)."
+            "channel",
+            "Dice passive is not active for this run (current character: Fox).",
         )
 
     def test_dice_command_routes_through_chat_handler(self):
@@ -1111,12 +1152,7 @@ class TestTwitchBotWorker(unittest.TestCase):
 
         self.bot._send_chat = MagicMock()
         self.run_tracker.latest_snapshot.return_value = SimpleNamespace(
-            items=tuple(
-                ["Anvil"] * 50
-                + ["Kevin"] * 50
-                + ["Beer"] * 50
-                + ["Key"] * 50
-            )
+            items=tuple(["Anvil"] * 50 + ["Kevin"] * 50 + ["Beer"] * 50 + ["Key"] * 50)
         )
         with patch.dict(config.TWITCH_BOT["templates"], {"items": "{items}"}):
             self.bot._handle_items("channel")
@@ -1129,6 +1165,7 @@ class TestTwitchBotWorker(unittest.TestCase):
 
     def test_powerups_command_routes_through_chat_handler(self):
         from app.config import TWITCH_BOT
+
         old_tier = TWITCH_BOT.get("access_tier")
         old_global_cooldown = TWITCH_BOT.get("global_cooldown_seconds")
         old_cooldown = TWITCH_BOT.get("cooldown_seconds")
@@ -1141,7 +1178,7 @@ class TestTwitchBotWorker(unittest.TestCase):
 
         self.bot._handle_powerups = MagicMock()
         line = "@badges=moderator/1 :user!user@user.tmi.twitch.tv PRIVMSG #channel :!powerups"
-        with patch('time.time', return_value=100.0):
+        with patch("time.time", return_value=100.0):
             self.bot._handle_line(line, "channel")
 
         self.bot._handle_powerups.assert_called_once_with("channel")
@@ -1179,7 +1216,8 @@ class TestTwitchBotWorker(unittest.TestCase):
         )
         self.bot._handle_chests("channel")
         self.bot._send_chat.assert_called_with(
-            "channel", "Chests: T1:5/46 | Total: 5/46 | Paid: 3 | Key Procs: 1/4 (25.0%) | Expected: 0.4 | Free Chests: 1 | Keys: 1 (9.1%)"
+            "channel",
+            "Chests: T1:5/46 | Total: 5/46 | Paid: 3 | Key Procs: 1/4 (25.0%) | Expected: 0.4 | Free Chests: 1 | Keys: 1 (9.1%)",
         )
 
         # Test with 10 keys (and multiple maps)
@@ -1188,7 +1226,8 @@ class TestTwitchBotWorker(unittest.TestCase):
         )
         self.bot._handle_chests("channel")
         self.bot._send_chat.assert_called_with(
-            "channel", "Chests: T1:40/46 T2:10/46 | Total: 50/92 | Paid: 30 | Key Procs: 15/45 (33.3%) | Expected: 21.8 | Free Chests: 5 | Keys: 10 (50.0%)"
+            "channel",
+            "Chests: T1:40/46 T2:10/46 | Total: 50/92 | Paid: 30 | Key Procs: 15/45 (33.3%) | Expected: 21.8 | Free Chests: 5 | Keys: 10 (50.0%)",
         )
 
         # Test with multiple maps, where one map has 0 opened chests (e.g. immediately after transition)
@@ -1197,7 +1236,8 @@ class TestTwitchBotWorker(unittest.TestCase):
         )
         self.bot._handle_chests("channel")
         self.bot._send_chat.assert_called_with(
-            "channel", "Chests: T1:40/46 T2:0/46 | Total: 40/92 | Paid: 20 | Key Procs: 18/38 (47.4%) | Expected: 19.0 | Free Chests: 2 | Keys: 10 (50.0%)"
+            "channel",
+            "Chests: T1:40/46 T2:0/46 | Total: 40/92 | Paid: 20 | Key Procs: 18/38 (47.4%) | Expected: 19.0 | Free Chests: 2 | Keys: 10 (50.0%)",
         )
 
         # Never publish a stale numeric Expected when fast tracking missed opens.
@@ -1206,7 +1246,8 @@ class TestTwitchBotWorker(unittest.TestCase):
         )
         self.bot._handle_chests("channel")
         self.bot._send_chat.assert_called_with(
-            "channel", "Chests: T1:24/46 | Total: 24/46 | Paid: 20 | Key Procs: 2/22 (9.1%) | Expected: -- | Free Chests: 2 | Keys: 7 (41.2%)"
+            "channel",
+            "Chests: T1:24/46 | Total: 24/46 | Paid: 20 | Key Procs: 2/22 (9.1%) | Expected: -- | Free Chests: 2 | Keys: 7 (41.2%)",
         )
 
         # Test with 0 keys
@@ -1215,7 +1256,8 @@ class TestTwitchBotWorker(unittest.TestCase):
         )
         self.bot._handle_chests("channel")
         self.bot._send_chat.assert_called_with(
-            "channel", "Chests: T1:20/46 | Total: 20/46 | Paid: 18 | Key Procs: 0/18 (0.0%) | Expected: -- | Free Chests: 2 | Keys: 0 (0.0%)"
+            "channel",
+            "Chests: T1:20/46 | Total: 20/46 | Paid: 18 | Key Procs: 0/18 (0.0%) | Expected: -- | Free Chests: 2 | Keys: 0 (0.0%)",
         )
 
         # A first unconfirmed factual pair must not be rendered as zero procs.
@@ -1224,17 +1266,31 @@ class TestTwitchBotWorker(unittest.TestCase):
         )
         self.bot._handle_chests("channel")
         self.bot._send_chat.assert_called_with(
-            "channel", "Chests: T1:1/46 | Total: 1/46 | Paid: -- | Key Procs: --/-- (--) | Expected: -- | Free Chests: -- | Keys: 1 (9.1%)"
+            "channel",
+            "Chests: T1:1/46 | Total: 1/46 | Paid: -- | Key Procs: --/-- (--) | Expected: -- | Free Chests: -- | Keys: 1 (9.1%)",
         )
 
         self.run_tracker.get_chest_stats.return_value = ChestStatsSnapshot(
-            20, 46, 0, 17, 34, None, {1: -1, 2: 20}, {1: 46, 2: 46}, True, 0.0, 0, False, 51, True
+            20,
+            46,
+            0,
+            17,
+            34,
+            None,
+            {1: -1, 2: 20},
+            {1: 46, 2: 46},
+            True,
+            0.0,
+            0,
+            False,
+            51,
+            True,
         )
         self.bot._handle_chests("channel")
         self.bot._send_chat.assert_called_with(
-            "channel", "Chests: T1:--/46 T2:20/46 | Total: 51+/92 | Paid: 17 | Key Procs: 34/51 (66.7%) | Expected: -- | Free Chests: -- | Keys: 0 (0.0%)"
+            "channel",
+            "Chests: T1:--/46 T2:20/46 | Total: 51+/92 | Paid: 17 | Key Procs: 34/51 (66.7%) | Expected: -- | Free Chests: -- | Keys: 0 (0.0%)",
         )
-
 
     def test_handle_chests_without_active_run(self):
         self.bot._send_chat = MagicMock()
@@ -1250,6 +1306,7 @@ class TestTwitchBotWorker(unittest.TestCase):
 
     def test_chests_command_routes_through_chat_handler(self):
         from app.config import TWITCH_BOT
+
         old_tier = TWITCH_BOT.get("access_tier")
         old_global_cooldown = TWITCH_BOT.get("global_cooldown_seconds")
         old_cooldown = TWITCH_BOT.get("cooldown_seconds")
@@ -1262,7 +1319,7 @@ class TestTwitchBotWorker(unittest.TestCase):
 
         self.bot._handle_chests = MagicMock()
         line = "@badges=moderator/1 :user!user@user.tmi.twitch.tv PRIVMSG #channel :!chests"
-        with patch('time.time', return_value=100.0):
+        with patch("time.time", return_value=100.0):
             self.bot._handle_line(line, "channel")
 
         self.bot._handle_chests.assert_called_once_with("channel")
@@ -1270,8 +1327,10 @@ class TestTwitchBotWorker(unittest.TestCase):
 
         # Test alias !chest
         self.bot._handle_chests.reset_mock()
-        line_alias = "@badges=moderator/1 :user!user@user.tmi.twitch.tv PRIVMSG #channel :!chest"
-        with patch('time.time', return_value=101.0):
+        line_alias = (
+            "@badges=moderator/1 :user!user@user.tmi.twitch.tv PRIVMSG #channel :!chest"
+        )
+        with patch("time.time", return_value=101.0):
             self.bot._handle_line(line_alias, "channel")
 
         self.bot._handle_chests.assert_called_once_with("channel")
@@ -1285,41 +1344,71 @@ class TestTwitchBotWorker(unittest.TestCase):
     def test_handle_presets_templates_mode(self):
         from unittest.mock import patch
         from app import config
+
         self.bot._send_chat = MagicMock()
 
-        with patch.object(config, 'EVALUATION_MODE', 'templates'), \
-             patch.object(config, 'ACTIVE_TEMPLATES', ['LIGHT', 'MERCHANT']), \
-             patch.object(config, 'TEMPLATES', [
-                 {"id": 1, "name": "LIGHT", "color": "WHITE", "desc": "", "sm_total": 7, "micro": 2, "boss": 2},
-                 {"id": 2, "name": "MERCHANT", "color": "CYAN", "desc": "", "sm_total": 10, "shady": 3, "moai": 7, "micro": 1, "boss": 2, "magnet": 2}
-             ]):
+        with (
+            patch.object(config, "EVALUATION_MODE", "templates"),
+            patch.object(config, "ACTIVE_TEMPLATES", ["LIGHT", "MERCHANT"]),
+            patch.object(
+                config,
+                "TEMPLATES",
+                [
+                    {
+                        "id": 1,
+                        "name": "LIGHT",
+                        "color": "WHITE",
+                        "desc": "",
+                        "sm_total": 7,
+                        "micro": 2,
+                        "boss": 2,
+                    },
+                    {
+                        "id": 2,
+                        "name": "MERCHANT",
+                        "color": "CYAN",
+                        "desc": "",
+                        "sm_total": 10,
+                        "shady": 3,
+                        "moai": 7,
+                        "micro": 1,
+                        "boss": 2,
+                        "magnet": 2,
+                    },
+                ],
+            ),
+        ):
             self.bot._handle_presets("channel")
             self.bot._send_chat.assert_called_once_with(
                 "channel",
-                "[Reroller] Mode: Templates | Active: LIGHT(S+M≥7, Mic≥2, B≥2), MERCHANT(S+M≥10, S≥3, M≥7, Mic≥1, B≥2, Mag≥2)"
+                "[Reroller] Mode: Templates | Active: LIGHT(S+M≥7, Mic≥2, B≥2), MERCHANT(S+M≥10, S≥3, M≥7, Mic≥1, B≥2, Mag≥2)",
             )
 
     def test_handle_presets_scores_mode(self):
         from unittest.mock import patch
         from app import config
+
         self.bot._send_chat = MagicMock()
 
         scores_system_mock = {
             "active_tiers": ["Light", "Perfect"],
             "thresholds": {"Light": 14.0, "Perfect": 25.0},
-            "weights": {"moais": 3.0, "shady": 2.0, "boss": 1.0, "magnet": 0.5}
+            "weights": {"moais": 3.0, "shady": 2.0, "boss": 1.0, "magnet": 0.5},
         }
 
-        with patch.object(config, 'EVALUATION_MODE', 'scores'), \
-             patch.object(config, 'SCORES_SYSTEM', scores_system_mock):
+        with (
+            patch.object(config, "EVALUATION_MODE", "scores"),
+            patch.object(config, "SCORES_SYSTEM", scores_system_mock),
+        ):
             self.bot._handle_presets("channel")
             self.bot._send_chat.assert_called_once_with(
                 "channel",
-                "[Reroller] Mode: Scores | Active Tiers: Light (14.0+), Perfect (25.0+) | Weights: Moais=3.0, Shady=2.0, Boss=1.0, Magnet=0.5"
+                "[Reroller] Mode: Scores | Active Tiers: Light (14.0+), Perfect (25.0+) | Weights: Moais=3.0, Shady=2.0, Boss=1.0, Magnet=0.5",
             )
 
     def test_presets_command_routes_through_chat_handler(self):
         from app.config import TWITCH_BOT
+
         old_tier = TWITCH_BOT.get("access_tier")
         old_global_cooldown = TWITCH_BOT.get("global_cooldown_seconds")
         old_cooldown = TWITCH_BOT.get("cooldown_seconds")
@@ -1332,7 +1421,7 @@ class TestTwitchBotWorker(unittest.TestCase):
 
         self.bot._handle_presets = MagicMock()
         line = "@badges=moderator/1 :user!user@user.tmi.twitch.tv PRIVMSG #channel :!presets"
-        with patch('time.time', return_value=100.0):
+        with patch("time.time", return_value=100.0):
             self.bot._handle_line(line, "channel")
 
         self.bot._handle_presets.assert_called_once_with("channel")
@@ -1341,7 +1430,7 @@ class TestTwitchBotWorker(unittest.TestCase):
         # Test alias !preset
         self.bot._handle_presets.reset_mock()
         line_alias = "@badges=moderator/1 :user!user@user.tmi.twitch.tv PRIVMSG #channel :!preset"
-        with patch('time.time', return_value=101.0):
+        with patch("time.time", return_value=101.0):
             self.bot._handle_line(line_alias, "channel")
 
         self.bot._handle_presets.assert_called_once_with("channel")
@@ -1355,6 +1444,7 @@ class TestTwitchBotWorker(unittest.TestCase):
     def test_handle_commands_lists_enabled_only(self):
         from unittest.mock import patch
         from app import config
+
         self.bot._send_chat = MagicMock()
 
         mock_commands_cfg = {
@@ -1372,20 +1462,22 @@ class TestTwitchBotWorker(unittest.TestCase):
             "chests": False,
             "presets": True,
             "bonkhelp": True,
-            "disabled": False
+            "disabled": False,
         }
         with patch.dict(config.TWITCH_BOT, {"commands": mock_commands_cfg}):
             self.bot._handle_commands("channel")
             self.bot._send_chat.assert_called_once_with(
                 "channel",
-                "Available commands: !stats, !session, !items, !tomes, !dice, !shrines, !stages, !scanner, !presets, !build, !bonkhelp"
+                "Available commands: !stats, !session, !items, !tomes, !dice, !shrines, !stages, !scanner, !presets, !build, !bonkhelp",
             )
 
     def test_handle_commands_uses_configured_template(self):
         from app import config
 
         self.bot._send_chat = MagicMock()
-        mock_commands_cfg = {key: False for key in config.DEFAULT_TWITCH_BOT["commands"]}
+        mock_commands_cfg = {
+            key: False for key in config.DEFAULT_TWITCH_BOT["commands"]
+        }
         mock_commands_cfg["stats"] = True
         mock_commands_cfg["bonkhelp"] = True
         with patch.dict(
@@ -1397,7 +1489,9 @@ class TestTwitchBotWorker(unittest.TestCase):
         ):
             self.bot._handle_commands("channel")
 
-        self.bot._send_chat.assert_called_once_with("channel", "Commands -> !stats, !bonkhelp")
+        self.bot._send_chat.assert_called_once_with(
+            "channel", "Commands -> !stats, !bonkhelp"
+        )
 
     def test_twitch_template_defaults_include_configurable_commands_and_session(self):
         from app import config
@@ -1420,7 +1514,9 @@ class TestTwitchBotWorker(unittest.TestCase):
 
         self.assertTrue(bot_cfg["commands"]["bonkhelp"])
         self.assertNotIn("commands", bot_cfg["commands"])
-        self.assertEqual(bot_cfg["templates"]["bonkhelp"], "Commands -> {commands_list}")
+        self.assertEqual(
+            bot_cfg["templates"]["bonkhelp"], "Commands -> {commands_list}"
+        )
         self.assertNotIn("commands", bot_cfg["templates"])
 
     def test_legacy_powerups_template_migrates_to_live_format(self):
@@ -1439,7 +1535,9 @@ class TestTwitchBotWorker(unittest.TestCase):
             "Powerups: {powerups} (PM {pm})",
         )
 
-    def test_intermediate_powerups_template_with_durations_tail_migrates_to_live_format(self):
+    def test_intermediate_powerups_template_with_durations_tail_migrates_to_live_format(
+        self,
+    ):
         from app import config
 
         bot_cfg = config.normalize_twitch_bot_config(
@@ -1518,6 +1616,7 @@ class TestTwitchBotWorker(unittest.TestCase):
 
     def test_commands_command_routes_through_chat_handler(self):
         from app.config import TWITCH_BOT
+
         old_tier = TWITCH_BOT.get("access_tier")
         old_global_cooldown = TWITCH_BOT.get("global_cooldown_seconds")
         old_cooldown = TWITCH_BOT.get("cooldown_seconds")
@@ -1531,7 +1630,7 @@ class TestTwitchBotWorker(unittest.TestCase):
         # Test main command !bonkhelp
         self.bot._handle_commands = MagicMock()
         line = "@badges=moderator/1 :user!user@user.tmi.twitch.tv PRIVMSG #channel :!bonkhelp"
-        with patch('time.time', return_value=100.0):
+        with patch("time.time", return_value=100.0):
             self.bot._handle_line(line, "channel")
 
         self.bot._handle_commands.assert_called_once_with("channel")
@@ -1540,7 +1639,7 @@ class TestTwitchBotWorker(unittest.TestCase):
         # Test alias !bonkcmds
         self.bot._handle_commands.reset_mock()
         line_alias = "@badges=moderator/1 :user!user@user.tmi.twitch.tv PRIVMSG #channel :!bonkcmds"
-        with patch('time.time', return_value=101.0):
+        with patch("time.time", return_value=101.0):
             self.bot._handle_line(line_alias, "channel")
 
         self.bot._handle_commands.assert_called_once_with("channel")
@@ -1549,7 +1648,7 @@ class TestTwitchBotWorker(unittest.TestCase):
         # Test alias !bonkcommands
         self.bot._handle_commands.reset_mock()
         line_alias2 = "@badges=moderator/1 :user!user@user.tmi.twitch.tv PRIVMSG #channel :!bonkcommands"
-        with patch('time.time', return_value=102.0):
+        with patch("time.time", return_value=102.0):
             self.bot._handle_line(line_alias2, "channel")
 
         self.bot._handle_commands.assert_called_once_with("channel")
@@ -1557,8 +1656,10 @@ class TestTwitchBotWorker(unittest.TestCase):
 
         # Test alias !bhelp
         self.bot._handle_commands.reset_mock()
-        line_alias3 = "@badges=moderator/1 :user!user@user.tmi.twitch.tv PRIVMSG #channel :!bhelp"
-        with patch('time.time', return_value=103.0):
+        line_alias3 = (
+            "@badges=moderator/1 :user!user@user.tmi.twitch.tv PRIVMSG #channel :!bhelp"
+        )
+        with patch("time.time", return_value=103.0):
             self.bot._handle_line(line_alias3, "channel")
 
         self.bot._handle_commands.assert_called_once_with("channel")
@@ -1600,7 +1701,9 @@ class TestTwitchBotWorker(unittest.TestCase):
 
         old_templates = TWITCH_BOT.get("templates")
         TWITCH_BOT["templates"] = dict(old_templates or {})
-        TWITCH_BOT["templates"]["kps"] = "KPS now {kps} | short {minute_avg} | mid {five_minute_avg} | full {run_avg}"
+        TWITCH_BOT["templates"]["kps"] = (
+            "KPS now {kps} | short {minute_avg} | mid {five_minute_avg} | full {run_avg}"
+        )
 
         self.bot._send_chat = MagicMock()
         self.run_tracker.status.return_value = "live"
@@ -1632,6 +1735,7 @@ class TestTwitchBotWorker(unittest.TestCase):
 
     def test_handle_disabled_with_run(self):
         from app.config import TWITCH_BOT
+
         old_highlighted = TWITCH_BOT.get("highlighted_disabled_items")
         old_templates = TWITCH_BOT.get("templates")
 
@@ -1645,7 +1749,9 @@ class TestTwitchBotWorker(unittest.TestCase):
             ("Soul Harvester", "Golden Ring"),
         )
         self.bot._handle_disabled("channel")
-        self.bot._send_chat.assert_called_with("channel", "Disabled Items: Soul Harvester")
+        self.bot._send_chat.assert_called_with(
+            "channel", "Disabled Items: Soul Harvester"
+        )
 
         # Scenario B: No highlighted items are disabled
         self.bot._send_chat.reset_mock()
@@ -1655,13 +1761,16 @@ class TestTwitchBotWorker(unittest.TestCase):
             ("Forbidden Juice", "Golden sneakers"),
         )
         self.bot._handle_disabled("channel")
-        self.bot._send_chat.assert_called_with("channel", "Disabled Items: Golden Sneakers")
+        self.bot._send_chat.assert_called_with(
+            "channel", "Disabled Items: Golden Sneakers"
+        )
 
         TWITCH_BOT["highlighted_disabled_items"] = old_highlighted
         TWITCH_BOT["templates"] = old_templates
 
     def test_disabled_command_routes_through_chat_handler(self):
         from app.config import TWITCH_BOT
+
         old_tier = TWITCH_BOT.get("access_tier")
         old_global_cooldown = TWITCH_BOT.get("global_cooldown_seconds")
         old_cooldown = TWITCH_BOT.get("cooldown_seconds")
@@ -1674,7 +1783,7 @@ class TestTwitchBotWorker(unittest.TestCase):
 
         self.bot._handle_disabled = MagicMock()
         line = "@badges=moderator/1 :user!user@user.tmi.twitch.tv PRIVMSG #channel :!disabled"
-        with patch('time.time', return_value=100.0):
+        with patch("time.time", return_value=100.0):
             self.bot._handle_line(line, "channel")
 
         self.bot._handle_disabled.assert_called_once_with("channel")
@@ -1684,6 +1793,7 @@ class TestTwitchBotWorker(unittest.TestCase):
         TWITCH_BOT["global_cooldown_seconds"] = old_global_cooldown
         TWITCH_BOT["cooldown_seconds"] = old_cooldown
         TWITCH_BOT["commands"] = old_commands
+
 
 class OneRingAnnouncerTests(unittest.TestCase):
     """One message per run, on the first ring, on Forest and Desert only.
@@ -2064,5 +2174,5 @@ class OneRingAnnouncerTests(unittest.TestCase):
         )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

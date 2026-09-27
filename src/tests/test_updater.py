@@ -18,7 +18,9 @@ from ui.dialogs import update_dialog
 DOWNLOAD_URL = (
     "https://github.com/ALuiell/BonkScanner/releases/download/v3.2.1/BonkScanner.exe"
 )
-REDIRECT_URL = "https://release-assets.githubusercontent.com/github-production-release/asset"
+REDIRECT_URL = (
+    "https://release-assets.githubusercontent.com/github-production-release/asset"
+)
 
 
 class FakeResponse:
@@ -196,7 +198,9 @@ class UpdaterBackendTests(unittest.TestCase):
             with self.assertRaisesRegex(UpdateError, "exactly one"):
                 updater.fetch_latest_release()
 
-    def test_prepare_update_streams_reports_verifies_and_builds_bounded_helper(self) -> None:
+    def test_prepare_update_streams_reports_verifies_and_builds_bounded_helper(
+        self,
+    ) -> None:
         body = b"MZ" + bytes(range(256)) * 20
         response = FakeResponse(
             body=body,
@@ -218,19 +222,13 @@ class UpdaterBackendTests(unittest.TestCase):
             script = Path(prepared.installer_path).read_text(encoding="utf-8")
             self.assertIn("if %ATTEMPTS% GEQ 120 goto timed_out", script)
             self.assertIn(":move_old", script)
-            self.assertIn(
-                "if %MOVE_ATTEMPTS% GEQ 30 goto install_failed", script
-            )
+            self.assertIn("if %MOVE_ATTEMPTS% GEQ 30 goto install_failed", script)
             self.assertIn("goto move_old", script)
             self.assertIn(":move_new_loop", script)
-            self.assertIn(
-                "if %MOVE_ATTEMPTS% GEQ 30 goto restore_old", script
-            )
+            self.assertIn("if %MOVE_ATTEMPTS% GEQ 30 goto restore_old", script)
             self.assertIn("goto move_new_loop", script)
             self.assertIn(":delete_backup", script)
-            self.assertIn(
-                "if %DELETE_ATTEMPTS% GEQ 30 goto cleanup_complete", script
-            )
+            self.assertIn("if %DELETE_ATTEMPTS% GEQ 30 goto cleanup_complete", script)
             self.assertIn("goto delete_backup", script)
             self.assertIn(":restore_old", script)
             self.assertIn("echo SUCCESS 3.2.1", script)
@@ -286,7 +284,9 @@ class UpdaterBackendTests(unittest.TestCase):
                 sha256=hashlib.sha256(b"new").hexdigest(),
             )
             sentinel = object()
-            with patch.object(updater.subprocess, "Popen", return_value=sentinel) as popen:
+            with patch.object(
+                updater.subprocess, "Popen", return_value=sentinel
+            ) as popen:
                 result = updater.launch_prepared_update(prepared)
 
         self.assertIs(sentinel, result)
@@ -347,7 +347,9 @@ class UpdateDialogContentTests(unittest.TestCase):
 
         self.assertEqual(notes.calls, [("html", "<p><b>IMPORTANT:</b></p>")])
 
-    def test_set_release_notes_content_uses_markdown_for_plain_markdown_input(self) -> None:
+    def test_set_release_notes_content_uses_markdown_for_plain_markdown_input(
+        self,
+    ) -> None:
         notes = FakeNotes()
 
         update_dialog._set_release_notes_content(notes, "## What's New")
@@ -382,6 +384,7 @@ class UpdateDialogWidgetTests(unittest.TestCase):
             start_download=start_download,
             install_update=installed.append,
         )
+
         def dispose() -> None:
             dialog._allow_close = True
             dialog.close()
@@ -413,7 +416,9 @@ class UpdateDialogWidgetTests(unittest.TestCase):
         self.assertEqual("Skip v3.2.1", dialog.skip_button.text())
         self.assertTrue(dialog.skip_button.property("footerEdge"))
 
-    def test_dialog_forces_a_dark_palette_over_a_light_application_palette(self) -> None:
+    def test_dialog_forces_a_dark_palette_over_a_light_application_palette(
+        self,
+    ) -> None:
         original_palette = self.app.palette()
         light_palette = QPalette(original_palette)
         light_palette.setColor(QPalette.Window, QColor("#FFFFFF"))
@@ -467,7 +472,9 @@ class UpdateDialogWidgetTests(unittest.TestCase):
             applied = update_dialog._enable_windows_dark_title_bar(window)
 
         self.assertTrue(applied)
-        attributes = [call.args[1].value for call in set_window_attribute.call_args_list]
+        attributes = [
+            call.args[1].value for call in set_window_attribute.call_args_list
+        ]
         self.assertEqual([20, 35, 36, 34], attributes)
 
     def test_dialog_disables_subpixel_font_antialiasing(self) -> None:
@@ -595,7 +602,9 @@ class UpdateDialogWidgetTests(unittest.TestCase):
     def test_support_routes_open_without_changing_the_update_decision(self) -> None:
         dialog, _callbacks, _installed = self._dialog()
 
-        with patch.object(update_dialog, "_open_browser_page", return_value=True) as open_page:
+        with patch.object(
+            update_dialog, "_open_browser_page", return_value=True
+        ) as open_page:
             dialog._open_patreon()
             dialog._open_crypto()
 
@@ -608,7 +617,9 @@ class UpdateDialogWidgetTests(unittest.TestCase):
         )
         self.assertEqual("later", dialog.decision)
 
-    def test_failed_support_route_shows_the_url_and_keeps_the_dialog_state(self) -> None:
+    def test_failed_support_route_shows_the_url_and_keeps_the_dialog_state(
+        self,
+    ) -> None:
         dialog, _callbacks, _installed = self._dialog()
 
         with (
@@ -632,7 +643,9 @@ class UpdateDialogWidgetTests(unittest.TestCase):
         self.assertFalse(dialog.crypto_button.isEnabled())
         self.assertIn("coming soon", dialog.crypto_button.toolTip())
 
-    def test_support_card_remains_available_across_download_and_error_states(self) -> None:
+    def test_support_card_remains_available_across_download_and_error_states(
+        self,
+    ) -> None:
         dialog, callbacks, _installed = self._dialog()
         self.assertFalse(dialog.support_card.isHidden())
 

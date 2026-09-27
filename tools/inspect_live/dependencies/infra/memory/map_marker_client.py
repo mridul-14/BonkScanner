@@ -5,11 +5,12 @@ renderer.  They were verified live against the current game build on
 2026-08-21; a future game update can therefore fail/reconnect here without
 turning a stale read into a plausible marker position.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
 import struct
+from dataclasses import dataclass
 from typing import Any, Callable
 
 from core.map_markers import MapViewport, action_id_for_interactable
@@ -295,11 +296,10 @@ class MapMarkerMemoryClient:
     def _resolve_full_map(self) -> int:
         if self._full_map_ptr:
             try:
-                if (
-                    self._class_name(self._full_map_ptr) == "FullMap"
-                    and self.memory.read_ptr(
-                        self._full_map_ptr + self.MANAGED_NATIVE_OFFSET
-                    )
+                if self._class_name(
+                    self._full_map_ptr
+                ) == "FullMap" and self.memory.read_ptr(
+                    self._full_map_ptr + self.MANAGED_NATIVE_OFFSET
                 ):
                     return self._full_map_ptr
             except MemoryReadError:
@@ -364,11 +364,8 @@ class MapMarkerMemoryClient:
         if not object_ptr:
             return False
         try:
-            return (
-                self._class_name(object_ptr) == "FullMap"
-                and bool(
-                    self.memory.read_ptr(object_ptr + self.MANAGED_NATIVE_OFFSET)
-                )
+            return self._class_name(object_ptr) == "FullMap" and bool(
+                self.memory.read_ptr(object_ptr + self.MANAGED_NATIVE_OFFSET)
             )
         except MemoryReadError:
             return False
@@ -397,9 +394,7 @@ class MapMarkerMemoryClient:
         if self._detector_ptr:
             return self._detector_ptr
         player_input = self.memory.read_ptr(player + self.PLAYER_INPUT_OFFSET)
-        detector = self.memory.read_ptr(
-            player_input + self.DETECT_INTERACTABLES_OFFSET
-        )
+        detector = self.memory.read_ptr(player_input + self.DETECT_INTERACTABLES_OFFSET)
         if not detector:
             raise MemoryReadError("DetectInteractables is not initialized.")
         self._detector_ptr = detector
@@ -456,9 +451,7 @@ class MapMarkerMemoryClient:
         if not self.activity_is_active(object_ptr):
             return None
         transform = self._component_transform(object_ptr)
-        world_x, _world_y, world_z = self._transform_point(
-            transform, (0.0, 0.0, 0.0)
-        )
+        world_x, _world_y, world_z = self._transform_point(transform, (0.0, 0.0, 0.0))
         return DetectedMapActivity(
             object_ptr=object_ptr,
             class_ptr=class_ptr,
@@ -543,9 +536,8 @@ class MapMarkerMemoryClient:
         self,
         native: int,
         *,
-        point_reader: Callable[
-            [tuple[float, float, float]], tuple[float, float, float]
-        ] | None = None,
+        point_reader: Callable[[tuple[float, float, float]], tuple[float, float, float]]
+        | None = None,
     ) -> tuple[float, float, float, float]:
         if not native:
             raise MemoryReadError("RectTransform native object is unavailable.")
@@ -554,7 +546,10 @@ class MapMarkerMemoryClient:
             self.memory.read_bytes(native + self.RECT_TRANSFORM_RECT_OFFSET, 16),
         )
         if point_reader is None:
-            point_reader = lambda point: self._transform_point_native(native, point)
+
+            def point_reader(point):
+                return self._transform_point_native(native, point)
+
         corners = tuple(
             point_reader(point)
             for point in (
@@ -564,9 +559,7 @@ class MapMarkerMemoryClient:
                 (x + width, y, 0.0),
             )
         )
-        coordinates = tuple(
-            float(value) for point in corners for value in point[:2]
-        )
+        coordinates = tuple(float(value) for point in corners for value in point[:2])
         if not all(math.isfinite(value) for value in coordinates):
             raise MemoryReadError("RectTransform bounds contain non-finite values.")
         left = min(point[0] for point in corners)
@@ -580,12 +573,8 @@ class MapMarkerMemoryClient:
             )
         return left, bottom, right, top
 
-    def _read_ui_screen_bounds(
-        self, native: int
-    ) -> tuple[float, float, float, float]:
-        return self._read_rect_transform_bounds(
-            self._root_native_transform(native)
-        )
+    def _read_ui_screen_bounds(self, native: int) -> tuple[float, float, float, float]:
+        return self._read_rect_transform_bounds(self._root_native_transform(native))
 
     def _root_native_transform(self, native: int) -> int:
         access = self.memory.read_ptr(native + self.NATIVE_TRANSFORM_ACCESS_OFFSET)
@@ -600,9 +589,7 @@ class MapMarkerMemoryClient:
                 "UI TransformAccess count is invalid: "
                 f"index={index}, count={count}, capacity={capacity}."
             )
-        parents = self.memory.read_ptr(
-            access + self.TRANSFORM_ACCESS_PARENTS_OFFSET
-        )
+        parents = self.memory.read_ptr(access + self.TRANSFORM_ACCESS_PARENTS_OFFSET)
         native_transforms = self.memory.read_ptr(
             access + self.TRANSFORM_ACCESS_NATIVE_TRANSFORMS_OFFSET
         )
@@ -693,9 +680,7 @@ class MapMarkerMemoryClient:
         )
         pause_ui = self.memory.read_ptr(ui_manager + self.UI_MANAGER_PAUSE_OFFSET)
         map_object = self.memory.read_ptr(pause_ui + self.PAUSE_UI_MAP_OFFSET)
-        current_object = self.memory.read_ptr(
-            pause_ui + self.PAUSE_UI_CURRENT_OFFSET
-        )
+        current_object = self.memory.read_ptr(pause_ui + self.PAUSE_UI_CURRENT_OFFSET)
         if not map_object or current_object != map_object:
             return 0
 
@@ -728,9 +713,7 @@ class MapMarkerMemoryClient:
         handle_owner = self.memory.read_ptr(handle_root + self.HANDLE_ROOT_NEXT_OFFSET)
         handle = self.memory.read_ptr(handle_owner + self.HANDLE_VALUE_OFFSET)
         managed_transform = self.memory.read_ptr(handle & ~1)
-        return self.memory.read_ptr(
-            managed_transform + self.MANAGED_NATIVE_OFFSET
-        )
+        return self.memory.read_ptr(managed_transform + self.MANAGED_NATIVE_OFFSET)
 
     def _native_transform_name(self, native_transform: int) -> str | None:
         native_game_object = self.memory.read_ptr(
@@ -746,9 +729,7 @@ class MapMarkerMemoryClient:
         root_native: int,
         expected_name: str,
     ) -> int:
-        access = self.memory.read_ptr(
-            root_native + self.NATIVE_TRANSFORM_ACCESS_OFFSET
-        )
+        access = self.memory.read_ptr(root_native + self.NATIVE_TRANSFORM_ACCESS_OFFSET)
         root_index = self.memory.read_i32(
             root_native + self.NATIVE_TRANSFORM_INDEX_OFFSET
         )
@@ -757,17 +738,13 @@ class MapMarkerMemoryClient:
         )
         capacity = packed_counts & 0xFFFFFFFF
         count = (packed_counts >> 32) & 0xFFFFFFFF
-        if not (
-            0 <= root_index < count <= capacity <= self.MAX_NATIVE_TRANSFORMS
-        ):
+        if not (0 <= root_index < count <= capacity <= self.MAX_NATIVE_TRANSFORMS):
             raise MemoryReadError(
                 "Pause Map TransformAccess count is invalid: "
                 f"root={root_index}, count={count}, capacity={capacity}."
             )
 
-        parents = self.memory.read_ptr(
-            access + self.TRANSFORM_ACCESS_PARENTS_OFFSET
-        )
+        parents = self.memory.read_ptr(access + self.TRANSFORM_ACCESS_PARENTS_OFFSET)
         native_transforms = self.memory.read_ptr(
             access + self.TRANSFORM_ACCESS_NATIVE_TRANSFORMS_OFFSET
         )
@@ -803,12 +780,8 @@ class MapMarkerMemoryClient:
     ) -> tuple[float, float, float]:
         access = self.memory.read_ptr(native + self.NATIVE_TRANSFORM_ACCESS_OFFSET)
         index = self.memory.read_i32(native + self.NATIVE_TRANSFORM_INDEX_OFFSET)
-        matrices = self.memory.read_ptr(
-            access + self.TRANSFORM_ACCESS_MATRICES_OFFSET
-        )
-        parents = self.memory.read_ptr(
-            access + self.TRANSFORM_ACCESS_PARENTS_OFFSET
-        )
+        matrices = self.memory.read_ptr(access + self.TRANSFORM_ACCESS_MATRICES_OFFSET)
+        parents = self.memory.read_ptr(access + self.TRANSFORM_ACCESS_PARENTS_OFFSET)
         if not matrices or not parents or index < 0:
             raise MemoryReadError("Transform hierarchy is not initialized.")
 

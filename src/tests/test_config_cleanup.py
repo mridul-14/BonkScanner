@@ -25,7 +25,9 @@ class GameResetTimeConfigTests(unittest.TestCase):
             game_config_path = os.path.join(temp_dir, "config.json")
             self._write_game_config(game_config_path)
 
-            with patch.object(config, "get_game_config_path", return_value=game_config_path):
+            with patch.object(
+                config, "get_game_config_path", return_value=game_config_path
+            ):
                 result = config.update_game_reset_time(0.2)
 
             self.assertTrue(result.success)
@@ -37,7 +39,9 @@ class GameResetTimeConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             missing_path = os.path.join(temp_dir, "missing.json")
 
-            with patch.object(config, "get_game_config_path", return_value=missing_path):
+            with patch.object(
+                config, "get_game_config_path", return_value=missing_path
+            ):
                 result = config.update_game_reset_time(0.2)
 
             self.assertFalse(result.success)
@@ -48,7 +52,9 @@ class GameResetTimeConfigTests(unittest.TestCase):
             game_config_path = os.path.join(temp_dir, "config.json")
             self._write_game_config(game_config_path)
 
-            with patch.object(config, "get_game_config_path", return_value=game_config_path):
+            with patch.object(
+                config, "get_game_config_path", return_value=game_config_path
+            ):
                 with patch.object(config, "save_game_config", return_value=False):
                     result = config.update_game_reset_time(0.2)
 
@@ -60,7 +66,9 @@ class GameResetTimeConfigTests(unittest.TestCase):
             game_config_path = os.path.join(temp_dir, "config.json")
             self._write_game_config(game_config_path, quick_reset_time=0.05)
 
-            with patch.object(config, "get_game_config_path", return_value=game_config_path):
+            with patch.object(
+                config, "get_game_config_path", return_value=game_config_path
+            ):
                 with patch.object(config, "save_game_config", return_value=True):
                     result = config.update_game_reset_time(0.2)
 
@@ -73,7 +81,9 @@ class GameResetTimeConfigTests(unittest.TestCase):
             game_config_path = os.path.join(temp_dir, "config.json")
             self._write_game_config(game_config_path, quick_reset_time=0.037)
 
-            with patch.object(config, "get_game_config_path", return_value=game_config_path):
+            with patch.object(
+                config, "get_game_config_path", return_value=game_config_path
+            ):
                 result = config.read_game_quick_reset_time()
 
             self.assertTrue(result.success)
@@ -88,15 +98,19 @@ class VerifiedSettingsSaveTests(unittest.TestCase):
             "RESET_HOLD_SAFETY_MARGIN": 0.05,
         }
 
-        with patch.object(config, "user_config", live_config), patch.object(
-            config,
-            "save_config",
-            return_value=config.ConfigSaveResult(True),
-        ) as save_config, patch.object(
-            config,
-            "update_game_reset_time",
-            return_value=config.GameConfigUpdateResult(True),
-        ) as update_game_reset_time:
+        with (
+            patch.object(config, "user_config", live_config),
+            patch.object(
+                config,
+                "save_config",
+                return_value=config.ConfigSaveResult(True),
+            ) as save_config,
+            patch.object(
+                config,
+                "update_game_reset_time",
+                return_value=config.GameConfigUpdateResult(True),
+            ) as update_game_reset_time,
+        ):
             result = config.save_settings_with_game_reset(
                 {"HOTKEY": "f7"},
                 None,
@@ -125,7 +139,9 @@ class VerifiedSettingsSaveTests(unittest.TestCase):
 
             with patch.object(config, "config_path", scanner_path):
                 with patch.object(config, "user_config", previous):
-                    with patch.object(config, "get_game_config_path", return_value=game_path):
+                    with patch.object(
+                        config, "get_game_config_path", return_value=game_path
+                    ):
                         result = config.save_settings_with_game_reset(
                             candidate,
                             0.01,
@@ -173,7 +189,9 @@ class VerifiedSettingsSaveTests(unittest.TestCase):
             "save_config",
             side_effect=[failure, config.ConfigSaveResult(True)],
         ):
-            with patch.object(config, "update_game_reset_time") as update_game_reset_time:
+            with patch.object(
+                config, "update_game_reset_time"
+            ) as update_game_reset_time:
                 result = config.save_settings_with_game_reset(
                     {"RESET_HOLD_DURATION": 0.03},
                     0.01,
@@ -199,6 +217,7 @@ class VerifiedSettingsSaveTests(unittest.TestCase):
             nonlocal save_calls
             save_calls += 1
             if save_calls == 1:
+
                 def background_write() -> None:
                     writer_attempted.set()
                     with config.config_lock:
@@ -212,10 +231,13 @@ class VerifiedSettingsSaveTests(unittest.TestCase):
                 self.assertFalse(writer_finished.is_set())
             return config.ConfigSaveResult(True)
 
-        with patch.object(config, "user_config", live_config), patch.object(
-            config,
-            "save_config",
-            side_effect=save_config,
+        with (
+            patch.object(config, "user_config", live_config),
+            patch.object(
+                config,
+                "save_config",
+                side_effect=save_config,
+            ),
         ):
             result = config.save_settings_with_game_reset(
                 {"HOTKEY": "f7"},
@@ -277,7 +299,9 @@ class ResetHoldDurationFloorTests(unittest.TestCase):
         self.assertEqual(duration, 2.0)
         self.assertIsNone(raised_from)
 
-    def test_stored_value_equal_to_the_game_floor_is_not_reported_as_raised(self) -> None:
+    def test_stored_value_equal_to_the_game_floor_is_not_reported_as_raised(
+        self,
+    ) -> None:
         duration, raised_from = config.resolve_reset_hold_duration(1.05, 1.05)
         self.assertEqual(duration, 1.05)
         self.assertIsNone(raised_from)
@@ -297,7 +321,9 @@ class ResetHoldDurationFloorTests(unittest.TestCase):
         self.assertEqual(duration, 1.05)
         self.assertIsNone(raised_from)
 
-    def test_missing_stored_value_and_no_game_config_falls_back_to_default(self) -> None:
+    def test_missing_stored_value_and_no_game_config_falls_back_to_default(
+        self,
+    ) -> None:
         duration, raised_from = config.resolve_reset_hold_duration(None, None)
         self.assertEqual(duration, config.DEFAULT_RESET_HOLD_DURATION)
         self.assertIsNone(raised_from)
@@ -315,12 +341,16 @@ class ResetHoldDurationFloorTests(unittest.TestCase):
             with open(game_config_path, "w", encoding="utf-8") as handle:
                 json.dump({"cfGameSettings": {"quick_reset_time": 1.0}}, handle)
 
-            with patch.object(config, "get_game_config_path", return_value=game_config_path):
+            with patch.object(
+                config, "get_game_config_path", return_value=game_config_path
+            ):
                 game_floor = config.get_game_reset_time()
 
             duration, raised_from = config.resolve_reset_hold_duration(None, game_floor)
 
-            self.assertAlmostEqual(duration, 1.0 + config.RESET_HOLD_SAFETY_MARGIN, places=6)
+            self.assertAlmostEqual(
+                duration, 1.0 + config.RESET_HOLD_SAFETY_MARGIN, places=6
+            )
             self.assertIsNone(raised_from)
 
     def test_raising_a_short_stored_value_also_carries_the_safety_margin(self) -> None:
@@ -329,12 +359,16 @@ class ResetHoldDurationFloorTests(unittest.TestCase):
             with open(game_config_path, "w", encoding="utf-8") as handle:
                 json.dump({"cfGameSettings": {"quick_reset_time": 1.0}}, handle)
 
-            with patch.object(config, "get_game_config_path", return_value=game_config_path):
+            with patch.object(
+                config, "get_game_config_path", return_value=game_config_path
+            ):
                 game_floor = config.get_game_reset_time()
 
             duration, raised_from = config.resolve_reset_hold_duration(0.4, game_floor)
 
-            self.assertAlmostEqual(duration, 1.0 + config.RESET_HOLD_SAFETY_MARGIN, places=6)
+            self.assertAlmostEqual(
+                duration, 1.0 + config.RESET_HOLD_SAFETY_MARGIN, places=6
+            )
             self.assertEqual(raised_from, 0.4)
 
     def test_margin_round_trips_between_hold_duration_and_game_value(self) -> None:
@@ -346,7 +380,9 @@ class ResetHoldDurationFloorTests(unittest.TestCase):
 
             hold_duration = 1.25
             game_value = config.reset_hold_duration_to_game_value(hold_duration)
-            with patch.object(config, "get_game_config_path", return_value=game_config_path):
+            with patch.object(
+                config, "get_game_config_path", return_value=game_config_path
+            ):
                 self.assertTrue(config.update_game_reset_time(game_value).success)
                 read_back = config.get_game_reset_time()
 
@@ -359,7 +395,9 @@ class ResetHoldDurationFloorTests(unittest.TestCase):
                 json.dump({"cfGameSettings": {"quick_reset_time": 0.2}}, handle)
 
             with patch.object(config, "RESET_HOLD_SAFETY_MARGIN", 0.15):
-                with patch.object(config, "get_game_config_path", return_value=game_config_path):
+                with patch.object(
+                    config, "get_game_config_path", return_value=game_config_path
+                ):
                     self.assertAlmostEqual(config.get_game_reset_time(), 0.35, places=6)
                     game_value = config.reset_hold_duration_to_game_value(0.35)
                     self.assertTrue(config.update_game_reset_time(game_value).success)
@@ -397,9 +435,13 @@ class MinimumResetHoldDurationConfigTests(unittest.TestCase):
                 json.dump({"cfGameSettings": {"quick_reset_time": 0.01}}, handle)
 
             with patch.object(config, "RESET_HOLD_SAFETY_MARGIN", 0.02):
-                with patch.object(config, "get_game_config_path", return_value=game_config_path):
+                with patch.object(
+                    config, "get_game_config_path", return_value=game_config_path
+                ):
                     game_floor = config.get_game_reset_time()
-                duration, raised_from = config.resolve_reset_hold_duration(0.03, game_floor)
+                duration, raised_from = config.resolve_reset_hold_duration(
+                    0.03, game_floor
+                )
 
             self.assertAlmostEqual(duration, 0.03, places=6)
             self.assertIsNone(raised_from)
@@ -432,10 +474,14 @@ class RefreshResetHoldDurationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             game_config_path = os.path.join(temp_dir, "config.json")
             with open(game_config_path, "w", encoding="utf-8") as handle:
-                json.dump({"cfGameSettings": {"quick_reset_time": quick_reset_time}}, handle)
+                json.dump(
+                    {"cfGameSettings": {"quick_reset_time": quick_reset_time}}, handle
+                )
 
             config.RESET_HOLD_DURATION = current_hold
-            with patch.object(config, "get_game_config_path", return_value=game_config_path):
+            with patch.object(
+                config, "get_game_config_path", return_value=game_config_path
+            ):
                 with patch.object(config, "save_config"):
                     return config.refresh_reset_hold_duration()
 
@@ -452,7 +498,9 @@ class RefreshResetHoldDurationTests(unittest.TestCase):
 
     def test_an_unchanged_threshold_reports_nothing(self) -> None:
         """Runs on every scan start -- it must not log once per scan."""
-        self.assertIsNone(self._refresh_against(quick_reset_time=1.0, current_hold=1.05))
+        self.assertIsNone(
+            self._refresh_against(quick_reset_time=1.0, current_hold=1.05)
+        )
         self.assertAlmostEqual(config.RESET_HOLD_DURATION, 1.05, places=6)
 
     def test_a_lowered_threshold_does_not_drag_the_hold_down(self) -> None:
@@ -475,7 +523,9 @@ class RefreshResetHoldDurationTests(unittest.TestCase):
                 json.dump({"cfGameSettings": {"quick_reset_time": 1.0}}, handle)
 
             config.RESET_HOLD_DURATION = 0.25
-            with patch.object(config, "get_game_config_path", return_value=game_config_path):
+            with patch.object(
+                config, "get_game_config_path", return_value=game_config_path
+            ):
                 with patch.object(config, "save_config") as save_config:
                     config.refresh_reset_hold_duration()
 
@@ -492,7 +542,9 @@ class RefreshResetHoldDurationTests(unittest.TestCase):
                 json.dump({"cfGameSettings": {"quick_reset_time": 1.0}}, handle)
 
             config.RESET_HOLD_DURATION = 1.05
-            with patch.object(config, "get_game_config_path", return_value=game_config_path):
+            with patch.object(
+                config, "get_game_config_path", return_value=game_config_path
+            ):
                 with patch.object(config, "save_config") as save_config:
                     config.refresh_reset_hold_duration()
 
@@ -518,9 +570,13 @@ class LegacyNativeHookCleanupTests(unittest.TestCase):
 
             os.makedirs(native_hook_dir)
             os.makedirs(extracted_dir)
-            with open(os.path.join(native_hook_dir, "BonkHook.dll"), "w", encoding="utf-8") as handle:
+            with open(
+                os.path.join(native_hook_dir, "BonkHook.dll"), "w", encoding="utf-8"
+            ) as handle:
                 handle.write("x")
-            with open(os.path.join(extracted_dir, "BonkHook.dll"), "w", encoding="utf-8") as handle:
+            with open(
+                os.path.join(extracted_dir, "BonkHook.dll"), "w", encoding="utf-8"
+            ) as handle:
                 handle.write("x")
 
             with patch.dict(os.environ, {"LOCALAPPDATA": local_appdata}, clear=False):
@@ -576,11 +632,11 @@ class InGameOverlayConfigTests(unittest.TestCase):
             {"widgets": {"weapon_tracker": {"selected_stats": []}}}
         )
 
-        self.assertEqual(
-            normalized["widgets"]["weapon_tracker"]["selected_stats"], []
-        )
+        self.assertEqual(normalized["widgets"]["weapon_tracker"]["selected_stats"], [])
 
-    def test_weapon_tracker_selection_drops_unknowns_duplicates_and_reorders(self) -> None:
+    def test_weapon_tracker_selection_drops_unknowns_duplicates_and_reorders(
+        self,
+    ) -> None:
         normalized = config.normalize_in_game_overlay_config(
             {
                 "widgets": {
@@ -607,18 +663,14 @@ class InGameOverlayConfigTests(unittest.TestCase):
             {"widgets": {"weapon_tracker": {"layout": "wide"}}}
         )
 
-        self.assertEqual(
-            normalized["widgets"]["weapon_tracker"]["layout"], "compact"
-        )
+        self.assertEqual(normalized["widgets"]["weapon_tracker"]["layout"], "compact")
 
     def test_weapon_tracker_detailed_layout_is_preserved(self) -> None:
         normalized = config.normalize_in_game_overlay_config(
             {"widgets": {"weapon_tracker": {"layout": "detailed"}}}
         )
 
-        self.assertEqual(
-            normalized["widgets"]["weapon_tracker"]["layout"], "detailed"
-        )
+        self.assertEqual(normalized["widgets"]["weapon_tracker"]["layout"], "detailed")
 
     def test_invalid_scale_falls_back_to_widget_default(self) -> None:
         normalized = config.normalize_in_game_overlay_config(
@@ -634,11 +686,22 @@ class InGameOverlayConfigTests(unittest.TestCase):
         )
 
         defaults = config.DEFAULT_IN_GAME_OVERLAY["widgets"]
-        self.assertEqual(normalized["widgets"]["scanner"]["scale"], defaults["scanner"]["scale"])
-        self.assertEqual(normalized["widgets"]["recording"]["scale"], defaults["recording"]["scale"])
-        self.assertEqual(normalized["widgets"]["kps"]["scale"], defaults["kps"]["scale"])
-        self.assertEqual(normalized["widgets"]["powerups"]["scale"], defaults["powerups"]["scale"])
-        self.assertEqual(normalized["widgets"]["luck_rarity"]["scale"], defaults["luck_rarity"]["scale"])
+        self.assertEqual(
+            normalized["widgets"]["scanner"]["scale"], defaults["scanner"]["scale"]
+        )
+        self.assertEqual(
+            normalized["widgets"]["recording"]["scale"], defaults["recording"]["scale"]
+        )
+        self.assertEqual(
+            normalized["widgets"]["kps"]["scale"], defaults["kps"]["scale"]
+        )
+        self.assertEqual(
+            normalized["widgets"]["powerups"]["scale"], defaults["powerups"]["scale"]
+        )
+        self.assertEqual(
+            normalized["widgets"]["luck_rarity"]["scale"],
+            defaults["luck_rarity"]["scale"],
+        )
         self.assertEqual(normalized["widgets"]["luck_rarity"]["show_bar"], False)
 
 

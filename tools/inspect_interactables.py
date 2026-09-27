@@ -7,8 +7,6 @@ This script checks both:
 
 from __future__ import annotations
 
-import os
-import struct
 import sys
 import time
 from pathlib import Path
@@ -18,8 +16,11 @@ SRC_DIR = REPO_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from core.item_metadata import ITEM_DISPLAY_NAME_BY_RAW_VALUE, ITEM_ENUM_NAMES_BY_ID
-from infra.memory.reader import MemoryReadError, ProcessMemory
+from core.item_metadata import (  # noqa: E402
+    ITEM_DISPLAY_NAME_BY_RAW_VALUE,
+    ITEM_ENUM_NAMES_BY_ID,
+)
+from infra.memory.reader import ProcessMemory  # noqa: E402
 
 PROCESS_NAME = "Megabonk.exe"
 MODULE_NAME = "GameAssembly.dll"
@@ -53,12 +54,18 @@ def read_class_name(memory: ProcessMemory, object_ptr: int) -> str | None:
         return None
 
 
-def inspect_raw_memory(memory: ProcessMemory, object_ptr: int, scan_bytes: int = 0x120, title: str = "") -> None:
+def inspect_raw_memory(
+    memory: ProcessMemory, object_ptr: int, scan_bytes: int = 0x120, title: str = ""
+) -> None:
     class_name = read_class_name(memory, object_ptr) or "UnknownClass"
     print("=" * 80)
-    print(f"OBJECT DUMP: {title or class_name} at 0x{object_ptr:X} (Class: {class_name})")
+    print(
+        f"OBJECT DUMP: {title or class_name} at 0x{object_ptr:X} (Class: {class_name})"
+    )
     print("=" * 80)
-    print(f"{'Offset':<8} {'Hex Value':<18} {'Int32':<12} {'Float':<10} {'Interpretation'}")
+    print(
+        f"{'Offset':<8} {'Hex Value':<18} {'Int32':<12} {'Float':<10} {'Interpretation'}"
+    )
     print("-" * 80)
 
     for offset in range(0, scan_bytes, 8):
@@ -77,7 +84,9 @@ def inspect_raw_memory(memory: ProcessMemory, object_ptr: int, scan_bytes: int =
             if 0 <= i32_val <= 90 and i32_val in ITEM_ENUM_NAMES_BY_ID:
                 raw_enum = ITEM_ENUM_NAMES_BY_ID[i32_val]
                 display_name = ITEM_DISPLAY_NAME_BY_RAW_VALUE.get(raw_enum, raw_enum)
-                details.append(f"[item_id={i32_val}: {display_name}] at +0x{sub_off:02X}")
+                details.append(
+                    f"[item_id={i32_val}: {display_name}] at +0x{sub_off:02X}"
+                )
 
         # Check if val_ptr points to an object
         if val_ptr > 0x10000:
@@ -106,13 +115,17 @@ def inspect_raw_memory(memory: ProcessMemory, object_ptr: int, scan_bytes: int =
 
         flt_str = f"{val_flt_a:.2f}" if abs(val_flt_a) < 1e5 else "---"
         details_str = "; ".join(details)
-        print(f"+0x{offset:02X}:    0x{val_ptr:016X}  {val_i32_a:<12} {flt_str:<10} {details_str}")
+        print(
+            f"+0x{offset:02X}:    0x{val_ptr:016X}  {val_i32_a:<12} {flt_str:<10} {details_str}"
+        )
 
     print("=" * 80)
     print()
 
 
-def inspect_global_interactables(memory: ProcessMemory, module_base: int) -> dict[str, int]:
+def inspect_global_interactables(
+    memory: ProcessMemory, module_base: int
+) -> dict[str, int]:
     """Inspect the game's global interactables dictionary."""
     found_containers = {}
     try:
@@ -165,7 +178,9 @@ def main():
     heartbeat_time = 0
 
     print("[*] Diagnostic monitor running...")
-    print("    Checking both the Global Interactables Dictionary and Player Proximity Sensor.")
+    print(
+        "    Checking both the Global Interactables Dictionary and Player Proximity Sensor."
+    )
     print("    Press Ctrl+C to exit.\n")
 
     while True:
@@ -176,12 +191,22 @@ def main():
         containers = inspect_global_interactables(memory, module_base)
         if containers:
             for target_name in ("Moais", "Shady Guy"):
-                if target_name in containers and target_name not in inspected_containers:
+                if (
+                    target_name in containers
+                    and target_name not in inspected_containers
+                ):
                     inspected_containers.add(target_name)
                     c_ptr = containers[target_name]
                     c_class = read_class_name(memory, c_ptr) or "Container"
-                    print(f"\n[!] Found global container for '{target_name}': 0x{c_ptr:X} ({c_class})")
-                    inspect_raw_memory(memory, c_ptr, scan_bytes=0x80, title=f"Global Container: {target_name}")
+                    print(
+                        f"\n[!] Found global container for '{target_name}': 0x{c_ptr:X} ({c_class})"
+                    )
+                    inspect_raw_memory(
+                        memory,
+                        c_ptr,
+                        scan_bytes=0x80,
+                        title=f"Global Container: {target_name}",
+                    )
 
         # 2. Check Player Detector
         player = 0
@@ -206,26 +231,36 @@ def main():
                         if not player_input:
                             debug_status = "PlayerInput is null"
                         else:
-                            detector = memory.read_ptr(player_input + DETECT_INTERACTABLES_OFFSET)
+                            detector = memory.read_ptr(
+                                player_input + DETECT_INTERACTABLES_OFFSET
+                            )
                             if not detector:
                                 debug_status = "DetectInteractables is null"
                             else:
-                                current_interactable = memory.read_ptr(detector + CURRENT_INTERACTABLE_OFFSET)
+                                current_interactable = memory.read_ptr(
+                                    detector + CURRENT_INTERACTABLE_OFFSET
+                                )
         except Exception as e:
             debug_status = f"Read error: {e}"
 
         if player != last_player:
             last_player = player
             if player:
-                print(f"[+] Player resolved at 0x{player:X}, detector at 0x{detector:X}")
+                print(
+                    f"[+] Player resolved at 0x{player:X}, detector at 0x{detector:X}"
+                )
             else:
                 print(f"[-] Player lost: {debug_status}")
 
         if current_interactable and current_interactable != last_current_interactable:
             last_current_interactable = current_interactable
             class_name = read_class_name(memory, current_interactable) or "Interactable"
-            print(f"\n[TARGET] PLAYER PROXIMITY DETECTED: {class_name} at 0x{current_interactable:X}")
-            inspect_raw_memory(memory, current_interactable, scan_bytes=0x140, title=class_name)
+            print(
+                f"\n[TARGET] PLAYER PROXIMITY DETECTED: {class_name} at 0x{current_interactable:X}"
+            )
+            inspect_raw_memory(
+                memory, current_interactable, scan_bytes=0x140, title=class_name
+            )
         elif not current_interactable and last_current_interactable:
             last_current_interactable = 0
             print("[*] Stepped away from interactable.")
@@ -236,7 +271,9 @@ def main():
             if not player:
                 print(f"[*] Waiting for player... ({debug_status})")
             elif not current_interactable:
-                print(f"[*] Player at 0x{player:X} | Detector: 0x{detector:X} | Walk near a Moai or Shady Guy...")
+                print(
+                    f"[*] Player at 0x{player:X} | Detector: 0x{detector:X} | Walk near a Moai or Shady Guy..."
+                )
 
 
 if __name__ == "__main__":

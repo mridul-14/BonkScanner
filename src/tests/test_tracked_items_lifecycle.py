@@ -96,9 +96,10 @@ class TrackedItemsLifecycleTests(unittest.TestCase):
 
         failed = MagicMock()
         failed.exec.side_effect = RuntimeError("parent was deleted")
-        with patch.object(
-            dialogs, "TrackedItemsDialog", return_value=failed
-        ), patch.object(QMessageBox, "warning") as warning:
+        with (
+            patch.object(dialogs, "TrackedItemsDialog", return_value=failed),
+            patch.object(QMessageBox, "warning") as warning,
+        ):
             self.assertFalse(dialogs.show_tracked_items_dialog(MagicMock()))
         failed.deleteLater.assert_called_once_with()
         warning.assert_called_once()

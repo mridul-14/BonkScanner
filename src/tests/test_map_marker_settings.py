@@ -134,7 +134,10 @@ class MapMarkerSettingsDialogTests(unittest.TestCase):
             self.assertIsNotNone(save_btn)
             self.assertIs(dialog.add_btn.parentWidget(), save_btn.parentWidget())
             self.assertLessEqual(
-                abs(dialog.add_btn.geometry().center().y() - save_btn.geometry().center().y()),
+                abs(
+                    dialog.add_btn.geometry().center().y()
+                    - save_btn.geometry().center().y()
+                ),
                 1,
             )
         finally:
