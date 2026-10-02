@@ -418,9 +418,9 @@ class TestStage1ReportTableDisplay(unittest.TestCase):
                 any("all shady items ranked" in str(t).lower() for t in table_titles),
                 f"Expected All Shady Items Ranked table, got: {table_titles}",
             )
-            self.assertTrue(
+            self.assertFalse(
                 any("shady guy inventories" in str(t).lower() for t in table_titles),
-                f"Expected Shady Guy Inventories table, got: {table_titles}",
+                f"Did not expect Shady Guy Inventories table, got: {table_titles}",
             )
 
     def test_missing_required_items_plain_text_report(self) -> None:
@@ -1444,6 +1444,8 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
         self.assertIn("0 (DEPLETED)", text)
         self.assertIn("Target: Tape", text)
         self.assertIn("TAKEN", text)
+        self.assertIn("All Shady Items Ranked by Distance", text)
+        self.assertNotIn("Shady Guy Inventories", text)
 
     def test_print_stage1_report_moai_and_boss_curse_done_rich(self) -> None:
         """In Stage 1 Requirements table (Rich), done Moais, depleted Microwaves,
@@ -1646,6 +1648,8 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
         self.assertIn("\033[2;9m", out)
         self.assertIn("[DEPLETED]", out)
         self.assertIn("[CLEANSED]", out)
+        self.assertIn("ALL SHADY ITEMS RANKED BY DISTANCE", out)
+        self.assertNotIn("SHADY GUY INVENTORIES", out)
 
     def test_track_seed_offerings_default(self) -> None:
         """TRACK_SEED_OFFERINGS should default to False to prevent massive JSON disk I/O lag."""

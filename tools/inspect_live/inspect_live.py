@@ -309,9 +309,9 @@ TARGET_SHADY_ITEMS = {
 REQUIRED_ALL_ITEM_IDS: list[Any] = [
     41
 ]  # Must-have items / combinations: ALL must be present on map (AND)
-REQUIRED_ANY_ITEM_IDS: list[
-    Any
-] = []  # Any-of items / combinations: At least ONE must be present on map (OR)
+REQUIRED_ANY_ITEM_IDS: list[Any] = [
+    # 41, 47, 49, 17, 18, 54, 15
+]  # Any-of items / combinations: At least ONE must be present on map (OR)
 
 
 # ==============================================================================
@@ -3903,7 +3903,7 @@ def print_stage1_report(
         console.print(table)
 
         # Ranked Shady Items table when criteria is met
-        if result.get("all_matched") and result.get("shady_guys"):
+        if result.get("all_matched"):
             if result.get("shady_guys"):
                 ranked_items = get_all_shady_items_ranked(result["shady_guys"])
                 available_items = sum(
@@ -4009,86 +4009,6 @@ def print_stage1_report(
                         items_table.add_section()
 
                 console.print(items_table)
-
-            if result.get("shady_guys"):
-                shady_guys = result["shady_guys"]
-                available_sgs = sum(1 for sg in shady_guys if not sg.get("done"))
-                sg_avail_str = (
-                    f"{available_sgs}/{len(shady_guys)} available"
-                    if available_sgs < len(shady_guys)
-                    else f"{len(shady_guys)} found on map"
-                )
-                sg_table = Table(
-                    title=f"STAGE 1 - SHADY GUY INVENTORIES ({sg_avail_str} - Ranked by Distance)",
-                    header_style="bold bright_white",
-                )
-                sg_table.add_column("Rank", style="bold bright_white", justify="right")
-                sg_table.add_column("Shady Guy", style="bold yellow")
-                sg_table.add_column("Tier", justify="center")
-                sg_table.add_column("Status", justify="center")
-                sg_table.add_column("Distance & Direction", style="bright_white")
-                sg_table.add_column("Map Sector", style="bold white")
-                sg_table.add_column("Items Offered (Gold / Mult)", style="bright_white")
-
-                for i, sg in enumerate(shady_guys):
-                    is_done = sg.get("done", False)
-                    status_tag = (
-                        "[dim red]COMPLETED[/]" if is_done else "[green]AVAILABLE[/]"
-                    )
-                    prices = sg.get("gold_prices", [])
-                    item_names = []
-                    for it_idx, it in enumerate(sg["items"]):
-                        name = it.get("item_name", "?")
-                        item_id = it.get("item_id")
-                        cost = ""
-                        if it_idx < len(prices):
-                            cost = f" ({prices[it_idx]}g)"
-                        if is_done:
-                            is_tgt = is_target_item(item_id, name)
-                            marker = "*" if is_tgt else ""
-                            item_names.append(f"[dim strike]{name}{marker}{cost}[/]")
-                        else:
-                            styled_name = format_item_display(
-                                item_id, name, use_rich=True
-                            )
-                            item_names.append(f"{styled_name}{cost}")
-
-                    loc_parts = []
-                    if sg.get("rel_dir"):
-                        rel = sg["rel_dir"]
-                        loc_parts.append(f"{rel[2]}m {rel[0]}")
-                    elif sg.get("dist") is not None:
-                        loc_parts.append(f"{sg['dist']}m")
-                    loc_str = ", ".join(loc_parts) if loc_parts else "-"
-                    sector_str = sg.get("map_sector") or "-"
-                    tier_str = format_shady_rarity(
-                        sg.get("rarity", "COMMON"), use_rich=True
-                    )
-
-                    if is_done:
-                        rank_disp = f"[dim strike]{i + 1}[/]"
-                        sg_disp = f"[dim strike]Shady #{sg.get('shady_num', i + 1)}[/]"
-                        sh_rarity = sg.get("rarity", "COMMON")
-                        tier_disp = f"[dim strike]{sh_rarity}[/] [dim red][DONE][/]"
-                        loc_disp = f"[dim strike]{loc_str}[/]"
-                        sector_disp = f"[dim strike]{sector_str}[/]"
-                    else:
-                        rank_disp = str(i + 1)
-                        sg_disp = f"Shady #{sg.get('shady_num', i + 1)}"
-                        tier_disp = tier_str
-                        loc_disp = loc_str
-                        sector_disp = sector_str
-
-                    sg_table.add_row(
-                        rank_disp,
-                        sg_disp,
-                        tier_disp,
-                        status_tag,
-                        loc_disp,
-                        sector_disp,
-                        ", ".join(item_names),
-                    )
-                console.print(sg_table)
             elif counts.get("shady", 0) == 0:
                 console.print(
                     Panel(
@@ -4490,59 +4410,6 @@ def print_stage1_report(
                     print("  " + "-" * 76, flush=True)
 
             print("-" * 80, flush=True)
-            available_sgs = sum(1 for sg in result["shady_guys"] if not sg.get("done"))
-            sh_total = result.get("shady_count", len(result["shady_guys"]))
-            sg_avail_str = (
-                f"{available_sgs}/{sh_total} available"
-                if available_sgs < sh_total
-                else f"{sh_total} found on map"
-            )
-            print(
-                f"SHADY GUY INVENTORIES ({sg_avail_str} - Ranked by Distance):",
-                flush=True,
-            )
-            for i, sg in enumerate(result["shady_guys"]):
-                is_done = sg.get("done", False)
-                done_tag = " [DONE]" if is_done else ""
-                prices = sg.get("gold_prices", [])
-                item_names = []
-                for it_idx, it in enumerate(sg["items"]):
-                    name = it.get("item_name", "?")
-                    item_id = it.get("item_id")
-                    cost = ""
-                    if it_idx < len(prices):
-                        cost = f" ({prices[it_idx]}g)"
-                    item_tag = (
-                        "*"
-                        if is_target_item(item_id, name)
-                        else (
-                            HIGHLIGHTED_ITEM_MARKER
-                            if is_highlighted_item(item_id, name)
-                            else ""
-                        )
-                    )
-                    if is_done:
-                        item_names.append(
-                            f"\033[2;9m{name}{item_tag}{cost} [TAKEN]\033[0m"
-                        )
-                    else:
-                        item_names.append(f"{name}{item_tag}{cost}")
-                loc_parts = []
-                if sg.get("map_sector"):
-                    loc_parts.append(f"Map: {sg['map_sector']}")
-                if sg.get("rel_dir"):
-                    rel = sg["rel_dir"]
-                    loc_parts.append(f"{rel[2]}m {rel[0]}")
-                elif sg.get("dist") is not None:
-                    loc_parts.append(f"{sg['dist']}m")
-                loc_str = f" ({', '.join(loc_parts)})" if loc_parts else ""
-                rarity_str = sg.get("rarity", "COMMON")
-                items_summary = ", ".join(item_names)
-                line_str = f"  Rank #{i + 1} - Shady Guy [{rarity_str}]{done_tag}{loc_str}: {items_summary}"
-                if is_done:
-                    print(f"\033[2;9m{line_str}\033[0m", flush=True)
-                else:
-                    print(line_str, flush=True)
         elif counts.get("shady", 0) == 0:
             print(
                 f"  [Shady Guys] ℹ No Shady Guys spawned on this map ({counts.get('moai', 0)} Moai Shrines present).",
@@ -4920,77 +4787,7 @@ def print_stage_inspect_report(
 
             console.print(items_table)
 
-            # 3. Shady Guy Inventories Table
-            available_sgs = sum(1 for sg in shady_guys if not sg.get("done"))
-            sg_avail_str = (
-                f"{available_sgs}/{len(shady_guys)} available"
-                if available_sgs < len(shady_guys)
-                else f"{len(shady_guys)} found on map"
-            )
-            sg_table = Table(
-                title=f"Stage {stage_num} - Shady Guy Inventories ({sg_avail_str} - Ranked by Distance)",
-                header_style="bold bright_white",
-            )
-            sg_table.add_column("Rank", justify="right")
-            sg_table.add_column("Rarity")
-            sg_table.add_column("Map Sector", style="bold white")
-            sg_table.add_column("From Spawn", justify="right")
-            sg_table.add_column("Offered Items (Price, Mult)")
-
-            for i, sg in enumerate(shady_guys):
-                is_done = sg.get("done", False)
-                dist_str = f"{sg['dist']}m" if sg.get("dist") is not None else "-"
-                if sg.get("rel_dir"):
-                    rel = sg["rel_dir"]
-                    dist_str = f"{rel[2]}m {rel[0]}"
-
-                item_strs = []
-                prices = sg.get("gold_prices", [])
-                mults = sg.get("multipliers", [])
-                for it_idx, it in enumerate(sg.get("items", [])):
-                    name = it.get("item_name", "?")
-                    item_id = it.get("item_id")
-                    cost_info = ""
-                    if it_idx < len(prices):
-                        p_val = f"{prices[it_idx]}g"
-                        if it_idx < len(mults):
-                            p_val += f", {mults[it_idx]}x"
-                            cost_info = f" ({p_val})"
-                    if is_done:
-                        is_tgt = is_target_item(item_id, name)
-                        marker = "*" if is_tgt else ""
-                        item_strs.append(f"[dim strike]{name}{marker}{cost_info}[/]")
-                    else:
-                        item_str = format_item_display(
-                            item_id, name, cost_info=cost_info, use_rich=True
-                        )
-                        item_strs.append(item_str)
-
-                sector_str = sg.get("map_sector") or "-"
-                vendor_rarity = format_shady_rarity(
-                    sg.get("rarity", "-"), use_rich=True
-                )
-                if is_done:
-                    rank_str = f"[dim strike]{i + 1}[/]"
-                    vendor_rarity = (
-                        f"[dim strike]{sg.get('rarity', '-')}[/] [dim red][DONE][/]"
-                    )
-                    sector_str = f"[dim strike]{sector_str}[/]"
-                    dist_str = f"[dim strike]{dist_str}[/]"
-                else:
-                    rank_str = str(i + 1)
-
-                sg_table.add_row(
-                    rank_str,
-                    vendor_rarity,
-                    sector_str,
-                    dist_str,
-                    ", ".join(item_strs),
-                )
-
-            console.print(sg_table)
-
-        # 4. Microwaves Table
+        # 3. Microwaves Table
         if microwaves:
             micro_table = Table(
                 title=f"Stage {stage_num} - Microwaves on Map ({len(microwaves)} found - Ranked by Distance)",
@@ -5217,57 +5014,6 @@ def print_stage_inspect_report(
                 print("  " + "-" * 76, flush=True)
 
         print("-" * 80, flush=True)
-        available_sgs = sum(1 for sg in shady_guys if not sg.get("done"))
-        sg_avail_str = (
-            f"{available_sgs}/{len(shady_guys)} available"
-            if available_sgs < len(shady_guys)
-            else f"{len(shady_guys)} found on map"
-        )
-        print(
-            f"STAGE {stage_num} - SHADY GUY INVENTORIES ({sg_avail_str} - Ranked by Distance):",
-            flush=True,
-        )
-        for i, sg in enumerate(shady_guys):
-            is_done = sg.get("done", False)
-            done_tag = " [DONE]" if is_done else ""
-            prices = sg.get("gold_prices", [])
-            mults = sg.get("multipliers", [])
-            item_names = []
-            for it_idx, it in enumerate(sg["items"]):
-                name = it.get("item_name", "?")
-                item_id = it.get("item_id")
-                cost = ""
-                if it_idx < len(prices):
-                    cost = f" ({prices[it_idx]}g)"
-                item_tag = (
-                    "*"
-                    if is_target_item(item_id, name)
-                    else (
-                        HIGHLIGHTED_ITEM_MARKER
-                        if is_highlighted_item(item_id, name)
-                        else ""
-                    )
-                )
-                if is_done:
-                    item_names.append(f"\033[2;9m{name}{item_tag}{cost} [TAKEN]\033[0m")
-                else:
-                    item_names.append(f"{name}{item_tag}{cost}")
-            loc_parts = []
-            if sg.get("map_sector"):
-                loc_parts.append(f"Map: {sg['map_sector']}")
-            if sg.get("rel_dir"):
-                rel = sg["rel_dir"]
-                loc_parts.append(f"{rel[2]}m {rel[0]}")
-            elif sg.get("dist") is not None:
-                loc_parts.append(f"{sg['dist']}m")
-            loc_str = f" ({', '.join(loc_parts)})" if loc_parts else ""
-            rarity_str = sg.get("rarity", "COMMON")
-            items_summary = ", ".join(item_names)
-            line_str = f"  Rank #{i + 1} - Shady Guy [{rarity_str}]{done_tag}{loc_str}: {items_summary}"
-            if is_done:
-                print(f"\033[2;9m{line_str}\033[0m", flush=True)
-            else:
-                print(line_str, flush=True)
 
     if microwaves:
         print("-" * 80, flush=True)
