@@ -4470,6 +4470,9 @@ def print_stage_inspect_report(
     microwaves = result.get("microwaves", [])
     target_matches = result.get("target_matches", [])
     sm_total = result.get("sm_total", counts.get("shady", 0) + counts.get("moai", 0))
+    all_shady_done = bool(
+        shady_guys and all(sg.get("done", False) for sg in shady_guys)
+    )
 
     if console and Table and Panel:
         title_color = "bold cyan"
@@ -4702,90 +4705,93 @@ def print_stage_inspect_report(
 
         console.print(table)
 
-        # 2. Ranked Shady Items table
+        # 2. Ranked Shady Items table (or SPAWN BOSSES if all items taken in Stage 2+)
         if shady_guys:
             ranked_items = get_all_shady_items_ranked(shady_guys)
             available_items = sum(1 for it in ranked_items if not it.get("shady_done"))
-            avail_str = (
-                f"{available_items}/{len(ranked_items)} available"
-                if available_items < len(ranked_items)
-                else f"{len(ranked_items)} items"
-            )
-            table_title = (
-                f"🎯 Stage {stage_num} - All Shady Items Ranked by Distance "
-                f"({avail_str} across {len(shady_guys)} Shady Guys)"
-            )
-            items_table = Table(
-                title=table_title,
-                header_style="bold bright_white",
-            )
-            items_table.add_column("Rank", style="bold bright_white", justify="right")
-            items_table.add_column("Distance", style="bright_white", justify="right")
-            items_table.add_column("Direction", style="bold bright_white")
-            items_table.add_column("Map Sector", style="bold white")
-            items_table.add_column("Item Name")
-            items_table.add_column(
-                "Price (Mult)", style="bold bright_yellow", justify="right"
-            )
-            items_table.add_column("Vendor")
-
-            for item_rank, it in enumerate(ranked_items, 1):
-                is_taken = it.get("shady_done", False)
-                dist_disp = f"{it['dist']}m" if it.get("dist") is not None else "-"
-                dir_disp = (
-                    f"{it['direction']} {it['bearing_str']}".strip()
-                    if it.get("direction")
-                    else "-"
+            if stage_num >= 2 and (all_shady_done or available_items == 0):
+                console.print("[bold bright_red]SPAWN BOSSES[/]")
+            else:
+                avail_str = (
+                    f"{available_items}/{len(ranked_items)} available"
+                    if available_items < len(ranked_items)
+                    else f"{len(ranked_items)} items"
                 )
-
-                cost_parts = []
-                if it.get("gold") is not None:
-                    cost_parts.append(f"{it['gold']}g")
-                if it.get("multiplier") is not None:
-                    cost_parts.append(f"{it['multiplier']}x")
-                cost_str = f"{', '.join(cost_parts)}" if cost_parts else "-"
-
-                name = it["item_name"]
-                item_id = it.get("item_id")
-                name_styled = format_item_display(item_id, name, use_rich=True)
-                vendor_str = format_vendor_display(
-                    it["shady_num"], it.get("shady_rarity"), use_rich=True
+                table_title = (
+                    f"🎯 Stage {stage_num} - All Shady Items Ranked by Distance "
+                    f"({avail_str} across {len(shady_guys)} Shady Guys)"
                 )
-
-                if is_taken:
-                    rank_disp = f"[dim strike]{item_rank}[/]"
-                    dist_disp = f"[dim strike]{dist_disp}[/]"
-                    dir_disp = f"[dim strike]{dir_disp}[/]"
-                    sec_disp = f"[dim strike]{it['map_sector']}[/]"
-                    is_tgt = is_target_item(item_id, name)
-                    marker = "*" if is_tgt else ""
-                    name_disp = f"[dim strike]{name}{marker}[/] [bold red][TAKEN][/]"
-                    cost_disp = f"[dim strike]{cost_str}[/]"
-                    sh_rarity = it.get("shady_rarity") or "COMMON"
-                    vendor_disp = f"[dim strike]Shady #{it['shady_num']} [{sh_rarity}][/] [dim red][DONE][/]"
-                else:
-                    rank_disp = str(item_rank)
-                    sec_disp = it["map_sector"]
-                    name_disp = name_styled
-                    cost_disp = cost_str
-                    vendor_disp = vendor_str
-
-                is_last_in_group = (
-                    item_rank == len(ranked_items)
-                    or ranked_items[item_rank]["shady_num"] != it["shady_num"]
+                items_table = Table(
+                    title=table_title,
+                    header_style="bold bright_white",
                 )
-                items_table.add_row(
-                    rank_disp,
-                    dist_disp,
-                    dir_disp,
-                    sec_disp,
-                    name_disp,
-                    cost_disp,
-                    vendor_disp,
-                    end_section=is_last_in_group,
+                items_table.add_column("Rank", style="bold bright_white", justify="right")
+                items_table.add_column("Distance", style="bright_white", justify="right")
+                items_table.add_column("Direction", style="bold bright_white")
+                items_table.add_column("Map Sector", style="bold white")
+                items_table.add_column("Item Name")
+                items_table.add_column(
+                    "Price (Mult)", style="bold bright_yellow", justify="right"
                 )
+                items_table.add_column("Vendor")
 
-            console.print(items_table)
+                for item_rank, it in enumerate(ranked_items, 1):
+                    is_taken = it.get("shady_done", False)
+                    dist_disp = f"{it['dist']}m" if it.get("dist") is not None else "-"
+                    dir_disp = (
+                        f"{it['direction']} {it['bearing_str']}".strip()
+                        if it.get("direction")
+                        else "-"
+                    )
+
+                    cost_parts = []
+                    if it.get("gold") is not None:
+                        cost_parts.append(f"{it['gold']}g")
+                    if it.get("multiplier") is not None:
+                        cost_parts.append(f"{it['multiplier']}x")
+                    cost_str = f"{', '.join(cost_parts)}" if cost_parts else "-"
+
+                    name = it["item_name"]
+                    item_id = it.get("item_id")
+                    name_styled = format_item_display(item_id, name, use_rich=True)
+                    vendor_str = format_vendor_display(
+                        it["shady_num"], it.get("shady_rarity"), use_rich=True
+                    )
+
+                    if is_taken:
+                        rank_disp = f"[dim strike]{item_rank}[/]"
+                        dist_disp = f"[dim strike]{dist_disp}[/]"
+                        dir_disp = f"[dim strike]{dir_disp}[/]"
+                        sec_disp = f"[dim strike]{it['map_sector']}[/]"
+                        is_tgt = is_target_item(item_id, name)
+                        marker = "*" if is_tgt else ""
+                        name_disp = f"[dim strike]{name}{marker}[/] [bold red][TAKEN][/]"
+                        cost_disp = f"[dim strike]{cost_str}[/]"
+                        sh_rarity = it.get("shady_rarity") or "COMMON"
+                        vendor_disp = f"[dim strike]Shady #{it['shady_num']} [{sh_rarity}][/] [dim red][DONE][/]"
+                    else:
+                        rank_disp = str(item_rank)
+                        sec_disp = it["map_sector"]
+                        name_disp = name_styled
+                        cost_disp = cost_str
+                        vendor_disp = vendor_str
+
+                    is_last_in_group = (
+                        item_rank == len(ranked_items)
+                        or ranked_items[item_rank]["shady_num"] != it["shady_num"]
+                    )
+                    items_table.add_row(
+                        rank_disp,
+                        dist_disp,
+                        dir_disp,
+                        sec_disp,
+                        name_disp,
+                        cost_disp,
+                        vendor_disp,
+                        end_section=is_last_in_group,
+                    )
+
+                console.print(items_table)
 
         # 3. Microwaves Table
         if microwaves:
@@ -4951,69 +4957,72 @@ def print_stage_inspect_report(
     if shady_guys:
         ranked_items = get_all_shady_items_ranked(shady_guys)
         available_items = sum(1 for it in ranked_items if not it.get("shady_done"))
-        avail_str = (
-            f"{available_items}/{len(ranked_items)} available"
-            if available_items < len(ranked_items)
-            else f"{len(ranked_items)} items"
-        )
-        n_sg = len(shady_guys)
-        print("-" * 80, flush=True)
-        print(
-            f"🎯 STAGE {stage_num} - ALL SHADY ITEMS RANKED BY DISTANCE ({avail_str} across {n_sg} Shady Guys):",
-            flush=True,
-        )
-        print("-" * 80, flush=True)
-        for item_rank, it in enumerate(ranked_items, 1):
-            is_taken = it.get("shady_done", False)
-            dist_str = f"{it['dist']}m" if it.get("dist") is not None else "??m"
-            dir_str = (
-                f"{it['direction']} {it['bearing_str']}".strip()
-                if it.get("direction")
-                else ""
+        if stage_num >= 2 and (all_shady_done or available_items == 0):
+            print("\033[1;91mSPAWN BOSSES\033[0m", flush=True)
+        else:
+            avail_str = (
+                f"{available_items}/{len(ranked_items)} available"
+                if available_items < len(ranked_items)
+                else f"{len(ranked_items)} items"
             )
-            loc_str = f"{dist_str} {dir_str}".strip()
-
-            cost_parts = []
-            if it.get("gold") is not None:
-                cost_parts.append(f"{it['gold']}g")
-            if it.get("multiplier") is not None:
-                cost_parts.append(f"{it['multiplier']}x")
-            cost_str = f"({', '.join(cost_parts)})" if cost_parts else ""
-
-            item_id = it.get("item_id")
-            name = it.get("item_name")
-            if is_target_item(item_id, name):
-                target_star = "*"
-            elif is_highlighted_item(item_id, name):
-                target_star = HIGHLIGHTED_ITEM_MARKER
-            else:
-                target_star = " "
-            sec_str = f"[{it['map_sector']}]"
-            sh_rarity = it.get("shady_rarity") or it.get("rarity", "")
-            if is_taken:
-                vendor_str = f"Shady #{it['shady_num']} [{sh_rarity}] [DONE]"
-                item_disp = f"{it['item_name']}{target_star} [TAKEN]"
-                line_out = (
-                    f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} "
-                    f"{cost_str:<16} @ {vendor_str} {sec_str}"
-                )
-                print(f"\033[2;9m{line_out}\033[0m", flush=True)
-            else:
-                vendor_str = f"Shady #{it['shady_num']} [{sh_rarity}]"
-                item_disp = f"{it['item_name']}{target_star}"
-                print(
-                    f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} {cost_str:<16} @ {vendor_str} {sec_str}",
-                    flush=True,
-                )
-
-            is_last_in_group = (
-                item_rank == len(ranked_items)
-                or ranked_items[item_rank]["shady_num"] != it["shady_num"]
+            n_sg = len(shady_guys)
+            print("-" * 80, flush=True)
+            print(
+                f"🎯 STAGE {stage_num} - ALL SHADY ITEMS RANKED BY DISTANCE ({avail_str} across {n_sg} Shady Guys):",
+                flush=True,
             )
-            if is_last_in_group and item_rank < len(ranked_items):
-                print("  " + "-" * 76, flush=True)
+            print("-" * 80, flush=True)
+            for item_rank, it in enumerate(ranked_items, 1):
+                is_taken = it.get("shady_done", False)
+                dist_str = f"{it['dist']}m" if it.get("dist") is not None else "??m"
+                dir_str = (
+                    f"{it['direction']} {it['bearing_str']}".strip()
+                    if it.get("direction")
+                    else ""
+                )
+                loc_str = f"{dist_str} {dir_str}".strip()
 
-        print("-" * 80, flush=True)
+                cost_parts = []
+                if it.get("gold") is not None:
+                    cost_parts.append(f"{it['gold']}g")
+                if it.get("multiplier") is not None:
+                    cost_parts.append(f"{it['multiplier']}x")
+                cost_str = f"({', '.join(cost_parts)})" if cost_parts else ""
+
+                item_id = it.get("item_id")
+                name = it.get("item_name")
+                if is_target_item(item_id, name):
+                    target_star = "*"
+                elif is_highlighted_item(item_id, name):
+                    target_star = HIGHLIGHTED_ITEM_MARKER
+                else:
+                    target_star = " "
+                sec_str = f"[{it['map_sector']}]"
+                sh_rarity = it.get("shady_rarity") or it.get("rarity", "")
+                if is_taken:
+                    vendor_str = f"Shady #{it['shady_num']} [{sh_rarity}] [DONE]"
+                    item_disp = f"{it['item_name']}{target_star} [TAKEN]"
+                    line_out = (
+                        f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} "
+                        f"{cost_str:<16} @ {vendor_str} {sec_str}"
+                    )
+                    print(f"\033[2;9m{line_out}\033[0m", flush=True)
+                else:
+                    vendor_str = f"Shady #{it['shady_num']} [{sh_rarity}]"
+                    item_disp = f"{it['item_name']}{target_star}"
+                    print(
+                        f"  #{item_rank:>2d}  [{loc_str:<16}] {item_disp:<24} {cost_str:<16} @ {vendor_str} {sec_str}",
+                        flush=True,
+                    )
+
+                is_last_in_group = (
+                    item_rank == len(ranked_items)
+                    or ranked_items[item_rank]["shady_num"] != it["shady_num"]
+                )
+                if is_last_in_group and item_rank < len(ranked_items):
+                    print("  " + "-" * 76, flush=True)
+
+            print("-" * 80, flush=True)
 
     if microwaves:
         print("-" * 80, flush=True)

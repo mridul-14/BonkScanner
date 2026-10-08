@@ -1444,7 +1444,8 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
         self.assertIn("0 (DEPLETED)", text)
         self.assertIn("Target: Tape", text)
         self.assertIn("TAKEN", text)
-        self.assertIn("All Shady Items Ranked by Distance", text)
+        self.assertIn("SPAWN BOSSES", text)
+        self.assertNotIn("All Shady Items Ranked by Distance", text)
         self.assertNotIn("Shady Guy Inventories", text)
 
     def test_print_stage1_report_moai_and_boss_curse_done_rich(self) -> None:
@@ -1648,8 +1649,77 @@ class TestDistinctShadyRequiredItemsEvaluation(unittest.TestCase):
         self.assertIn("\033[2;9m", out)
         self.assertIn("[DEPLETED]", out)
         self.assertIn("[CLEANSED]", out)
-        self.assertIn("ALL SHADY ITEMS RANKED BY DISTANCE", out)
+        self.assertIn("SPAWN BOSSES", out)
+        self.assertNotIn("ALL SHADY ITEMS RANKED BY DISTANCE", out)
         self.assertNotIn("SHADY GUY INVENTORIES", out)
+
+    def test_print_stage_inspect_report_shady_items_available_shows_table_not_spawn_bosses(
+        self,
+    ) -> None:
+        """In Stage 2+ inspection report, when shady items remain available, table is shown and SPAWN BOSSES is not."""
+        from rich.console import Console
+
+        test_buf = io.StringIO()
+        test_console = Console(file=test_buf, record=True, width=140)
+        result = {
+            "is_stage_1": False,
+            "stage_num": 2,
+            "elapsed_s": 0.05,
+            "character": "Fox",
+            "character_id": 0,
+            "map_counts": {"shady": 1, "moai": 0, "microwaves": 0},
+            "shady_guys": [
+                {
+                    "shady_num": 1,
+                    "rarity": "COMMON",
+                    "dist": 25.0,
+                    "done": False,
+                    "items": [{"item_id": 41, "item_name": "Tape"}],
+                    "gold_prices": [10],
+                    "multipliers": [1.0],
+                }
+            ],
+            "microwaves": [],
+        }
+        with patch.object(il, "console", test_console):
+            il.print_stage_inspect_report(result)
+        text = test_console.export_text()
+        self.assertIn("All Shady Items Ranked by Distance", text)
+        self.assertNotIn("SPAWN BOSSES", text)
+
+    def test_print_stage1_all_shady_done_does_not_show_spawn_bosses(self) -> None:
+        """In Stage 1 report, even if all Shady Guys are done, SPAWN BOSSES is never shown."""
+        from rich.console import Console
+
+        test_buf = io.StringIO()
+        test_console = Console(file=test_buf, record=True, width=140)
+        res = {
+            "is_stage_1": True,
+            "stage_num": 1,
+            "all_matched": True,
+            "match_reason": "THRESHOLDS_MATCH",
+            "elapsed_s": 0.04,
+            "sm_pass": True,
+            "micro_pass": True,
+            "boss_pass": True,
+            "magnet_pass": True,
+            "sm_total": 1,
+            "map_counts": {
+                "shady": 1,
+                "moai": 0,
+                "microwaves": 0,
+                "boss_curses": 0,
+                "magnets": 0,
+            },
+            "shady_guys": [
+                {"shady_num": 1, "done": True, "items": [{"item_id": 41, "item_name": "Tape"}]}
+            ],
+            "microwaves": [],
+        }
+        with patch.object(il, "console", test_console):
+            il.print_stage1_report(res)
+        text = test_console.export_text()
+        self.assertNotIn("SPAWN BOSSES", text)
 
     def test_track_seed_offerings_default(self) -> None:
         """TRACK_SEED_OFFERINGS should default to False to prevent massive JSON disk I/O lag."""
